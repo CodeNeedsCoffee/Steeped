@@ -1,182 +1,349 @@
 # BooksNeedCoffee — Build Plan
 
-A Flutter (single codebase, Android + iOS) client for a self-hosted **Audiobookshelf** server, aiming for feature parity with the official [audiobookshelf-app](https://github.com/advplyr/audiobookshelf-app) (server connection, streaming, downloads, local files, podcasts, e-books) but with a custom design system: a **glass/modern** look and a **user-selectable "skin"** (e.g. a literal wooden-bookshelf skin vs. a frosted-glass modern skin).
+A Flutter (single codebase, Android + iOS) client for a self-hosted **Audiobookshelf** server, aiming for
+**full feature parity** with the official [audiobookshelf-app](https://github.com/advplyr/audiobookshelf-app)
+(server connection, streaming, downloads, on-device local media, podcasts, e-books, Android Auto, casting, etc.)
+but with a custom design system: a **glass/modern** look and a **user-selectable "skin"**
+(e.g. a literal wooden-bookshelf skin vs. a frosted-glass modern skin).
 
 Reference material already on this machine:
-- `~/Code/audiobookshelf-app` — official client source (Nuxt/Capacitor). Use it as a feature/behavior reference, not code to port directly — we're rebuilding natively in Dart.
-- `~/Code/audiobookshelf` — the server source, useful when you need to confirm an API response shape.
+- `~/Code/audiobookshelf-app` — official client source (Nuxt/Capacitor). Feature/behavior reference, not code to port — we rebuild natively in Dart. The full feature surface below was derived from its `strings/en-us.json`, `pages/`, `store/`, and native Kotlin/Swift plugins.
+- `~/Code/audiobookshelf` — the server source, for confirming API response shapes.
 - Official API docs: https://api.audiobookshelf.org
 
-Legend for checkpoints:
+> This plan was cross-checked against the **server `readme.md`**, the **app `readme.md`**, and the app's actual
+> source (strings, pages, native plugins). Every client-facing feature found is mapped to a phase in the
+> **[Feature Parity Checklist](#feature-parity-checklist)** at the bottom — use that section to confirm nothing was dropped.
+
+---
+
+## Testing Cadence (read this first)
+
+Two separate rhythms, because you develop on Linux and have a Mac nearby (not primary):
+
+- 🤖 **Android — semi-frequent, on your plugged-in device.** Test at the **end of every phase**, and any time a
+  sub-item touches native behavior (playback, downloads, notifications). This is your fast inner loop — no Mac
+  trip required. Every phase below ends with an 🤖 checkpoint.
+- 🍎 **iOS / Xcode — large milestones only, on the Mac.** Reserve Mac sessions for the points where iOS genuinely
+  diverges from Android (background audio entitlements, download/session sandboxing, file storage, release
+  signing). These are called out inline as 🍎 checkpoints and summarized here:
+
+  | # | When | Why it's an iOS milestone |
+  |---|------|---------------------------|
+  | 🍎 **Smoke** | After Phase 1 | Confirm the iOS shell **builds & launches at all** (`flutter run` on Simulator) before stacking features on it. Cheap insurance against late-discovered build breakage. |
+  | 🍎 **1** | End of Phase 3 | First real device/network behavior: server connection + secure token storage on iOS (Keychain differs from Android). |
+  | 🍎 **2 (major)** | End of Phase 5 | **Background audio** — iOS Background Modes → Audio entitlement, `audio_service` iOS setup, silent-switch behavior, lock-screen/Control-Center + CarPlay Now-Playing. Biggest platform-divergence point. |
+  | 🍎 **3 (major)** | End of Phase 6 | **Offline downloads & local file storage** — iOS background URLSession semantics + app-sandbox file paths differ substantially from Android. |
+  | 🍎 **4** | End of Phase 8 | E-reader rendering + on-device file access parity (EPUB/PDF/CBZ) on iOS. |
+  | 🍎 **5 (final)** | Phase 11 | Release-config archive: signing, entitlements, App Store build → TestFlight. |
+
+  Everything else (UI, theming, library browsing, settings, stats) is effectively write-once-run-anywhere in
+  Flutter and does **not** need a dedicated Mac trip — it'll be validated during these milestones.
+
+Legend used inline below:
 - 🤖 **Android checkpoint** — build/run on your plugged-in Android device.
-- 🍎 **Xcode checkpoint** — bigger landmark; open the project in Xcode on your Mac and build/run on Simulator or a device.
+- 🍎 **Xcode checkpoint** — open in Xcode on the Mac, build/run on Simulator or device.
 
 ---
 
 ## Phase 0 — Tech Stack Decisions
 
-- [ ] 0.1 State management: pick **Riverpod** (recommended — good for async server/streaming state) vs Bloc.
-- [ ] 0.2 Navigation: **go_router** for declarative routing + deep links (useful later for "open this book" links).
-- [ ] 0.3 Networking: **dio** (interceptors for auth headers/token refresh, better than plain `http`).
-- [ ] 0.4 Local database: **drift** (SQLite) or **Isar** for library metadata, download records, playback progress cache.
-- [ ] 0.5 Secure storage: **flutter_secure_storage** for server URL + auth token.
-- [ ] 0.6 Audio playback: **just_audio** + **audio_service** (background playback, lock-screen controls, media notifications on both platforms).
-- [ ] 0.7 Downloads: **background_downloader** (or `dio` + `flutter_downloader`) for resumable background downloads.
-- [ ] 0.8 E-book rendering: `epub_view` (or `epubx`) for EPUB, `syncfusion_flutter_pdfviewer` or `pdfx` for PDF, `archive` package for CBZ/CBR comics.
-- [ ] 0.9 Write these decisions into `README.md` once confirmed so future-you remembers why.
+- [ ] 0.1 State management: **Riverpod** (recommended for async server/streaming state) vs Bloc.
+- [ ] 0.2 Navigation: **go_router** — declarative routing + deep links (open-a-book links later).
+- [ ] 0.3 Networking: **dio** — interceptors for auth headers/token refresh.
+- [ ] 0.4 Real-time: **web_socket_channel** (or socket.io client) — Audiobookshelf uses a **websocket** for live updates; the server explicitly requires websocket support. Needed for progress/library sync and metered-connection awareness.
+- [ ] 0.5 Local database: **drift** (SQLite) or **Isar** — library metadata, download records, local-media index, playback-progress cache.
+- [ ] 0.6 Secure storage: **flutter_secure_storage** — server URL + auth token (Keychain on iOS, Keystore on Android).
+- [ ] 0.7 Audio: **just_audio** + **audio_service** — background playback, lock-screen/notification controls, Android Auto & CarPlay Now-Playing.
+- [ ] 0.8 Downloads: **background_downloader** — resumable background downloads with queue.
+- [ ] 0.9 E-books: `epub_view`/`epubx` (EPUB), `pdfx`/`syncfusion_flutter_pdfviewer` (PDF), `archive` (CBZ/CBR).
+- [ ] 0.10 Casting: **Android-only** in the reference app — pick a Cast plugin (e.g. `flutter_chrome_cast`) but scope it to Android (Phase 10).
+- [ ] 0.11 Connectivity: **connectivity_plus** — detect metered wifi/cellular for the cellular-data controls.
+- [ ] 0.12 Localization: **flutter_localizations** + `intl` / ARB files — the reference app ships **40 languages**; architect for i18n from day one even if you launch with English.
+- [ ] 0.13 Write these decisions into `README.md` once confirmed.
 
-> 🤖 **Android checkpoint:** none needed yet — this phase is just decisions, no code.
+> 🤖 No checkpoint — decisions only, no code.
 
 ---
 
 ## Phase 1 — Project Skeleton & Architecture
 
-- [ ] 1.1 Define folder structure: `lib/core` (theme, networking, storage), `lib/features/<feature>` (auth, library, player, downloads, ebook, settings), `lib/models`, `lib/widgets` (shared components).
-- [ ] 1.2 Add chosen packages to `pubspec.yaml`; run `flutter pub get`.
-- [ ] 1.3 Set up Riverpod `ProviderScope` at app root.
-- [ ] 1.4 Set up `go_router` with placeholder routes: splash, connect-to-server, login, home shell, settings.
-- [ ] 1.5 Add lint rules (`flutter_lints` + any custom rules) and a pre-commit-friendly `analysis_options.yaml`.
-- [ ] 1.6 Set up basic app icon + splash screen placeholders (`flutter_launcher_icons`, `flutter_native_splash`) — real branding comes later in Phase 9.
+- [ ] 1.1 Folder structure: `lib/core` (theme, networking, storage, i18n), `lib/features/<feature>` (auth, library, player, downloads, localmedia, ebook, podcasts, settings, stats), `lib/models`, `lib/widgets`.
+- [ ] 1.2 Add chosen packages to `pubspec.yaml`; `flutter pub get`.
+- [ ] 1.3 Riverpod `ProviderScope` at app root.
+- [ ] 1.4 `go_router` with placeholder routes: splash, connect-to-server, login, home shell, settings.
+- [ ] 1.5 i18n scaffolding (ARB files, `intl` codegen) with an English baseline — so strings are externalized from the start.
+- [ ] 1.6 Lint rules (`flutter_lints`) + `analysis_options.yaml`.
+- [ ] 1.7 Placeholder app icon + splash (`flutter_launcher_icons`, `flutter_native_splash`) — real branding in Phase 9.
 
-> 🤖 **Android checkpoint:** run the skeleton app on your device — confirm it launches, navigates between placeholder screens, and hot reload works end-to-end on real hardware.
+> 🤖 **Android checkpoint:** run skeleton on device — launches, navigates placeholder screens, hot reload works on real hardware.
+>
+> 🍎 **Xcode smoke checkpoint:** open on the Mac and confirm the iOS shell **builds and launches on the Simulator** at all. Do this now, before features stack up, so any iOS toolchain/signing issue surfaces early and cheap.
 
 ---
 
-## Phase 2 — Design System & Theming Engine
+## Phase 2 — Design System & Theming Engine (the "flare")
 
-This is the "flare" layer — build it early as an engine, not one-off styles, since every later feature screen will consume it.
+Build this as an engine early — every later screen consumes it. (Note: the official app already has a
+"Use bookshelf view" toggle, so a swappable shelf-vs-modern presentation is proven territory — we go further and make it a full skin system.)
 
-- [ ] 2.1 Define design tokens: color roles (background, surface, accent, text), spacing scale, radius scale, typography scale — as a `ThemeExtension` or custom `AppTheme` class (not hardcoded per-widget).
-- [ ] 2.2 Build the **glass/modern skin**: frosted-glass surfaces (`BackdropFilter` + `ImageFilter.blur`), translucent cards, subtle gradients, dark-mode-first palette.
-- [ ] 2.3 Build the **bookshelf skin**: warm wood/paper textures, skeuomorphic shelf grid for the library view, book-spine cover styling.
-- [ ] 2.4 Build a **skin/theme switcher** abstraction: a `Skin` interface both themes implement, selectable at runtime, persisted to local storage (not just `ThemeMode` light/dark — a genuinely swappable design system).
-- [ ] 2.5 Build core shared components against the token system: buttons, cards, list tiles, progress bars, bottom sheets, tab bar — so both skins reuse the same component tree with different token values.
-- [ ] 2.6 Build a **Settings → Appearance** screen to preview and switch skins live.
+- [ ] 2.1 Design tokens as a `ThemeExtension`/`AppTheme`: color roles (bg, surface, accent, text), spacing, radius, typography scales — never hardcoded per-widget.
+- [ ] 2.2 **Glass/modern skin**: frosted surfaces (`BackdropFilter` + `ImageFilter.blur`), translucent cards, gradients, dark-first palette.
+- [ ] 2.3 **Bookshelf skin**: warm wood/paper textures, skeuomorphic shelf grid, book-spine cover styling.
+- [ ] 2.4 **Skin switcher** abstraction: a `Skin` interface both themes implement, runtime-selectable, persisted to storage (a genuinely swappable design system, beyond light/dark `ThemeMode`).
+- [ ] 2.5 Core shared components on the token system: buttons, cards, list tiles, progress bars, bottom sheets, tab bar, mini-player slot — both skins reuse the tree with different token values.
+- [ ] 2.6 **Settings → Appearance** screen to preview/switch skins live. Also expose light/dark/black theme (the app has Light/Dark/Black) as a dimension within each skin.
 
-> 🤖 **Android checkpoint:** run through both skins on-device, check for jank on the blur/glass effects (frosted blur is the most likely performance trap — verify real device framerate, not just emulator).
+> 🤖 **Android checkpoint:** run both skins on-device; check for jank on blur/glass (frosted blur is the top perf trap — verify framerate on real hardware, not emulator).
 
 ---
 
 ## Phase 3 — Server Connection & Authentication
 
-- [ ] 3.1 Build the "Connect to Server" screen: enter server URL, validate reachability (ping a known Audiobookshelf endpoint).
-- [ ] 3.2 Build login screen: username/password → auth token exchange against the Audiobookshelf API.
-- [ ] 3.3 Support **multiple saved servers/accounts** (matches audiobookshelf-app behavior) with a switcher.
-- [ ] 3.4 Store token + server URL in secure storage; wire a `dio` interceptor to attach the auth header and handle 401 (re-login) automatically.
-- [ ] 3.5 Build a persisted "current user/session" provider so the rest of the app can read `me`.
-- [ ] 3.6 Handle offline/unreachable-server states gracefully (needed later for the offline-downloads feature to make sense).
+- [ ] 3.1 "Connect to Server" screen: enter URL, validate reachability against a known Audiobookshelf endpoint.
+- [ ] 3.2 Login (username/password) → auth-token exchange. Handle the v2.26.0+ auth flow (older servers show a re-login/upgrade warning in the reference app).
+- [ ] 3.3 **Multiple saved servers/accounts** with a "Switch Server/User" switcher.
+- [ ] 3.4 Store token + URL in secure storage; `dio` interceptor attaches auth header, handles 401 → token refresh → re-login.
+- [ ] 3.5 Persisted "current user/session" provider (`me`), including the user's **server-side permissions** (some users can't download, or lack access to certain libraries — the client must respect these).
+- [ ] 3.6 **Websocket connection** to the server for live updates; surface connection status ("connected over metered/unmetered wifi/cellular", "not connected").
+- [ ] 3.7 Offline/unreachable-server states handled gracefully (foundation for offline downloads).
+- [ ] 3.8 "Mask server address" privacy toggle (minor parity item).
 
-> 🤖 **Android checkpoint:** connect to your real Audiobookshelf server from the device over your home network, confirm login + token persistence survives app restart.
+> 🤖 **Android checkpoint:** connect to your real server over the home network; login + token persistence survives app restart; websocket status shows correctly.
+>
+> 🍎 **Xcode checkpoint 1:** verify server connect + **secure token storage on iOS (Keychain)** and websocket connectivity on a real network — Keychain semantics differ from Android Keystore.
 
 ---
 
 ## Phase 4 — Library Browsing
 
-- [ ] 4.1 Data models: Library, LibraryItem (book/podcast), Author, Series, Collection, Playlist — matching Audiobookshelf API shapes.
-- [ ] 4.2 Fetch and list libraries; library switcher UI.
-- [ ] 4.3 "Continue Listening" / latest / in-progress row (home shell).
-- [ ] 4.4 Full library grid/list view — this is where the two skins diverge most (shelf-of-spines vs. modern grid of covers).
-- [ ] 4.5 Authors browse screen, Series browse screen, Collections screen, Playlists screen.
-- [ ] 4.6 Search (title/author/series, local client-side + server search endpoint).
-- [ ] 4.7 Book/podcast detail screen: cover, description, metadata, chapter list, "Play"/"Download" actions.
-- [ ] 4.8 Image caching for covers (`cached_network_image`) — important, covers are fetched constantly while browsing.
+- [ ] 4.1 Data models: Library, LibraryItem (book/podcast), Author, Series, Collection, Playlist — matching API shapes (title, author, narrators, series, genres, tags, publish year, tracks, chapters, mediaType).
+- [ ] 4.2 Fetch/list libraries; library switcher; media-type awareness (books vs podcasts).
+- [ ] 4.3 Home shell rows: **Continue Listening / Continue Reading / Continue Series / Continue Books / Continue Episodes**, Recently Added, Recent Series, Newest Authors, Newest Episodes, Listen Again / Read Again, Discover.
+- [ ] 4.4 Full library view — where the two skins diverge most (shelf-of-spines vs. modern cover grid). Honor the bookshelf-view concept as part of the skin.
+- [ ] 4.5 Authors, Series (with **collapse series**), Collections, Playlists browse screens.
+- [ ] 4.6 **Filtering & Sorting**: filter (genre, tag, progress: not-started/in-progress/finished, has-ebook, etc.) and sort (title, author first-last / last-first, added date, progress last-updated/started/finished, sequence asc/desc).
+- [ ] 4.7 Search: title/author/series client + server search; **podcast search accepts a term or an RSS feed URL**.
+- [ ] 4.8 Item detail screen: cover, description (read-more/less), metadata, chapters, audio tracks, tags/genres/narrators, series links, "Play"/"Stream"/"Download"/"Read"/"Add to Playlist"/"Mark as Finished" actions.
+- [ ] 4.9 Cover image caching (`cached_network_image`).
 
-> 🤖 **Android checkpoint:** browse a real populated library end-to-end (scrolling perf on long lists, cover-image loading/caching, both skins).
+> 🤖 **Android checkpoint:** browse a real populated library end-to-end — long-list scroll perf, cover caching, filter/sort, both skins.
 
 ---
 
 ## Phase 5 — Audio Playback Engine (major milestone)
 
-- [ ] 5.1 Wire `just_audio` + `audio_service` for streaming playback directly from the server.
-- [ ] 5.2 Build the mini-player (persistent bottom bar) and full-screen "Now Playing" screen.
-- [ ] 5.3 Background playback: keep audio alive when app is backgrounded/screen locked.
-- [ ] 5.4 Lock-screen / notification media controls (play/pause/skip) on both platforms.
-- [ ] 5.5 Chapter navigation, skip-forward/back intervals, playback speed control.
-- [ ] 5.6 Sleep timer.
-- [ ] 5.7 Bookmarks within a book.
-- [ ] 5.8 Sync playback progress back to the server (session reporting) so progress matches across devices.
-- [ ] 5.9 Volume-button skip (matches audiobookshelf-app's volume-button-skip feature) — optional nice-to-have.
+- [ ] 5.1 `just_audio` + `audio_service` streaming from the server. Support **Direct play vs server Transcode** (the app requests a transcoded stream when needed) and handle all common audio formats.
+- [ ] 5.2 Mini-player (persistent bottom bar) + full-screen "Now Playing".
+- [ ] 5.3 Background playback (alive when backgrounded/locked).
+- [ ] 5.4 Lock-screen / notification media controls; "allow position seeking on media controls" option.
+- [ ] 5.5 Chapters + chapter track, chapter navigation, customizable **jump forward/back** intervals.
+- [ ] 5.6 Playback speed + "scale elapsed time by speed" option.
+- [ ] 5.7 **Sleep timer (full feature set):** manual duration, **end-of-chapter**, **auto sleep timer** (auto-start within a time window) with auto-rewind, **shake-to-reset** (+ shake-sensitivity), vibrate-on-reset toggle, audio **fade-out** toggle, "almost done" chime at 30s.
+- [ ] 5.8 Bookmarks (create/list/remove, "Your Bookmarks").
+- [ ] 5.9 Progress sync to server (session reporting every ~15s–1m) + **"progress sync failed"** handling/retry.
+- [ ] 5.10 Mark as **Finished / Not Finished**; discard/reset progress.
+- [ ] 5.11 **Navigate with volume keys** (on/off, mirrored, allow-while-playing).
+- [ ] 5.12 **Android Auto**: MediaBrowserService tree (libraries → series/authors/collections → items), Android-Auto settings (alphabetical drawdown limit, series-books order). *(Confirmed feature in the reference app.)*
+- [ ] 5.13 Lock/unlock player UI; keep-screen-awake toggle; MP3 index-seeking advanced option.
 
-> 🤖 **Android checkpoint:** verify background playback + lock-screen controls survive screen-off, app-switch, and phone-lock on real hardware — this is the feature most likely to silently break outside a debugger.
+> 🤖 **Android checkpoint:** background playback + lock-screen controls survive screen-off, app-switch, phone-lock; test **Android Auto** via the Desktop Head Unit (DHU) or a car; volume-key nav; sleep-timer behaviors.
 >
-> 🍎 **Xcode checkpoint (major landmark):** streaming audio in the background has real iOS-specific requirements (Background Modes → Audio capability, `audio_service`'s iOS setup, silent-mode behavior). Build and run in Xcode now — this is the first point where iOS entitlements/config actually matter, not just Dart code.
+> 🍎 **Xcode checkpoint 2 (major landmark):** iOS **Background Modes → Audio** entitlement, `audio_service` iOS config, silent-switch behavior, Control-Center/lock-screen controls, and **CarPlay Now-Playing** (iOS surfaces standard now-playing info in CarPlay automatically — verify metadata/controls; the reference app has no custom CarPlay browse UI, so parity = working Now-Playing). First point where iOS entitlements truly matter.
 
 ---
 
-## Phase 6 — Offline Downloads & Local Library (major milestone)
+## Phase 6 — Offline Downloads & On-Device Local Media (major milestone)
 
-- [ ] 6.1 "Download" action on a book/podcast episode → background download of audio files to local storage.
-- [ ] 6.2 Local library data model distinguishing "server item" vs "downloaded local item" (mirrors `LocalLibraryItem` in the reference app).
-- [ ] 6.3 Downloads screen: in-progress downloads with progress bars, completed downloads list, delete/manage storage.
-- [ ] 6.4 Offline playback: play a downloaded book with zero network connection.
-- [ ] 6.5 Sync local playback progress back to the server once connectivity returns (queue + retry).
-- [ ] 6.6 Storage management: show space used, allow bulk-delete, warn on low device storage.
+Two distinct capabilities the reference app has: (a) **downloading server items** for offline use, and
+(b) **importing/scanning on-device folders** of media that never came from the server ("Local Media").
 
-> 🤖 **Android checkpoint:** download a full audiobook on-device, kill the app mid-download to confirm resumability, then go offline (airplane mode) and play the downloaded file end-to-end.
+- [ ] 6.1 "Download" action on a book/episode → background download to local storage (respect the user's server download permission).
+- [ ] 6.2 **Series download** — download all missing books in a series at once, with a size/count confirmation.
+- [ ] 6.3 **Download location selection**: Internal App Storage vs shared-storage folder (Android SD/shared). Note Android-10-and-below internal-only behavior.
+- [ ] 6.4 Local library model distinguishing server item vs **downloaded local item** vs **imported local-media item**; link downloaded media to its **server + user** for progress sync (handle "linked to different server/user" cases).
+- [ ] 6.5 Downloads screen: in-progress + **download queue** (with clear-queue), completed list, delete/manage.
+- [ ] 6.6 Offline playback with zero connectivity.
+- [ ] 6.7 Sync local progress back to server on reconnect (queue + retry).
+- [ ] 6.8 **Local Media folders**: let the user pick device folders, **scan** them for audiobooks/podcasts, and play them without any server (mirrors `FolderScanner`/"Manage Local Files"/"New Folder"). Show "No Media Folders" empty state.
+- [ ] 6.9 **Cellular-data controls**: separate "download using cellular" and "stream using cellular" toggles; confirm-on-metered prompts; block when disallowed.
+- [ ] 6.10 Storage management: space used, bulk-delete, low-storage warnings.
+
+> 🤖 **Android checkpoint:** download a full book, kill app mid-download to confirm resume, go airplane-mode and play offline; add a local-media folder and scan/play a sideloaded file; toggle cellular controls on a metered connection.
 >
-> 🍎 **Xcode checkpoint (major landmark):** iOS background download/session behavior and local file storage sandboxing differ meaningfully from Android. Verify downloads survive backgrounding and offline playback works identically on a real iPhone/Simulator.
+> 🍎 **Xcode checkpoint 3 (major landmark):** iOS **background URLSession** download behavior + **app-sandbox file paths** differ substantially. Verify downloads survive backgrounding, offline playback works, and local-file access behaves on a real iPhone/Simulator.
 
 ---
 
 ## Phase 7 — Podcasts
 
-- [ ] 7.1 Podcast library view (separate from audiobooks, per Audiobookshelf's model).
-- [ ] 7.2 Episode list per podcast, unplayed/played state.
-- [ ] 7.3 "Add podcast" flow (subscribe via server) matching `add-podcast` in the reference app.
-- [ ] 7.4 Episode download + offline playback (reuses Phase 6 download engine).
-- [ ] 7.5 New-episode indicators / refresh.
+- [ ] 7.1 Podcast library view (separate media type).
+- [ ] 7.2 Episode list per podcast; played/unplayed/incomplete state; "# of episodes / N incomplete".
+- [ ] 7.3 **Add podcast** flow (subscribe via server; search term or RSS URL) — "Podcast created" success/fail toasts.
+- [ ] 7.4 **Auto-download episodes** setting per podcast.
+- [ ] 7.5 Episode download + offline (reuses Phase 6 engine); delete local episode and delete-episode-from-server (with the destructive-action warning).
+- [ ] 7.6 Latest/newest-episodes feed; new-episode indicators; next-episode action.
 
-> 🤖 **Android checkpoint:** subscribe to a podcast, download an episode, confirm it behaves the same as an audiobook through the shared playback/download engine (no special-cased bugs).
+> 🤖 **Android checkpoint:** subscribe (by term and by RSS URL), enable auto-download, download an episode, confirm it flows through the shared playback/download engine with no special-cased bugs.
 
 ---
 
 ## Phase 8 — E-Books & Comics
 
-- [ ] 8.1 EPUB reader screen (`epub_view`): pagination, font-size/theme controls, reading-position sync to server.
-- [ ] 8.2 PDF reader screen.
-- [ ] 8.3 Comic archive (CBZ/CBR) reader using the `archive` package for extraction + a page-viewer.
-- [ ] 8.4 Unify "continue reading" progress alongside "continue listening" on the home shell.
+- [ ] 8.1 **EPUB reader** (`epub_view`): pagination, table of contents, reading-position sync to server.
+- [ ] 8.2 **Ereader settings**: font family (Sans/Serif), font scale, font boldness, line spacing, layout (Auto / Single page), theme (Light/Dark/Black).
+- [ ] 8.3 **PDF reader**.
+- [ ] 8.4 **Comic archive (CBZ/CBR)** reader via `archive` extraction + page viewer.
+- [ ] 8.5 Primary vs supplementary ebook handling ("set as primary/supplementary", "has ebook / has supplementary ebook").
+- [ ] 8.6 **Send Ebook to Device** (e.g. Kindle) action — parity with server/app "send to device".
+- [ ] 8.7 Unify "continue reading" alongside "continue listening" on the home shell.
 
-> 🤖 **Android checkpoint:** read an EPUB and a CBZ end-to-end on-device, confirm reading position persists and syncs.
-
----
-
-## Phase 9 — Account, Settings, Stats, Polish
-
-- [ ] 9.1 Account screen (user info, logout, switch server).
-- [ ] 9.2 Full Settings screen: playback defaults, download quality/behavior, appearance (skin switcher from Phase 2), notifications.
-- [ ] 9.3 Listening stats screen (time listened, streaks, per-book stats).
-- [ ] 9.4 Debug/logs screen for troubleshooting server connectivity issues (mirrors the reference app's `logs.vue` — genuinely useful for a self-hosted client).
-- [ ] 9.5 Real app icon + splash screen (replace Phase 1 placeholders) in both skin styles if you want the icon itself to reflect the chosen skin.
-- [ ] 9.6 Accessibility pass: font scaling, screen-reader labels, contrast check on the glass skin (translucent surfaces are an accessibility risk — verify text contrast over blur).
-- [ ] 9.7 Empty-states and error-states polish across every screen (no server, empty library, failed download, etc.).
-
-> 🤖 **Android checkpoint:** full app walkthrough — every screen, both skins, real server, real device.
+> 🤖 **Android checkpoint:** read an EPUB and a CBZ end-to-end; reading position persists and syncs; ereader settings apply live.
+>
+> 🍎 **Xcode checkpoint 4:** confirm EPUB/PDF/CBZ rendering + on-device file access parity on iOS.
 
 ---
 
-## Phase 10 — Stretch Goals (optional, do only if core is solid)
+## Phase 9 — RSS Feeds, Account, Settings, Stats, Polish
 
-- [ ] 10.1 Chromecast/casting support (`flutter_chrome_cast` or similar) — reference app supports this via `CastManager`/`CastPlayer`.
-- [ ] 10.2 Widget/lock-screen glanceable playback widget.
-- [ ] 10.3 Tablet/foldable responsive layout.
-- [ ] 10.4 Additional skins beyond the two initial ones (community-style theming).
+- [ ] 9.1 **RSS feed management**: open/close an RSS feed for a podcast or audiobook; feed slug, custom owner name/email, prevent-indexing toggle; show "RSS Feed is Open" state and feed URL preview. Include the HTTPS/PubDate warnings the app shows.
+- [ ] 9.2 Account screen (user info, logout, switch server/user).
+- [ ] 9.3 Settings, organized to match the reference app's taxonomy: **Playback**, **Data** (cellular), **User Interface** (haptic feedback, keep-screen-awake, lock-orientation, language, theme, bookshelf view), **Android Auto**, **Ereader**, **Sleep Timer**, **Advanced**, plus **Appearance/skin** from Phase 2.
+- [ ] 9.4 **Stats**: minutes-listening 7-day chart, recent sessions, best day, daily average, days listened, streak ("in a row"), items finished, week listening.
+- [ ] 9.5 **Year in Review** annual recap (show/hide).
+- [ ] 9.6 **Logs / debug** screen (view/clear logs) for troubleshooting self-hosted connectivity — genuinely useful, mirrors `logs.vue`.
+- [ ] 9.7 History screen.
+- [ ] 9.8 **Localization**: wire up real translations (start with English; the pipeline exists from Phase 0.12/1.5). Language picker in UI settings.
+- [ ] 9.9 Real app icon + splash (replace placeholders); consider an icon that reflects the coffee/book brand.
+- [ ] 9.10 **Accessibility pass**: font scaling, screen-reader labels, and **contrast on the glass skin** (translucent surfaces over blur are a real contrast risk — verify text legibility).
+- [ ] 9.11 Empty/error states across every screen (no server, empty bookshelf, no items/collections/series/bookmarks, failed download, no network).
+
+> 🤖 **Android checkpoint:** full walkthrough — every screen, both skins, real server, real device; open/close an RSS feed; language switch; stats + Year-in-Review.
+
+---
+
+## Phase 10 — Stretch Goals (optional; only once core is solid)
+
+- [ ] 10.1 **Chromecast** — Android-only in the reference app (CastManager/CastPlayer). Scope to Android; iOS has no cast support in the reference app, so not a parity gap.
+- [ ] 10.2 Home-screen / lock-screen glanceable playback widget.
+- [ ] 10.3 Tablet/foldable responsive layouts.
+- [ ] 10.4 Additional community-style skins beyond the initial two.
+- [ ] 10.5 Custom-time playback start ("start playback at HH:MM") and other power-user conveniences seen in the app.
 
 ---
 
 ## Phase 11 — Release Prep
 
-- [ ] 11.1 Set up the GitHub Actions macOS-runner workflow (discussed earlier) to build the iOS side automatically on push, even without daily Mac access.
-- [ ] 11.2 App Store Connect + Google Play Console listings, screenshots per skin.
+- [ ] 11.1 GitHub Actions **macOS-runner** workflow to build the iOS side automatically on push — the CI path so you don't need daily Mac access.
+- [ ] 11.2 App Store Connect + Google Play Console listings; screenshots per skin.
 - [ ] 11.3 Versioning/changelog convention.
-- [ ] 11.4 Beta distribution: TestFlight (iOS) + internal testing track (Android).
+- [ ] 11.4 Beta distribution: TestFlight (iOS) + Play internal testing track (Android).
+- [ ] 11.5 Localization QA pass across shipped languages.
 
-> 🍎 **Xcode checkpoint (final landmark):** full release-configuration build (signing, App Store archive) before submitting to TestFlight.
+> 🍎 **Xcode checkpoint 5 (final landmark):** full release-configuration archive — signing, entitlements, App Store build — before TestFlight submission.
+
+---
+
+## Feature Parity Checklist
+
+Every **client-facing** feature found in the server README, app README, and app source, mapped to a phase.
+Check these off as parity is reached — this is the "nothing dropped" ledger.
+
+**Connection & Account**
+- [ ] Connect by server URL · Phase 3.1
+- [ ] Username/password login (+ v2.26.0 auth) · 3.2
+- [ ] Multiple servers / switch server & user · 3.3
+- [ ] Secure token storage + refresh + re-login · 3.4
+- [ ] Respect server-side user permissions (download access, library access) · 3.5
+- [ ] Websocket live sync + connection status (metered/unmetered wifi/cellular) · 3.6
+- [ ] Mask server address · 3.8
+- [ ] Account screen / logout · 9.2
+
+**Library & Discovery**
+- [ ] Libraries + switcher, books vs podcasts · 4.2
+- [ ] Home shelves (continue listening/reading/series/books/episodes, recently added, newest, discover, listen/read again) · 4.3
+- [ ] Bookshelf view vs modern grid · 4.4 / Phase 2
+- [ ] Authors / Series (collapse series) / Collections / Playlists · 4.5
+- [ ] Filter & sort · 4.6
+- [ ] Search (incl. podcast RSS-URL search) · 4.7
+- [ ] Item detail (metadata, chapters, tracks, tags, genres, narrators) · 4.8
+- [ ] Playlist create / add-to / remove / reorder · 4.5 + 4.8
+- [ ] Mark finished / not finished, discard progress · 5.10
+
+**Playback**
+- [ ] Stream (direct + transcode), all formats · 5.1
+- [ ] Mini-player + Now Playing · 5.2
+- [ ] Background playback · 5.3
+- [ ] Lock-screen/notification controls + seek-on-controls · 5.4
+- [ ] Chapters + jump fwd/back intervals · 5.5
+- [ ] Playback speed + scale-elapsed-by-speed · 5.6
+- [ ] Sleep timer (manual, end-of-chapter, auto-timer, shake-to-reset, vibrate, fade-out, chime) · 5.7
+- [ ] Bookmarks · 5.8
+- [ ] Progress sync + sync-failed handling · 5.9
+- [ ] Volume-key navigation · 5.11
+- [ ] **Android Auto** · 5.12
+- [ ] CarPlay Now-Playing (standard) · 🍎2
+- [ ] Keep-screen-awake, lock player, MP3 index seeking · 5.13
+- [ ] **Chromecast (Android-only)** · 10.1
+
+**Downloads & Local Media**
+- [ ] Download server item · 6.1
+- [ ] Series download · 6.2
+- [ ] Download location selection · 6.3
+- [ ] Local item ↔ server/user linking · 6.4
+- [ ] Downloads screen + queue · 6.5
+- [ ] Offline playback · 6.6
+- [ ] Offline→online progress sync · 6.7
+- [ ] **On-device local-media folders (scan/import)** · 6.8
+- [ ] Cellular download/stream controls · 6.9
+- [ ] Storage management · 6.10
+
+**Podcasts**
+- [ ] Podcast library + episode list/state · 7.1–7.2
+- [ ] Add podcast (term/RSS) · 7.3
+- [ ] Auto-download episodes · 7.4
+- [ ] Episode download/offline + delete (local/server) · 7.5
+
+**E-books & Comics**
+- [ ] EPUB reader + TOC + position sync · 8.1
+- [ ] Ereader settings (font/scale/boldness/spacing/layout/theme) · 8.2
+- [ ] PDF reader · 8.3
+- [ ] CBZ/CBR comics · 8.4
+- [ ] Primary/supplementary ebook · 8.5
+- [ ] Send ebook to device (Kindle) · 8.6
+
+**RSS, Stats, System**
+- [ ] Open/close & manage RSS feeds · 9.1
+- [ ] Settings taxonomy (playback/data/UI/android-auto/ereader/sleep/advanced) · 9.3
+- [ ] Stats (chart, sessions, streaks, finished) · 9.4
+- [ ] Year in Review · 9.5
+- [ ] Logs/debug · 9.6
+- [ ] History · 9.7
+- [ ] Localization (40 languages) · 0.12 / 1.5 / 9.8
+- [ ] Haptic feedback · 9.3
+
+---
+
+## Explicitly Out of Scope (server-side features, not the client's job)
+
+These appear in the **server** README but are server/web-admin functions — BooksNeedCoffee consumes their
+*results* (e.g. displays fetched metadata, plays transcoded/merged files) but does not implement them:
+
+- Uploading books/podcasts, bulk drag-and-drop upload
+- Metadata + automated daily backups
+- Server-side library auto-scan / update detection (we react to it via websocket, but don't run scans)
+- Merge audio files into a single m4b
+- Embed metadata/cover into audio files
+- Chapter *editor* and Audnexus chapter *lookup* (we display chapters; editing is server/web)
+- Fetch metadata/cover art from external sources
+- Multi-user *administration* / permission *assignment* (we *respect* permissions; we don't manage them)
+- Progressive Web App (that's the web client)
 
 ---
 
 ## Working Notes
 
-- Treat Phases 5 and 6 as the two true "hard" milestones — background audio and offline downloads are where platform differences bite. Everything before that (Phases 0–4) is close to write-once-run-anywhere in Flutter.
-- Test on Android continuously (fast iteration, no Mac trip required); reserve Xcode sessions for the milestones marked above rather than every single change, to match your Mac availability.
-- Keep this file updated by checking off items as you go — it doubles as a changelog of what's actually been built.
+- **Two hard milestones:** Phases 5 (background audio + Android Auto/CarPlay) and 6 (offline downloads + local media + sandboxing). Everything before them is near write-once-run-anywhere in Flutter. Budget the bulk of your Mac/Xcode time around these two.
+- **Test on Android continuously** (fast, no Mac trip); reserve **Xcode** for the milestone checkpoints in the cadence table, plus the early smoke test so iOS build breakage never surprises you late.
+- Keep this file's checkboxes updated as you build — it doubles as a changelog and the parity ledger.
+- If a feature turns out to depend on a server API you're unsure of, confirm the response shape against `~/Code/audiobookshelf` (server source) or https://api.audiobookshelf.org before implementing the client side.
