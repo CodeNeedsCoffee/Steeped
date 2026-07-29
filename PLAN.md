@@ -32,10 +32,11 @@ Two separate rhythms, because you develop on Linux and have a Mac nearby (not pr
   |---|------|---------------------------|
   | 🍎 **Smoke** | After Phase 1 | Confirm the iOS shell **builds & launches at all** (`flutter run` on Simulator) before stacking features on it. Cheap insurance against late-discovered build breakage. |
   | 🍎 **1** | End of Phase 3 | First real device/network behavior: server connection + secure token storage on iOS (Keychain differs from Android). |
-  | 🍎 **2 (major)** | End of Phase 5 | **Background audio** — iOS Background Modes → Audio entitlement, `audio_service` iOS setup, silent-switch behavior, lock-screen/Control-Center + CarPlay Now-Playing. Biggest platform-divergence point. |
+  | 🍎 **2 (major)** | End of Phase 5 | **Background audio** — iOS Background Modes → Audio entitlement, `audio_service` iOS setup, silent-switch behavior, lock-screen/Control-Center controls (which also surface in CarPlay Now-Playing for free). Biggest platform-divergence point. |
   | 🍎 **3 (major)** | End of Phase 6 | **Offline downloads & local file storage** — iOS background URLSession semantics + app-sandbox file paths differ substantially from Android. |
   | 🍎 **4** | End of Phase 8 | E-reader rendering + on-device file access parity (EPUB/PDF/CBZ) on iOS. |
-  | 🍎 **5 (final)** | Phase 11 | Release-config archive: signing, entitlements, App Store build → TestFlight. |
+  | 🍎 **5 (major)** | End of Phase 10 | **CarPlay** — full browse hierarchy + Now-Playing in the Xcode CarPlay Simulator; requires the Apple CarPlay audio entitlement to be provisioned. |
+  | 🍎 **6 (final)** | Phase 12 | Release-config archive: signing, entitlements, App Store build → TestFlight. |
 
   Everything else (UI, theming, library browsing, settings, stats) is effectively write-once-run-anywhere in
   Flutter and does **not** need a dedicated Mac trip — it'll be validated during these milestones.
@@ -57,10 +58,11 @@ Legend used inline below:
 - [ ] 0.7 Audio: **just_audio** + **audio_service** — background playback, lock-screen/notification controls, Android Auto & CarPlay Now-Playing.
 - [ ] 0.8 Downloads: **background_downloader** — resumable background downloads with queue.
 - [ ] 0.9 E-books: `epub_view`/`epubx` (EPUB), `pdfx`/`syncfusion_flutter_pdfviewer` (PDF), `archive` (CBZ/CBR).
-- [ ] 0.10 Casting: **Android-only** in the reference app — pick a Cast plugin (e.g. `flutter_chrome_cast`) but scope it to Android (Phase 10).
+- [ ] 0.10 Casting: **Android-only** in the reference app — pick a Cast plugin (e.g. `flutter_chrome_cast`) but scope it to Android (Phase 11).
 - [ ] 0.11 Connectivity: **connectivity_plus** — detect metered wifi/cellular for the cellular-data controls.
 - [ ] 0.12 Localization: **flutter_localizations** + `intl` / ARB files — the reference app ships **40 languages**; architect for i18n from day one even if you launch with English.
-- [ ] 0.13 Write these decisions into `README.md` once confirmed.
+- [ ] 0.13 Car integrations: **`audio_service`** already backs **Android Auto** (media-browser). For **CarPlay** pick **`flutter_carplay`** (or native Swift CarPlay templates). **Request the CarPlay audio-app entitlement (`com.apple.developer.carplay-audio`) from Apple now** — approval gates the feature and can take time, even though it's implemented late (Phase 10).
+- [ ] 0.14 Write these decisions into `README.md` once confirmed.
 
 > 🤖 No checkpoint — decisions only, no code.
 
@@ -144,12 +146,12 @@ Build this as an engine early — every later screen consumes it. (Note: the off
 - [ ] 5.9 Progress sync to server (session reporting every ~15s–1m) + **"progress sync failed"** handling/retry.
 - [ ] 5.10 Mark as **Finished / Not Finished**; discard/reset progress.
 - [ ] 5.11 **Navigate with volume keys** (on/off, mirrored, allow-while-playing).
-- [ ] 5.12 **Android Auto**: MediaBrowserService tree (libraries → series/authors/collections → items), Android-Auto settings (alphabetical drawdown limit, series-books order). *(Confirmed feature in the reference app.)*
+- [ ] 5.12 **Media-session foundation**: expose proper now-playing metadata + a playback queue through `audio_service` — the substrate the **CarPlay & Android Auto** browse trees build on in **Phase 10**. At this stage iOS already shows standard Control-Center/lock-screen now-playing, which also surfaces in CarPlay's Now-Playing screen automatically.
 - [ ] 5.13 Lock/unlock player UI; keep-screen-awake toggle; MP3 index-seeking advanced option.
 
-> 🤖 **Android checkpoint:** background playback + lock-screen controls survive screen-off, app-switch, phone-lock; test **Android Auto** via the Desktop Head Unit (DHU) or a car; volume-key nav; sleep-timer behaviors.
+> 🤖 **Android checkpoint:** background playback + lock-screen controls survive screen-off, app-switch, phone-lock; volume-key nav; sleep-timer behaviors. (Full Android Auto browse UI is tested in Phase 10.)
 >
-> 🍎 **Xcode checkpoint 2 (major landmark):** iOS **Background Modes → Audio** entitlement, `audio_service` iOS config, silent-switch behavior, Control-Center/lock-screen controls, and **CarPlay Now-Playing** (iOS surfaces standard now-playing info in CarPlay automatically — verify metadata/controls; the reference app has no custom CarPlay browse UI, so parity = working Now-Playing). First point where iOS entitlements truly matter.
+> 🍎 **Xcode checkpoint 2 (major landmark):** iOS **Background Modes → Audio** entitlement, `audio_service` iOS config, silent-switch behavior, Control-Center/lock-screen controls (these auto-surface in CarPlay's Now-Playing; the full CarPlay browse experience comes in Phase 10). First point where iOS entitlements truly matter.
 
 ---
 
@@ -222,25 +224,56 @@ Two distinct capabilities the reference app has: (a) **downloading server items*
 
 ---
 
-## Phase 10 — Stretch Goals (optional; only once core is solid)
+## Phase 10 — Car Integrations: CarPlay & Android Auto (final feature milestone)
 
-- [ ] 10.1 **Chromecast** — Android-only in the reference app (CastManager/CastPlayer). Scope to Android; iOS has no cast support in the reference app, so not a parity gap.
-- [ ] 10.2 Home-screen / lock-screen glanceable playback widget.
-- [ ] 10.3 Tablet/foldable responsive layouts.
-- [ ] 10.4 Additional community-style skins beyond the initial two.
-- [ ] 10.5 Custom-time playback start ("start playback at HH:MM") and other power-user conveniences seen in the app.
+The last committed feature set before release. Both platforms project a **browsable content tree** + a
+**Now-Playing** screen onto the car head unit; playback commands route through the same `audio_service` handler
+from Phase 5. Build the content tree once, then adapt it to each platform's API. Design for **driving reality**:
+big tap targets, shallow menus, and downloaded/offline content must be browsable with no signal.
+
+**Shared foundation**
+- [ ] 10.1 Car content-tree provider — one source of truth mapping app data → browsable nodes: root → Continue Listening, Libraries, Series, Authors, Collections, Playlists, Downloaded/Local → items → play. Reuses the media-session foundation from 5.12.
+- [ ] 10.2 Ensure **downloaded + on-device local-media items** appear in the tree and play with zero connectivity (you're often driving offline).
+- [ ] 10.3 Map transport actions (play/pause, jump fwd/back, next/prev chapter, playback speed, mark finished) to car-safe controls; keep now-playing metadata (cover, title, author, chapter, progress) live.
+
+**Android Auto**
+- [ ] 10.4 Browse tree via `audio_service`'s `MediaBrowserService` (`getChildren`/`onLoadChildren`) — libraries → series/authors/collections → items.
+- [ ] 10.5 Android-Auto settings: alphabetical drawdown limit (grouping), series-books order (asc/desc) — matching the reference app.
+- [ ] 10.6 `AndroidManifest` wiring (`automotive_app_desc.xml`, `MediaBrowserService` intent filter) + a pass against Google's Android-for-Cars content/quality guidelines.
+- [ ] 10.7 Google Assistant "play &lt;book&gt;" voice handling (nice-to-have).
+
+**CarPlay** (this goes *beyond* the reference app, which only has standard Now-Playing)
+- [ ] 10.8 Confirm the **CarPlay audio-app entitlement** (`com.apple.developer.carplay-audio`) requested in 0.13 is granted and added to the provisioning profile.
+- [ ] 10.9 Implement CarPlay via `flutter_carplay` (or native Swift `CPTemplateApplicationSceneDelegate`): a `CPListTemplate` browse hierarchy mirroring the shared content tree + `CPNowPlayingTemplate` with transport buttons.
+- [ ] 10.10 Add the CarPlay scene delegate + entitlement to the iOS project; wire it to the same `audio_service` handler.
+- [ ] 10.11 Siri / voice search hooks for "play &lt;book&gt;" (nice-to-have).
+- [ ] 10.12 Verify graceful no-signal behavior (browse downloaded/local content only).
+
+> 🤖 **Android checkpoint:** test Android Auto with the **Desktop Head Unit (DHU)** (or a real car) — browse the full tree, play a downloaded book in airplane mode, confirm transport controls + live now-playing metadata.
+>
+> 🍎 **Xcode checkpoint 5 (major landmark):** test CarPlay in the **Xcode CarPlay Simulator** (Simulator → I/O → External Displays → CarPlay) — browse hierarchy, Now-Playing controls, offline playback. Requires the CarPlay entitlement provisioned; confirm the signing profile includes it.
 
 ---
 
-## Phase 11 — Release Prep
+## Phase 11 — Stretch Goals (optional; only once core is solid)
 
-- [ ] 11.1 GitHub Actions **macOS-runner** workflow to build the iOS side automatically on push — the CI path so you don't need daily Mac access.
-- [ ] 11.2 App Store Connect + Google Play Console listings; screenshots per skin.
-- [ ] 11.3 Versioning/changelog convention.
-- [ ] 11.4 Beta distribution: TestFlight (iOS) + Play internal testing track (Android).
-- [ ] 11.5 Localization QA pass across shipped languages.
+- [ ] 11.1 **Chromecast** — Android-only in the reference app (CastManager/CastPlayer). Scope to Android; iOS has no cast support in the reference app, so not a parity gap.
+- [ ] 11.2 Home-screen / lock-screen glanceable playback widget.
+- [ ] 11.3 Tablet/foldable responsive layouts.
+- [ ] 11.4 Additional community-style skins beyond the initial two.
+- [ ] 11.5 Custom-time playback start ("start playback at HH:MM") and other power-user conveniences seen in the app.
 
-> 🍎 **Xcode checkpoint 5 (final landmark):** full release-configuration archive — signing, entitlements, App Store build — before TestFlight submission.
+---
+
+## Phase 12 — Release Prep
+
+- [ ] 12.1 GitHub Actions **macOS-runner** workflow to build the iOS side automatically on push — the CI path so you don't need daily Mac access.
+- [ ] 12.2 App Store Connect + Google Play Console listings; screenshots per skin.
+- [ ] 12.3 Versioning/changelog convention.
+- [ ] 12.4 Beta distribution: TestFlight (iOS) + Play internal testing track (Android).
+- [ ] 12.5 Localization QA pass across shipped languages.
+
+> 🍎 **Xcode checkpoint 6 (final landmark):** full release-configuration archive — signing, entitlements, App Store build — before TestFlight submission.
 
 ---
 
@@ -281,10 +314,11 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [ ] Bookmarks · 5.8
 - [ ] Progress sync + sync-failed handling · 5.9
 - [ ] Volume-key navigation · 5.11
-- [ ] **Android Auto** · 5.12
-- [ ] CarPlay Now-Playing (standard) · 🍎2
+- [ ] Media-session foundation (now-playing metadata + queue) · 5.12
 - [ ] Keep-screen-awake, lock player, MP3 index seeking · 5.13
-- [ ] **Chromecast (Android-only)** · 10.1
+- [ ] **Android Auto** (full browse tree + settings) · 10.4–10.6
+- [ ] **CarPlay** (full browse hierarchy + Now-Playing; beyond reference app) · 10.8–10.10
+- [ ] **Chromecast (Android-only)** · 11.1
 
 **Downloads & Local Media**
 - [ ] Download server item · 6.1
@@ -343,7 +377,8 @@ These appear in the **server** README but are server/web-admin functions — Boo
 
 ## Working Notes
 
-- **Two hard milestones:** Phases 5 (background audio + Android Auto/CarPlay) and 6 (offline downloads + local media + sandboxing). Everything before them is near write-once-run-anywhere in Flutter. Budget the bulk of your Mac/Xcode time around these two.
+- **Three hard, platform-divergent milestones:** Phase 5 (background audio), Phase 6 (offline downloads + local media + sandboxing), and Phase 10 (CarPlay + Android Auto). Everything else is near write-once-run-anywhere in Flutter. Budget the bulk of your Mac/Xcode time around these three.
+- **CarPlay has a long-lead dependency:** the Apple CarPlay audio entitlement (0.13) needs Apple's approval, so request it at the very start even though CarPlay itself is built last in Phase 10.
 - **Test on Android continuously** (fast, no Mac trip); reserve **Xcode** for the milestone checkpoints in the cadence table, plus the early smoke test so iOS build breakage never surprises you late.
 - Keep this file's checkboxes updated as you build — it doubles as a changelog and the parity ledger.
 - If a feature turns out to depend on a server API you're unsure of, confirm the response shape against `~/Code/audiobookshelf` (server source) or https://api.audiobookshelf.org before implementing the client side.
