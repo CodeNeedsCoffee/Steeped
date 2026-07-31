@@ -11,7 +11,7 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 | Milestone | Focus                                             | Phases        | Status |
 |-----------|----------------------------------------------------|---------------|--------|
 | 1         | Core streaming — connect, authenticate, browse, stream, basic UI | 0, 1, 3, 4, 5 | 🟢 done |
-| 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | ⚪     |
+| 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | 🟡 (6 done) |
 | 3         | UI customization & skins                          | 2             | ⚪     |
 | 4         | Car integration — Android Auto & CarPlay          | 10            | ⚪     |
 | 5         | Stretch goals & release prep                      | 11, 12        | ⚪     |
@@ -38,16 +38,28 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   mark-finished. 5.7 (sleep timer), 5.8 (bookmarks), 5.11 (volume keys), 5.13 (advanced player settings)
   deliberately deferred — see `PLAN.md` Phase 5 for why.
 - **Milestone 1 is done.** 🎉
+- Now working in the `milestone-2-offline-downloads` branch, pushing more frequently since `main` holds the
+  stable Milestone 1 build.
+- Phase 6 (Offline Downloads & On-Device Local Media) built ✅ and verified end-to-end ✅ on the Pixel 8
+  Pro: downloaded a real 12h38m book via `background_downloader` with live progress, then **genuinely cut
+  wifi + cellular data** and confirmed it plays fully offline (position/chapters tracked correctly) — not
+  just "implemented," actually tested with no network path available. Found and documented a real gap along
+  the way: cold app start while offline currently fails before reaching downloaded content, because
+  session bootstrap (Phase 3) doesn't distinguish "network unreachable" from "token actually invalid."
+  6.2 (series download), 6.8 (local-media folders), 6.9 (cellular controls), 6.10 (storage management), and
+  a durable offline-sync retry queue (6.7) deliberately deferred — see `PLAN.md` Phase 6 for why.
 
 ## Next
 
-- Phase 6: Offline Downloads & On-Device Local Media (Milestone 2) — `background_downloader`, download
-  location selection, offline playback, local-media folder scanning.
+- Phase 7: Podcasts (Milestone 2) — podcast library, episode list, subscribe by term/RSS, auto-download
+  (reuses the Phase 6 download engine), episode delete.
+- Worth considering first: the cold-start-while-offline gap found during Phase 6 verification (see above) —
+  a Phase 3 follow-up, not scoped to any single phase yet.
 
 ## Later
 
-- Milestone 2 → 3 → 4 → 5, in that order. The next big native-divergence point is **Phase 6** (offline
-  downloads/local media, Milestone 2) — budget Mac/Xcode time there once the iOS side starts.
+- Milestone 2 → 3 → 4 → 5, in that order. The next big native-divergence point is iOS **background
+  URLSession** download behavior (Phase 6) — budget Mac/Xcode time there once the iOS side starts.
 
 ---
 
