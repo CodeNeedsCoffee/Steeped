@@ -1,17 +1,40 @@
-# booksneedcoffee
+# Steeped
 
-A new Flutter project.
+A Flutter client for a self-hosted [Audiobookshelf](https://www.audiobookshelf.org/) server — built for
+Android and iOS, with a custom "glass/modern" design and swappable skins.
+
+**Steeped is an independent, unofficial project.** It is not affiliated with, endorsed by, or maintained by
+the Audiobookshelf team. It's a third-party client that talks to your own Audiobookshelf server over its
+public API — full credit to that project for the server, the API, and the reference client this one aims
+for feature parity with.
+
+## Why "Steeped"
+
+Two meanings, on purpose:
+
+- A lot of **coffee** went into building this (the project's original working name was
+  *BooksNeedCoffee* — that spirit lives on here).
+- The goal is for **readers and listeners to be steeped in a story** — fully soaked in it, the way tea or
+  coffee steeps — rather than just passively consuming it.
+
+## Platform Scope
+
+**Android and iOS only.** The `macos/`, `linux/`, `windows/`, and `web/` folders that `flutter create`
+scaffolds by default have been removed — desktop and web are not targets for this project.
+
+## Project Docs
+
+- [`PLAN.md`](PLAN.md) — the full, detailed build plan: phases, feature-parity checklist against the
+  reference Audiobookshelf app, and testing cadence.
+- [`ROADMAP.md`](ROADMAP.md) — a lightweight, at-a-glance status tracker, updated as work lands.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+This is a standard Flutter project.
 
-A few resources to get you started if this is your first Flutter project:
+```
+flutter pub get
+flutter run
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+See `PLAN.md` for architecture and tech-stack decisions as they're made.
