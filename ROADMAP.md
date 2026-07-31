@@ -55,6 +55,13 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   real progress. Fixed by tying the timer to actual playback state instead. **This did corrupt real progress
   on evan's server for one book during testing**; repaired using the still-intact progress percentage.
   Verified fixed: resumes correctly now. See `PLAN.md` Phase 5.9 for details.
+- **Follow-up verification (2026-07-31, requested by evan)**: confirmed reconnect-while-playing actually
+  uploads progress — played a downloaded book, went offline, let it advance, reconnected *without pausing*,
+  and confirmed via the server's raw response that the new position uploaded within one sync tick. Also
+  confirmed a downloaded item is always preferred over streaming, online or not. Found and fixed a second,
+  smaller display bug along the way: the server's `progress` percentage field doesn't get recomputed by our
+  sync calls (only `currentTime` does), so the item detail screen's "% complete" could drift stale — now
+  computed client-side from `currentTime`/`duration` instead. See `PLAN.md` Phase 6.7 for details.
 
 ## Next
 

@@ -96,11 +96,11 @@ class _ItemDetailBody extends ConsumerWidget {
           ),
         if (item.progress != null) ...[
           const SizedBox(height: 12),
-          LinearProgressIndicator(value: item.progress!.progress),
+          LinearProgressIndicator(value: _displayProgressFraction(item)),
           Text(
             item.progress!.isFinished
                 ? 'Finished'
-                : '${(item.progress!.progress * 100).round()}% complete',
+                : '${(_displayProgressFraction(item) * 100).round()}% complete',
             style: textTheme.labelSmall,
           ),
         ],
@@ -186,6 +186,21 @@ class _ItemDetailBody extends ConsumerWidget {
     final minutes = totalMinutes % 60;
     if (hours == 0) return '${minutes}m';
     return '${hours}h ${minutes}m';
+  }
+
+  /// The server's `progress` fraction field isn't recomputed by the
+  /// sessionless progress-sync PATCH we use (5.9) — only `currentTime`/
+  /// `duration` are, confirmed by inspecting a raw server response where
+  /// `currentTime` had advanced but `progress` hadn't moved at all.
+  /// Computing the fraction client-side keeps this display consistent with
+  /// what's actually used to resume playback, instead of silently drifting
+  /// stale relative to it.
+  double _displayProgressFraction(LibraryItemDetail item) {
+    final progress = item.progress;
+    if (progress == null) return 0;
+    final duration = item.duration;
+    if (duration == null || duration <= 0) return progress.progress;
+    return (progress.currentTime / duration).clamp(0, 1);
   }
 }
 
