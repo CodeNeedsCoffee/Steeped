@@ -1,4 +1,4 @@
-# BooksNeedCoffee — Build Plan
+# Steeped — Build Plan
 
 A Flutter (single codebase, Android + iOS) client for a self-hosted **Audiobookshelf** server, aiming for
 **full feature parity** with the official [audiobookshelf-app](https://github.com/advplyr/audiobookshelf-app)
@@ -360,7 +360,7 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 
 ## Explicitly Out of Scope (server-side features, not the client's job)
 
-These appear in the **server** README but are server/web-admin functions — BooksNeedCoffee consumes their
+These appear in the **server** README but are server/web-admin functions — Steeped consumes their
 *results* (e.g. displays fetched metadata, plays transcoded/merged files) but does not implement them:
 
 - Uploading books/podcasts, bulk drag-and-drop upload
