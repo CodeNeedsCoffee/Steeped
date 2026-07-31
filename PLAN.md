@@ -73,7 +73,7 @@ Legend used inline below:
 - [x] 0.1 State management: **Riverpod** — chosen for async server/streaming state over Bloc.
 - [x] 0.2 Navigation: **go_router** — declarative routing + deep links (open-a-book links later).
 - [x] 0.3 Networking: **dio** — interceptors for auth headers/token refresh.
-- [x] 0.4 Real-time: **web_socket_channel** — Audiobookshelf requires websocket support for live updates; needed for progress/library sync and metered-connection awareness.
+- [x] 0.4 Real-time: **socket_io_client** — corrected during Phase 3: the Audiobookshelf server runs **socket.io v4**, not a raw websocket (confirmed against `~/Code/audiobookshelf/server/SocketAuthority.js` and the reference app's `socket.io-client` dependency). A raw `web_socket_channel` can't speak socket.io's framing, so that package was swapped out. Needed for progress/library sync and metered-connection awareness.
 - [x] 0.5 Local database: **drift** (SQLite) — chosen over Isar: the data (libraries/series/collections/playlists + filter/sort) is genuinely relational, Drift has a real migration system for a schema that will evolve across milestones, a longer/more predictable maintenance track record, and plain-SQLite files are easy to debug directly (open the `.db` file in any SQLite browser). Neither engine is in the actual audio-streaming path (that's `just_audio`/`dio`), so this decision wasn't made on streaming performance.
 - [x] 0.6 Secure storage: **flutter_secure_storage** — server URL + auth token (Keychain on iOS, Keystore on Android).
 - [x] 0.7 Audio: **just_audio** + **audio_service** — background playback, lock-screen/notification controls, Android Auto & CarPlay Now-Playing.
@@ -108,18 +108,18 @@ Legend used inline below:
 
 ### Phase 3 — Server Connection & Authentication
 
-- [ ] 3.1 "Connect to Server" screen: enter URL, validate reachability against a known Audiobookshelf endpoint.
-- [ ] 3.2 Login (username/password) → auth-token exchange. Handle the v2.26.0+ auth flow (older servers show a re-login/upgrade warning in the reference app).
-- [ ] 3.3 **Multiple saved servers/accounts** with a "Switch Server/User" switcher.
-- [ ] 3.4 Store token + URL in secure storage; `dio` interceptor attaches auth header, handles 401 → token refresh → re-login.
-- [ ] 3.5 Persisted "current user/session" provider (`me`), including the user's **server-side permissions** (some users can't download, or lack access to certain libraries — the client must respect these).
-- [ ] 3.6 **Websocket connection** to the server for live updates; surface connection status ("connected over metered/unmetered wifi/cellular", "not connected").
-- [ ] 3.7 Offline/unreachable-server states handled gracefully (foundation for offline downloads).
-- [ ] 3.8 "Mask server address" privacy toggle (minor parity item).
+- [x] 3.1 "Connect to Server" screen: enter URL, validate reachability against a known Audiobookshelf endpoint. Real `GET /status` check; endpoint shapes confirmed against `~/Code/audiobookshelf` source (not guessed).
+- [x] 3.2 Login (username/password) → auth-token exchange. Handles the v2.26.0+ JWT flow (`accessToken`/`refreshToken`) with fallback to the legacy static `token` for older servers — see `AuthUser.effectiveToken`.
+- [ ] 3.3 **Multiple saved servers/accounts** with a "Switch Server/User" switcher. **Deferred** — a single active session is sufficient for Milestone 1's stated goal (connect, authenticate, stream); `SessionStorage`'s schema doesn't preclude adding this later, but the multi-server switcher UI + a drift `ServerProfiles` table are real additional scope not built yet.
+- [x] 3.4 Store token + URL in secure storage; `dio` interceptor attaches auth header, handles 401 → token refresh → re-login. `AuthInterceptor` does a single refresh+retry via `POST /auth/refresh`, then forces logout on failure — mirrors the reference app's `nativeHttp.js`.
+- [x] 3.5 Persisted "current user/session" provider (`SessionController`), including the user's **server-side permissions** (`UserPermissions`, with `canAccessLibrary`/`canAccessLibraryItemWithTags` helpers ported from `User.js`).
+- [x] 3.6 **Websocket connection** to the server for live updates; surface connection status. Uses **socket.io v4** (`socket_io_client`), not a raw websocket — see the 0.4 correction above. Connects, emits `auth`, and a `SocketConnectionStatus` (disconnected/connecting/connected/authenticated/authFailed) is shown live in the home shell app bar ("Live" badge). Metered/unmetered wifi/cellular labeling is not yet implemented (needs `connectivity_plus` wiring — small follow-up, not done in this pass).
+- [x] 3.7 Offline/unreachable-server states handled gracefully: connect-server and login screens show inline error messages for timeouts, connection errors, bad responses, and wrong credentials rather than crashing or hanging.
+- [ ] 3.8 "Mask server address" privacy toggle (minor parity item). **Deferred to Phase 9** — there's no real Settings screen to host the toggle yet (Phase 1's `SettingsScreen` is still a placeholder); not worth a one-off UI for it now.
 
-> 🤖 **Android checkpoint:** connect to your real server over the home network; login + token persistence survives app restart; websocket status shows correctly.
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real Audiobookshelf server — connected, logged in as `evan`, session persisted through the app's Riverpod state, and the home shell shows a live "Live" socket status badge confirming the socket.io auth handshake succeeded. Full real-server round trip, not just a mocked/local check.
 >
-> 🍎 **Xcode checkpoint 1:** verify server connect + **secure token storage on iOS (Keychain)** and websocket connectivity on a real network — Keychain semantics differ from Android Keystore.
+> 🍎 **Xcode checkpoint 1 (still open):** verify server connect + **secure token storage on iOS (Keychain)** and websocket connectivity on a real network — Keychain semantics differ from Android Keystore. Not yet done — needs the Mac.
 
 ---
 
