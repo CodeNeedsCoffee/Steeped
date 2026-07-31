@@ -8,6 +8,7 @@ import '../../features/auth/state/session_state.dart';
 import '../../features/library/home_shell_screen.dart';
 import '../../features/library/item_detail_screen.dart';
 import '../../features/library/library_grid_screen.dart';
+import '../../features/player/now_playing_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import 'go_router_refresh_notifier.dart';
 import 'splash_screen.dart';
@@ -67,6 +68,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/item/:itemId',
         builder: (context, state) =>
             ItemDetailScreen(itemId: state.pathParameters['itemId']!),
+      ),
+      GoRoute(
+        path: '/now-playing',
+        builder: (context, state) => const NowPlayingScreen(),
       ),
       GoRoute(
         path: '/settings',

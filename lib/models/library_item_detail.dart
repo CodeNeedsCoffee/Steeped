@@ -1,3 +1,4 @@
+import 'audio_track.dart';
 import 'media_progress.dart';
 
 class AuthorRef {
@@ -72,6 +73,7 @@ class LibraryItemDetail {
     required this.chapters,
     required this.hasEbook,
     required this.progress,
+    required this.tracks,
   });
 
   factory LibraryItemDetail.fromJson(Map<String, dynamic> json) {
@@ -106,6 +108,7 @@ class LibraryItemDetail {
         progress: progressJson == null
             ? null
             : MediaProgress.fromJson(progressJson),
+        tracks: const [],
       );
     }
 
@@ -146,6 +149,12 @@ class LibraryItemDetail {
       progress: progressJson == null
           ? null
           : MediaProgress.fromJson(progressJson),
+      tracks:
+          (media['tracks'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>()
+              .map(AudioTrack.fromJson)
+              .toList() ??
+          const [],
     );
   }
 
@@ -165,6 +174,7 @@ class LibraryItemDetail {
   final List<BookChapter> chapters;
   final bool hasEbook;
   final MediaProgress? progress;
+  final List<AudioTrack> tracks;
 
   bool get isPodcast => mediaType == 'podcast';
   String get authorNames => authors.map((a) => a.name).join(', ');
