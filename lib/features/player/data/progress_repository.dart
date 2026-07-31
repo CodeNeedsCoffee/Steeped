@@ -29,4 +29,23 @@ class ProgressRepository {
         : '/api/me/progress/$libraryItemId/$episodeId';
     await _dio.patch<void>(path, data: data);
   }
+
+  /// PLAN.md Phase 8.1: ebook reading position sync. Confirmed live
+  /// (2026-07-31) that the server tracks ebook position via `ebookLocation`
+  /// (an EPUB CFI string) and `ebookProgress` (0..1 fraction) on the same
+  /// progress object rather than `currentTime`/`duration` — same PATCH
+  /// endpoint, different body shape.
+  Future<void> updateEbookProgress({
+    required String libraryItemId,
+    required String ebookLocation,
+    required double ebookProgress,
+    bool? isFinished,
+  }) async {
+    final data = <String, Object>{
+      'ebookLocation': ebookLocation,
+      'ebookProgress': ebookProgress,
+    };
+    if (isFinished != null) data['isFinished'] = isFinished;
+    await _dio.patch<void>('/api/me/progress/$libraryItemId', data: data);
+  }
 }

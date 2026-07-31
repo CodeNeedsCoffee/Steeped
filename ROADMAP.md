@@ -11,7 +11,7 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 | Milestone | Focus                                             | Phases        | Status |
 |-----------|----------------------------------------------------|---------------|--------|
 | 1         | Core streaming — connect, authenticate, browse, stream, basic UI | 0, 1, 3, 4, 5 | 🟢 done |
-| 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | 🟡 (6, 7 done) |
+| 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | 🟡 (6, 7, 8 done) |
 | 3         | UI customization & skins                          | 2             | ⚪     |
 | 4         | Car integration — Android Auto & CarPlay          | 10            | ⚪     |
 | 5         | Stretch goals & release prep                      | 11, 12        | ⚪     |
@@ -77,11 +77,32 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   (both server-mutating, and the create body wants server source that isn't on this machine), plus
   **delete-episode-from-server** and the minor new-episode-indicator / next-episode niceties from 7.6.
 
+- Phase 8 (E-Books & Comics) built ✅ and **verified end-to-end ✅ on the Pixel 8 Pro** (2026-07-31), driven
+  live over adb against evan's real eBooks and Comics libraries. Read a real 44MB illustrated EPUB (Harry
+  Potter — A History of Magic) end-to-end: TOC, chapter jump, real embedded illustrations, live reading
+  settings (font/theme/size/spacing), progress sync (confirmed it landed in the "Continue Reading" shelf —
+  which needed **zero new code**, since the personalized-shelves renderer from Phase 4.3 was already generic
+  by shelf type). Read a real 128MB/16-page CBZ (The Legend of Genji) end-to-end: resumed at the correct
+  saved page, paged through multiple real pages, extraction ran off the UI thread with no jank.
+  **Two real crashes/bugs were found and fixed via this on-device testing, not caught by `flutter analyze`:**
+  (1) `epub_view`'s built-in image-tag handler crashes the entire reader body (no per-item error boundary) on
+  any `<img>` whose `src` doesn't exactly match its internal map — fixed with a custom safe chapter builder;
+  (2) an `InteractiveViewer` added for comic pinch-zoom silently broke all page-swiping by claiming the
+  gesture from the arena before `PageView` could see it — `panEnabled: false` looked like a fix but wasn't
+  (it only suppresses the pan, not the gesture claim), so `InteractiveViewer` was dropped entirely in favor
+  of reliable paging. See `PLAN.md` Phase 8.1/8.4 for the full detail on both.
+  **PDF reader (8.3) is built but not verified on-device** — no confirmed PDF-format item exists in evan's
+  library to test against. 8.5 (primary/supplementary ebook) and 8.6 (send-to-device/Kindle) deliberately
+  deferred — see `PLAN.md` Phase 8 for why.
+
 ## Next
 
-- Phase 8: E-Books & Comics (Milestone 2) — EPUB/PDF/CBZ readers, ereader settings, reading-position sync.
+- Phase 9: RSS Feeds, Account, Settings, Stats, Polish (Milestone 2) — the last phase before Milestone 2 is
+  fully done.
 - Worth considering: the cold-start-while-offline gap found during Phase 6 verification (see above) —
   a Phase 3 follow-up, not scoped to any single phase yet.
+- Also worth a look next time on-device: confirm a real PDF item exists somewhere in evan's library to close
+  out Phase 8.3's verification gap.
 
 ## Later
 
@@ -90,4 +111,4 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ---
 
-*Last updated: 2026-07-31 (Phase 7 built and verified)*
+*Last updated: 2026-07-31 (Phase 8 built and verified)*

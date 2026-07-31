@@ -1,4 +1,5 @@
 import 'audio_track.dart';
+import 'ebook_file.dart';
 import 'media_progress.dart';
 import 'podcast_episode.dart';
 
@@ -82,6 +83,7 @@ class LibraryItemDetail {
     required this.tracks,
     this.episodes = const [],
     this.episodeId,
+    this.ebookFile,
   });
 
   factory LibraryItemDetail.fromJson(Map<String, dynamic> json) {
@@ -174,6 +176,9 @@ class LibraryItemDetail {
               .map(AudioTrack.fromJson)
               .toList() ??
           const [],
+      ebookFile: media['ebookFile'] == null
+          ? null
+          : EbookFile.fromJson(media['ebookFile'] as Map<String, dynamic>),
     );
   }
 
@@ -202,6 +207,10 @@ class LibraryItemDetail {
   /// playback (never on a fetched item response). [id] stays the parent
   /// podcast's id in that case.
   final String? episodeId;
+
+  /// Populated for a book item with `media.ebookFile` — covers both text
+  /// ebooks and comic archives (PLAN.md Phase 8).
+  final EbookFile? ebookFile;
 
   bool get isPodcast => mediaType == 'podcast';
   bool get isEpisode => episodeId != null;

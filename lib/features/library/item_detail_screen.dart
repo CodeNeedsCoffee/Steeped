@@ -126,7 +126,7 @@ class _ItemDetailBody extends ConsumerWidget {
             if (item.hasEbook) ...[
               const SizedBox(width: 12),
               OutlinedButton.icon(
-                onPressed: () => _showComingSoon(context, 'Reading'),
+                onPressed: () => _openReader(context, item),
                 icon: const Icon(Icons.menu_book),
                 label: const Text('Read'),
               ),
@@ -170,10 +170,29 @@ class _ItemDetailBody extends ConsumerWidget {
     );
   }
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature is coming in a later phase.')),
-    );
+  /// PLAN.md Phase 8: routes to the right reader by `ebookFormat` — epub
+  /// (8.1), pdf (8.3), cbz (8.4). cbr has no pure-Dart decoder available
+  /// (see `EbookFile.isSupported`), so it surfaces a message instead of a
+  /// broken reader.
+  void _openReader(BuildContext context, LibraryItemDetail item) {
+    final ebookFile = item.ebookFile;
+    if (ebookFile == null) return;
+    if (!ebookFile.isSupported) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '.${ebookFile.format} isn\'t supported yet — no pure-Dart RAR decoder exists for CBR.',
+          ),
+        ),
+      );
+      return;
+    }
+    final path = ebookFile.isEpub
+        ? '/reader/epub/${item.id}'
+        : ebookFile.isPdf
+        ? '/reader/pdf/${item.id}'
+        : '/reader/comic/${item.id}';
+    context.push(path);
   }
 
   String _formatDuration(double seconds) {

@@ -205,17 +205,26 @@ Two distinct capabilities the reference app has: (a) **downloading server items*
 
 ### Phase 8 — E-Books & Comics
 
-- [ ] 8.1 **EPUB reader** (`epub_view`): pagination, table of contents, reading-position sync to server.
-- [ ] 8.2 **Ereader settings**: font family (Sans/Serif), font scale, font boldness, line spacing, layout (Auto / Single page), theme (Light/Dark/Black).
-- [ ] 8.3 **PDF reader**.
-- [ ] 8.4 **Comic archive (CBZ/CBR)** reader via `archive` extraction + page viewer.
-- [ ] 8.5 Primary vs supplementary ebook handling ("set as primary/supplementary", "has ebook / has supplementary ebook").
-- [ ] 8.6 **Send Ebook to Device** (e.g. Kindle) action — parity with server/app "send to device".
-- [ ] 8.7 Unify "continue reading" alongside "continue listening" on the home shell.
+Reading material is served by the *same* generic `GET /api/items/:id/file/:ino` endpoint audio tracks use
+(confirmed live against evan's real server for both a 44MB EPUB and a 128MB CBZ — checked the raw response
+byte count and ZIP magic bytes `PK\x03\x04` matched exactly). `EbookRepository` caches the file to app
+storage on first "Read" tap (a plain one-shot cache, not the queued Phase 6/7 download engine — reading is
+on-demand, not an explicit offline-save action). "eBooks" and "Comics" are both server `mediaType: 'book'`
+libraries under the hood, differentiated only by `ebookFormat` on the item, not by library type.
 
-> 🤖 **Android checkpoint:** read an EPUB and a CBZ end-to-end; reading position persists and syncs; ereader settings apply live.
+- [x] 8.1 **EPUB reader** (`epub_view`): pagination (continuous scroll), table of contents (jump-to-chapter), reading-position sync to server. Confirmed live: `userMediaProgress.ebookLocation` (an EPUB CFI string) + `ebookProgress` (0..1 fraction) are separate fields from the audio `currentTime`/`progress` ones — `ProgressRepository.updateEbookProgress` added for this, PATCHing the same `/api/me/progress/:id` endpoint with the different body shape.
+  - **Real crash found + fixed during on-device testing**: `epub_view` 3.2.0's built-in `<img>` handler does `document.Content!.Images![url]!.Content!` with no fallback — throws "Null check operator used on a null value" (blanking the *entire* reader body, no per-item error boundary) whenever an image `src` doesn't exactly match its naively-normalized key. Reproduced reliably on a real illustrated book via TOC navigation. Fixed with a custom `chapterBuilder` (`_safeChapterBuilder` in `epub_reader_screen.dart`) that tries several path-matching strategies before giving up and rendering nothing for that one image, instead of crashing the chapter. Verified fixed: the same TOC jump that crashed before now renders the real illustrations correctly.
+- [x] 8.2 **Ereader settings**: font family (Sans/Serif), font scale, font boldness (bold toggle), line spacing, theme (Light/Dark/Black). Persisted locally via the existing `KeyValueEntries` drift table (first real use of that scaffolded-but-unused table) — these are device display prefs, not server-tracked. "Layout (Auto/Single page)" not built — `epub_view` is continuous-scroll only, no single-page mode to toggle.
+- [x] 8.3 **PDF reader** (`pdfx`): paged view + page counter. No ereader text-styling (PDF is fixed-layout, matches reference app scope). Progress synced as page-number-as-string in the `ebookLocation` field (no CFI-equivalent concept for PDF) + page/pageCount as `ebookProgress`. **Not verified on-device** — evan's library has real EPUB and CBZ items but no confirmed PDF item was found to test against; built and `flutter analyze`-clean like the rest, but this is the one reader without a real-file checkpoint.
+- [x] 8.4 **Comic archive (CBZ)** reader via `archive` extraction (off the UI isolate via `compute()` — confirmed necessary and working against a real 128MB/16-page CBZ) + `PageView` page viewer with natural filename sorting (`page2` before `page10`) and resume-from-saved-page. **CBR is not supported** — `archive` (pure Dart, no native deps) only decodes zip-family formats, and no maintained pure-Dart RAR decoder exists; `EbookFile.isSupported` is false for `.cbr` and the Read button surfaces a message instead of a broken reader.
+  - **Real bug found + fixed during on-device testing**: page-swiping silently didn't work at all — an `InteractiveViewer` (added for pinch-zoom) claims every single-finger drag from the gesture arena via its internal `ScaleGestureRecognizer` *before* the parent `PageView` ever sees it. Setting `panEnabled: false` looked like the fix but isn't — it only suppresses the resulting pan translation, not the gesture claim itself (confirmed by reading `InteractiveViewer`'s source: the scale recognizer always wins the arena; `panEnabled` is checked afterward). Fixed by dropping `InteractiveViewer` entirely — reliable paging matters more than pinch-zoom for this pass. Verified fixed: swiped through multiple real pages of the 16-page CBZ, page counter advanced correctly each time.
+- [ ] 8.5 Primary vs supplementary ebook handling. **Deferred** — evan's items only ever showed a single `media.ebookFile`, so the multi-file "primary vs supplementary" shape was never observed live to build against; setting it is also a server-mutating metadata action.
+- [ ] 8.6 **Send Ebook to Device** (e.g. Kindle). **Deferred** — a server action gated on SMTP being configured server-side, not something a client blind-implements without confirming the request/response shape against server source (not on this machine, same reasoning as Phase 7.3's deferral).
+- [x] 8.7 Unify "continue reading" alongside "continue listening". **Turned out to already work for free** — the personalized-shelves renderer (Phase 4.3) was already generic-by-shelf-type with no hardcoded shelf list, so the server's real "Continue Reading" shelf for the eBooks library rendered correctly with zero new code, confirmed live on evan's real eBooks library home.
+
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real server — driven live over adb (build → install → `input tap`/`screencap`), not just launched. Read a real 44MB illustrated EPUB ("Harry Potter — A History of Magic") end-to-end: table of contents, chapter jump, multiple real embedded illustrations rendering after the image-crash fix, reading settings (font/theme/size/spacing) applying live, and progress syncing (confirmed the item then appeared in the "Continue Reading" shelf). Read a real 128MB/16-page CBZ ("The Legend of Genji") end-to-end: resumed at the correct saved page (12/16, matching its prior "Finished" progress), paged forward through multiple pages correctly after the swipe-gesture fix, extraction ran off the UI thread with no jank. **PDF reader not verified on-device** (no confirmed PDF item in evan's library) — built and analyze-clean, same caveat treatment as Phase 7's unverified endpoint. 8.5/8.6 deliberately deferred, reasoning above.
 >
-> 🍎 **Xcode checkpoint 4:** confirm EPUB/PDF/CBZ rendering + on-device file access parity on iOS.
+> 🍎 **Xcode checkpoint 4:** confirm EPUB/PDF/CBZ rendering + on-device file access parity on iOS. Not yet done — needs the Mac.
 
 ---
 
@@ -379,12 +388,12 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [x] Latest-episodes feed · 7.6 — built and verified; `/recent-episodes` shape confirmed against real server response
 
 **E-books & Comics**
-- [ ] EPUB reader + TOC + position sync · 8.1
-- [ ] Ereader settings (font/scale/boldness/spacing/layout/theme) · 8.2
-- [ ] PDF reader · 8.3
-- [ ] CBZ/CBR comics · 8.4
-- [ ] Primary/supplementary ebook · 8.5
-- [ ] Send ebook to device (Kindle) · 8.6
+- [x] EPUB reader + TOC + position sync · 8.1 — built and verified on-device against a real illustrated book
+- [x] Ereader settings (font/scale/boldness/spacing/theme) · 8.2 — layout (Auto/Single page) not applicable, epub_view is continuous-scroll only
+- [x] PDF reader · 8.3 — built, analyze-clean; not verified on-device (no PDF item found in evan's library)
+- [x] CBZ comics · 8.4 — built and verified on-device against a real 128MB archive; CBR unsupported (no pure-Dart RAR decoder)
+- [ ] Primary/supplementary ebook · 8.5 — deferred, never observed a multi-ebookFile item to build against
+- [ ] Send ebook to device (Kindle) · 8.6 — deferred, server-mutating SMTP-gated action
 
 **RSS, Stats, System**
 - [ ] Open/close & manage RSS feeds · 9.1
