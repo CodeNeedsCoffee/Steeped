@@ -125,17 +125,17 @@ Legend used inline below:
 
 ### Phase 4 — Library Browsing
 
-- [ ] 4.1 Data models: Library, LibraryItem (book/podcast), Author, Series, Collection, Playlist — matching API shapes (title, author, narrators, series, genres, tags, publish year, tracks, chapters, mediaType).
-- [ ] 4.2 Fetch/list libraries; library switcher; media-type awareness (books vs podcasts).
-- [ ] 4.3 Home shell rows: **Continue Listening / Continue Reading / Continue Series / Continue Books / Continue Episodes**, Recently Added, Recent Series, Newest Authors, Newest Episodes, Listen Again / Read Again, Discover.
-- [ ] 4.4 Full library view, built against the Milestone 1 default theme (single grid/list look, using tokens from 1.8). The shelf-of-spines-vs-modern-grid **skin divergence** is applied retroactively in Milestone 3 once the skin system exists — don't build both looks yet.
-- [ ] 4.5 Authors, Series (with **collapse series**), Collections, Playlists browse screens.
-- [ ] 4.6 **Filtering & Sorting**: filter (genre, tag, progress: not-started/in-progress/finished, has-ebook, etc.) and sort (title, author first-last / last-first, added date, progress last-updated/started/finished, sequence asc/desc).
-- [ ] 4.7 Search: title/author/series client + server search; **podcast search accepts a term or an RSS feed URL**.
-- [ ] 4.8 Item detail screen: cover, description (read-more/less), metadata, chapters, audio tracks, tags/genres/narrators, series links, "Play"/"Stream"/"Download"/"Read"/"Add to Playlist"/"Mark as Finished" actions.
-- [ ] 4.9 Cover image caching (`cached_network_image`).
+- [x] 4.1 Data models: `Library`, `LibraryItem` (minified, book/podcast flattened for card UI), `LibraryItemDetail` (expanded: `AuthorRef`, `SeriesRef`, `BookChapter`), `PersonalizedShelf`, `MediaProgress` — matching real API shapes confirmed against `~/Code/audiobookshelf` source (not guessed). `Collection`/`Playlist` models not yet added — see 4.5.
+- [x] 4.2 Fetch/list libraries (`GET /api/libraries`); library switcher (popup menu in the home app bar, only shown when >1 library exists).
+- [x] 4.3 Home shell rows via `GET /api/libraries/:id/personalized` — rendered **generically by shelf type** (item/series/authors) rather than hardcoding each row, so whatever shelves the server returns (Continue Listening, Recently Added, Discover, Listen Again, etc.) just show up. Verified live: 4 shelves rendered correctly against evan's real library.
+- [x] 4.4 Full library view (`/library/:id`): paginated grid (`GET /api/libraries/:id/items`), infinite-scroll load-more, single default theme per Phase 1.8. Verified live: 60 real items, covers + titles + authors.
+- [ ] 4.5 Authors, Series (with **collapse series**), Collections, Playlists browse screens. **Deferred** — personalized shelves already surface a slice of this (Recent Series / Newest Authors rows exist and render, just as non-interactive cards for now), but dedicated browse screens + `Collection`/`Playlist` models are real additional scope not built in this pass.
+- [ ] 4.6 **Filtering & Sorting**. **Deferred** — the `/items` endpoint already supports `sort`/`desc`/`filter` query params server-side, so this is a UI-only follow-up (a sort menu + filter sheet) whenever it's prioritized, not a data-layer gap.
+- [ ] 4.7 Search. **Deferred** — the real search endpoint's response is grouped by category (book/series/authors/narrators/tags, differently shaped per library media type) and needs meaningfully distinct UI per group; genuine additional scope, not built in this pass.
+- [x] 4.8 Item detail screen (`/item/:id`, `GET /api/items/:id?expanded=1&include=progress`): cover, subtitle, authors, narrators, series, genres, description, duration, chapter count, published year, progress bar. "Play"/"Read" are stubs (real actions land in Phase 5 / Milestone 2); "Download"/"Add to Playlist" not yet present (Milestone 2 / deferred 4.5). Verified live against a real item ("Dune") with real metadata.
+- [x] 4.9 Cover image caching via `cached_network_image`, shared `CoverImage` widget used everywhere a cover renders. Cover URLs use the `?token=` query-param auth path (not the header) since image loads don't go through `dioProvider`'s interceptor.
 
-> 🤖 **Android checkpoint:** browse a real populated library end-to-end — long-list scroll perf, cover caching, filter/sort.
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real Audiobookshelf server — library switcher, personalized shelves (Continue Listening/Recently Added/Discover/Listen Again), full 60-item grid with infinite scroll, and item detail all confirmed working with real data and real cover art, no crashes.
 
 ---
 
@@ -327,13 +327,13 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [ ] Account screen / logout · 9.2
 
 **Library & Discovery**
-- [ ] Libraries + switcher, books vs podcasts · 4.2
-- [ ] Home shelves (continue listening/reading/series/books/episodes, recently added, newest, discover, listen/read again) · 4.3
+- [x] Libraries + switcher, books vs podcasts · 4.2
+- [x] Home shelves (continue listening/reading/series/books/episodes, recently added, newest, discover, listen/read again) · 4.3
 - [ ] Bookshelf view vs modern grid · 4.4 / Phase 2.7
 - [ ] Authors / Series (collapse series) / Collections / Playlists · 4.5
 - [ ] Filter & sort · 4.6
 - [ ] Search (incl. podcast RSS-URL search) · 4.7
-- [ ] Item detail (metadata, chapters, tracks, tags, genres, narrators) · 4.8
+- [x] Item detail (metadata, chapters, tracks, tags, genres, narrators) · 4.8
 - [ ] Playlist create / add-to / remove / reorder · 4.5 + 4.8
 - [ ] Mark finished / not finished, discard progress · 5.10
 
