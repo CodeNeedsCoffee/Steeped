@@ -11,6 +11,7 @@ import '../../../core/storage/app_database.dart';
 import '../../../models/audio_track.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/media_progress.dart';
+import '../../../models/podcast_episode.dart';
 
 /// PLAN.md Phase 6.1/6.4/6.6: downloads server items for offline playback.
 /// [buildOfflineItemDetail] reconstructs a fully playable item from local
@@ -22,16 +23,86 @@ class DownloadRepository {
 
   final AppDatabase _db;
 
-  static String groupFor(String itemId) => 'download-$itemId';
-  static String _dirFor(String itemId) => 'steeped_downloads/$itemId';
+  static String groupFor(String downloadId) => 'download-$downloadId';
+  // The downloadId can be a composite `podcastId::episodeId` for episodes
+  // (PLAN.md Phase 7.5); ':' is fine on ext4/APFS at the POSIX layer but is a
+  // path-separator surrogate in some Apple layers, so keep it out of the dir.
+  static String _dirFor(String downloadId) =>
+      'steeped_downloads/${downloadId.replaceAll(':', '_')}';
+
+  /// Encoded when a downloaded row represents a single podcast episode — see
+  /// [LibraryItemDetail.downloadId]. Returns `(podcastId, episodeId)` or null.
+  static (String, String)? _episodeIdsFromDownloadId(String downloadId) {
+    final sep = downloadId.indexOf('::');
+    if (sep == -1) return null;
+    return (downloadId.substring(0, sep), downloadId.substring(sep + 2));
+  }
 
   Future<void> startDownload({
     required LibraryItemDetail item,
     required String serverUrl,
     required String? token,
+  }) {
+    return _enqueue(
+      downloadId: item.downloadId,
+      coverItemId: item.id,
+      updatedAt: item.updatedAt,
+      title: item.title,
+      authorNames: item.authorNames,
+      totalDuration: item.duration,
+      chapters: item.chapters,
+      tracks: item.tracks,
+      progressCurrentTime: item.progress?.currentTime,
+      progressIsFinished: item.progress?.isFinished ?? false,
+      serverUrl: serverUrl,
+      token: token,
+    );
+  }
+
+  /// PLAN.md Phase 7.5: download a single podcast episode to the device,
+  /// reusing the same background_downloader engine as books. Stored under the
+  /// composite [LibraryItemDetail.downloadId] so episodes of one podcast don't
+  /// collide, with the cover fetched from the parent podcast's item id.
+  Future<void> startEpisodeDownload({
+    required LibraryItemDetail podcast,
+    required PodcastEpisode episode,
+    required String serverUrl,
+    required String? token,
+  }) async {
+    final track = episode.audioTrack;
+    if (track == null) return;
+    await _enqueue(
+      downloadId: '${podcast.id}::${episode.id}',
+      coverItemId: podcast.id,
+      updatedAt: podcast.updatedAt,
+      title: episode.title,
+      authorNames: podcast.authorNames,
+      totalDuration: episode.duration ?? track.duration,
+      chapters: const [],
+      tracks: [track],
+      progressCurrentTime: episode.progress?.currentTime,
+      progressIsFinished: episode.progress?.isFinished ?? false,
+      serverUrl: serverUrl,
+      token: token,
+    );
+  }
+
+  Future<void> _enqueue({
+    required String downloadId,
+    required String coverItemId,
+    required int updatedAt,
+    required String title,
+    required String authorNames,
+    required double? totalDuration,
+    required List<BookChapter> chapters,
+    required List<AudioTrack> tracks,
+    required double? progressCurrentTime,
+    required bool progressIsFinished,
+    required String serverUrl,
+    required String? token,
   }) async {
     final chaptersJson = jsonEncode(
-      item.chapters
+      chapters
           .map((c) => {'title': c.title, 'start': c.start, 'end': c.end})
           .toList(),
     );
@@ -40,28 +111,28 @@ class DownloadRepository {
         .into(_db.downloadedItems)
         .insertOnConflictUpdate(
           DownloadedItemsCompanion.insert(
-            itemId: item.id,
+            itemId: downloadId,
             serverUrl: serverUrl,
-            title: item.title,
-            authorNames: Value(item.authorNames),
-            totalDuration: Value(item.duration),
+            title: title,
+            authorNames: Value(authorNames),
+            totalDuration: Value(totalDuration),
             chaptersJson: Value(chaptersJson),
             status: const Value('downloading'),
-            progressCurrentTime: Value(item.progress?.currentTime),
-            progressIsFinished: Value(item.progress?.isFinished ?? false),
+            progressCurrentTime: Value(progressCurrentTime),
+            progressIsFinished: Value(progressIsFinished),
           ),
         );
 
     await (_db.delete(
       _db.downloadedTracks,
-    )..where((t) => t.itemId.equals(item.id))).go();
+    )..where((t) => t.itemId.equals(downloadId))).go();
 
-    for (final track in item.tracks) {
+    for (final track in tracks) {
       await _db
           .into(_db.downloadedTracks)
           .insert(
             DownloadedTracksCompanion.insert(
-              itemId: item.id,
+              itemId: downloadId,
               trackIndex: track.index,
               startOffset: track.startOffset,
               duration: track.duration,
@@ -69,37 +140,37 @@ class DownloadRepository {
           );
 
       final task = DownloadTask(
-        taskId: '${item.id}__track${track.index}',
+        taskId: '${downloadId}__track${track.index}',
         url: audioStreamUrl(
           serverUrl: serverUrl,
           relativeContentUrl: track.contentUrl,
           token: token,
         ),
         filename: 'track_${track.index}.audio',
-        directory: _dirFor(item.id),
+        directory: _dirFor(downloadId),
         baseDirectory: BaseDirectory.applicationDocuments,
-        group: groupFor(item.id),
+        group: groupFor(downloadId),
         updates: Updates.statusAndProgress,
-        metaData: item.id,
+        metaData: downloadId,
       );
       await FileDownloader().enqueue(task);
     }
 
     // Best-effort — a missing cover doesn't block "downloaded" status.
     final coverTask = DownloadTask(
-      taskId: '${item.id}__cover',
+      taskId: '${downloadId}__cover',
       url: coverImageUrl(
         serverUrl: serverUrl,
-        itemId: item.id,
+        itemId: coverItemId,
         token: token,
-        updatedAt: item.updatedAt,
+        updatedAt: updatedAt,
       ),
       filename: 'cover.jpg',
-      directory: _dirFor(item.id),
+      directory: _dirFor(downloadId),
       baseDirectory: BaseDirectory.applicationDocuments,
-      group: groupFor(item.id),
+      group: groupFor(downloadId),
       updates: Updates.status,
-      metaData: item.id,
+      metaData: downloadId,
     );
     await FileDownloader().enqueue(coverTask);
   }
@@ -203,9 +274,16 @@ class DownloadRepository {
           .toList();
     }
 
+    // A composite key means this row is a podcast episode: split it back into
+    // the parent podcast id (for cover/progress) and the episode id.
+    final episodeIds = _episodeIdsFromDownloadId(row.itemId);
+    final id = episodeIds?.$1 ?? row.itemId;
+    final episodeId = episodeIds?.$2;
+
     return LibraryItemDetail(
-      id: row.itemId,
-      mediaType: 'book',
+      id: id,
+      episodeId: episodeId,
+      mediaType: episodeId == null ? 'book' : 'podcast',
       coverPath: null,
       updatedAt: 0,
       title: row.title,

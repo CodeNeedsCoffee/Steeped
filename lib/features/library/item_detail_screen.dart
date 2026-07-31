@@ -11,6 +11,7 @@ import '../auth/state/session_state.dart';
 import '../downloads/state/download_controller.dart';
 import '../player/mini_player.dart';
 import '../player/state/playback_controller.dart';
+import '../podcasts/podcast_detail_view.dart';
 import 'state/library_providers.dart';
 
 /// PLAN.md Phase 4.8: item detail screen. Play (Phase 5) and Download
@@ -40,6 +41,8 @@ class ItemDetailScreen extends ConsumerWidget {
         error: (error, _) => Center(child: Text('Failed to load: $error')),
         data: (item) => serverUrl == null
             ? const SizedBox.shrink()
+            : item.isPodcast
+            ? PodcastDetailBody(item: item, serverUrl: serverUrl, token: token)
             : _ItemDetailBody(item: item, serverUrl: serverUrl, token: token),
       ),
       bottomNavigationBar: const MiniPlayer(),
@@ -109,7 +112,7 @@ class _ItemDetailBody extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             FilledButton.icon(
-              onPressed: item.isPodcast || item.tracks.isEmpty
+              onPressed: item.tracks.isEmpty
                   ? null
                   : () {
                       ref
@@ -128,19 +131,12 @@ class _ItemDetailBody extends ConsumerWidget {
                 label: const Text('Read'),
               ),
             ],
-            if (!item.isPodcast && item.tracks.isNotEmpty) ...[
+            if (item.tracks.isNotEmpty) ...[
               const SizedBox(width: 12),
               _DownloadButton(item: item, serverUrl: serverUrl, token: token),
             ],
           ],
         ),
-        if (item.isPodcast) ...[
-          const SizedBox(height: 20),
-          const Text(
-            'Full podcast/episode browsing arrives in Milestone 2 (Phase 7).',
-            textAlign: TextAlign.center,
-          ),
-        ],
         if (item.genres.isNotEmpty) ...[
           const SizedBox(height: 20),
           Wrap(

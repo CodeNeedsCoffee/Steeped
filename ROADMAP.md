@@ -11,7 +11,7 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 | Milestone | Focus                                             | Phases        | Status |
 |-----------|----------------------------------------------------|---------------|--------|
 | 1         | Core streaming — connect, authenticate, browse, stream, basic UI | 0, 1, 3, 4, 5 | 🟢 done |
-| 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | 🟡 (6 done) |
+| 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | 🟡 (6, 7 done) |
 | 3         | UI customization & skins                          | 2             | ⚪     |
 | 4         | Car integration — Android Auto & CarPlay          | 10            | ⚪     |
 | 5         | Stretch goals & release prep                      | 11, 12        | ⚪     |
@@ -63,11 +63,24 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   sync calls (only `currentTime` does), so the item detail screen's "% complete" could drift stale — now
   computed client-side from `currentTime`/`duration` instead. See `PLAN.md` Phase 6.7 for details.
 
+- Phase 7 (Podcasts) built ✅ and **verified end-to-end ✅ on the Pixel 8 Pro** (2026-07-31), driven live over
+  adb (build → install → `input tap`/`screencap`, not just launched) against evan's real podcast library
+  ("Living with Harry Potter," BBC Radio 4). Podcast detail renders a real episode list with correct
+  played/unplayed/incomplete state (progress merged from `GET /api/me`); downloaded a real episode (~56MB
+  file + cover landed on disk under a composite `podcastId::episodeId` path — **reusing the Phase 6 download
+  engine unchanged**, no drift schema change needed); played it **fully offline from the local file** with
+  real decoding and advancing position; deleted the local download and confirmed the file was actually gone
+  and the shared Downloads list correctly dropped the entry with no orphan row. The "Latest Episodes" feed
+  (`/recent-episodes`) was confirmed against the real server response shape — evan's library only has one
+  (2005-era) episode, so the feed's "No recent episodes" is a genuine empty state, not a bug. Deferred, with
+  reasoning in `PLAN.md` Phase 7: **7.3 add-podcast** (term/RSS subscribe + create) and **7.4 auto-download**
+  (both server-mutating, and the create body wants server source that isn't on this machine), plus
+  **delete-episode-from-server** and the minor new-episode-indicator / next-episode niceties from 7.6.
+
 ## Next
 
-- Phase 7: Podcasts (Milestone 2) — podcast library, episode list, subscribe by term/RSS, auto-download
-  (reuses the Phase 6 download engine), episode delete.
-- Worth considering first: the cold-start-while-offline gap found during Phase 6 verification (see above) —
+- Phase 8: E-Books & Comics (Milestone 2) — EPUB/PDF/CBZ readers, ereader settings, reading-position sync.
+- Worth considering: the cold-start-while-offline gap found during Phase 6 verification (see above) —
   a Phase 3 follow-up, not scoped to any single phase yet.
 
 ## Later
@@ -77,4 +90,4 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ---
 
-*Last updated: 2026-07-31*
+*Last updated: 2026-07-31 (Phase 7 built and verified)*
