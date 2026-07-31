@@ -6,6 +6,9 @@ import '../../features/auth/login_screen.dart';
 import '../../features/auth/state/session_controller.dart';
 import '../../features/auth/state/session_state.dart';
 import '../../features/downloads/downloads_screen.dart';
+import '../../features/ebook/comic_reader_screen.dart';
+import '../../features/ebook/epub_reader_screen.dart';
+import '../../features/ebook/pdf_reader_screen.dart';
 import '../../features/library/home_shell_screen.dart';
 import '../../features/library/item_detail_screen.dart';
 import '../../features/library/library_grid_screen.dart';
@@ -80,6 +83,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => RecentEpisodesScreen(
           libraryId: state.pathParameters['libraryId']!,
         ),
+      ),
+      GoRoute(
+        path: '/reader/epub/:itemId',
+        builder: (context, state) =>
+            EpubReaderScreen(itemId: state.pathParameters['itemId']!),
+      ),
+      GoRoute(
+        path: '/reader/pdf/:itemId',
+        builder: (context, state) =>
+            PdfReaderScreen(itemId: state.pathParameters['itemId']!),
+      ),
+      GoRoute(
+        path: '/reader/comic/:itemId',
+        builder: (context, state) =>
+            ComicReaderScreen(itemId: state.pathParameters['itemId']!),
       ),
       GoRoute(
         path: '/downloads',
