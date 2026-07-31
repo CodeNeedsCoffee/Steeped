@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/app_database.dart';
 import '../../../models/library_item_detail.dart';
+import '../../../models/podcast_episode.dart';
 import '../data/download_repository.dart';
 
 final downloadRepositoryProvider = Provider<DownloadRepository>((ref) {
@@ -57,6 +58,23 @@ class DownloadController extends Notifier<void> {
     return ref
         .read(downloadRepositoryProvider)
         .startDownload(item: item, serverUrl: serverUrl, token: token);
+  }
+
+  /// PLAN.md Phase 7.5: download one podcast episode to the device.
+  Future<void> downloadEpisode({
+    required LibraryItemDetail podcast,
+    required PodcastEpisode episode,
+    required String serverUrl,
+    required String? token,
+  }) {
+    return ref
+        .read(downloadRepositoryProvider)
+        .startEpisodeDownload(
+          podcast: podcast,
+          episode: episode,
+          serverUrl: serverUrl,
+          token: token,
+        );
   }
 
   Future<void> delete(String itemId) {

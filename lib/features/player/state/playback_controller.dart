@@ -8,6 +8,7 @@ import '../../../core/audio/steeped_audio_handler.dart';
 import '../../../core/network/audio_stream_url.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../models/library_item_detail.dart';
+import '../../../models/podcast_episode.dart';
 import '../../auth/state/session_controller.dart';
 import '../../auth/state/session_state.dart';
 import '../../downloads/state/download_controller.dart';
@@ -127,6 +128,68 @@ class PlaybackController extends Notifier<void> {
     _startSyncTimer(item);
   }
 
+  /// PLAN.md Phase 7.5: play a single podcast episode. A downloaded copy is
+  /// preferred (same rule as [playItem]) — [playItem] with the episode's
+  /// [downloadId] reconstructs it from local rows with no network. Otherwise
+  /// the episode's own `audioTrack` is streamed as a one-track item whose id
+  /// stays the parent podcast's (so cover + progress endpoints resolve), with
+  /// [episodeId] set so progress routes to the per-episode sync path.
+  Future<void> playEpisode(
+    LibraryItemDetail podcast,
+    PodcastEpisode episode,
+  ) async {
+    final downloadId = '${podcast.id}::${episode.id}';
+    final downloadRepo = ref.read(downloadRepositoryProvider);
+    if (await downloadRepo.isDownloaded(downloadId)) {
+      await playItem(downloadId);
+      return;
+    }
+
+    final session = ref.read(sessionControllerProvider);
+    if (session is! SessionAuthenticated) return;
+    final track = episode.audioTrack;
+    if (track == null) return;
+
+    final item = LibraryItemDetail(
+      id: podcast.id,
+      mediaType: 'podcast',
+      coverPath: podcast.coverPath,
+      updatedAt: podcast.updatedAt,
+      title: episode.title,
+      subtitle: podcast.title,
+      authors: podcast.authors,
+      narrators: const [],
+      series: const [],
+      genres: const [],
+      description: episode.description,
+      publishedYear: null,
+      duration: episode.duration ?? track.duration,
+      chapters: const [],
+      hasEbook: false,
+      progress: episode.progress,
+      tracks: [track],
+      episodeId: episode.id,
+    );
+
+    final sourceUri = Uri.parse(
+      audioStreamUrl(
+        serverUrl: session.serverUrl,
+        relativeContentUrl: track.contentUrl,
+        token: session.user.effectiveToken,
+      ),
+    );
+
+    ref.read(currentPlaybackItemProvider.notifier).state = item;
+    await _handler.loadItem(
+      item: item,
+      sourceUris: [sourceUri],
+      startPosition: item.progress?.currentTime ?? 0,
+    );
+    _handler.onItemFinished = () => _onFinished(item);
+    await _handler.play();
+    _startSyncTimer(item);
+  }
+
   void _startSyncTimer(LibraryItemDetail item) {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(
@@ -155,12 +218,13 @@ class PlaybackController extends Notifier<void> {
 
   Future<void> _sync(LibraryItemDetail item) async {
     final currentTime = _handler.globalPositionSeconds;
-    await _updateLocalProgressCache(item.id, currentTime, false);
+    await _updateLocalProgressCache(item.downloadId, currentTime, false);
     try {
       await ref
           .read(progressRepositoryProvider)
           .updateProgress(
             libraryItemId: item.id,
+            episodeId: item.episodeId,
             currentTime: currentTime,
             duration: item.duration ?? 0,
           );
@@ -172,12 +236,13 @@ class PlaybackController extends Notifier<void> {
   Future<void> _onFinished(LibraryItemDetail item) async {
     _syncTimer?.cancel();
     final currentTime = item.duration ?? _handler.globalPositionSeconds;
-    await _updateLocalProgressCache(item.id, currentTime, true);
+    await _updateLocalProgressCache(item.downloadId, currentTime, true);
     try {
       await ref
           .read(progressRepositoryProvider)
           .updateProgress(
             libraryItemId: item.id,
+            episodeId: item.episodeId,
             currentTime: currentTime,
             duration: item.duration ?? 0,
             isFinished: true,
@@ -204,11 +269,12 @@ class PlaybackController extends Notifier<void> {
     final item = ref.read(currentPlaybackItemProvider);
     if (item == null) return;
     final currentTime = finished ? (item.duration ?? 0) : 0.0;
-    await _updateLocalProgressCache(item.id, currentTime, finished);
+    await _updateLocalProgressCache(item.downloadId, currentTime, finished);
     await ref
         .read(progressRepositoryProvider)
         .updateProgress(
           libraryItemId: item.id,
+          episodeId: item.episodeId,
           currentTime: currentTime,
           duration: item.duration ?? 0,
           isFinished: finished,

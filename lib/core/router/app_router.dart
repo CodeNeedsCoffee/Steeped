@@ -10,6 +10,7 @@ import '../../features/library/home_shell_screen.dart';
 import '../../features/library/item_detail_screen.dart';
 import '../../features/library/library_grid_screen.dart';
 import '../../features/player/now_playing_screen.dart';
+import '../../features/podcasts/recent_episodes_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import 'go_router_refresh_notifier.dart';
 import 'splash_screen.dart';
@@ -73,6 +74,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/now-playing',
         builder: (context, state) => const NowPlayingScreen(),
+      ),
+      GoRoute(
+        path: '/library/:libraryId/recent-episodes',
+        builder: (context, state) => RecentEpisodesScreen(
+          libraryId: state.pathParameters['libraryId']!,
+        ),
       ),
       GoRoute(
         path: '/downloads',

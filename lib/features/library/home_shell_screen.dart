@@ -79,8 +79,13 @@ class HomeShellScreen extends ConsumerWidget {
           }
           final libraryId =
               ref.watch(selectedLibraryIdProvider) ?? libraries.first.id;
+          final selected = libraries.firstWhere(
+            (l) => l.id == libraryId,
+            orElse: () => libraries.first,
+          );
           return _LibraryHome(
             libraryId: libraryId,
+            isPodcast: selected.isPodcastLibrary,
             serverUrl: session.serverUrl,
             token: session.user.effectiveToken,
           );
@@ -122,11 +127,13 @@ class _LibraryPicker extends ConsumerWidget {
 class _LibraryHome extends ConsumerWidget {
   const _LibraryHome({
     required this.libraryId,
+    required this.isPodcast,
     required this.serverUrl,
     required this.token,
   });
 
   final String libraryId;
+  final bool isPodcast;
   final String serverUrl;
   final String? token;
 
@@ -146,6 +153,20 @@ class _LibraryHome extends ConsumerWidget {
               child: const Text('Browse Full Library'),
             ),
           ),
+          // PLAN.md Phase 7.6: quick access to the newest episodes across a
+          // podcast library.
+          if (isPodcast) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: OutlinedButton.icon(
+                onPressed: () =>
+                    context.push('/library/$libraryId/recent-episodes'),
+                icon: const Icon(Icons.podcasts),
+                label: const Text('Latest Episodes'),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           shelvesAsync.when(
             loading: () => const Padding(

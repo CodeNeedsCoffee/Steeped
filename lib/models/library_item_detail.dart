@@ -1,5 +1,6 @@
 import 'audio_track.dart';
 import 'media_progress.dart';
+import 'podcast_episode.dart';
 
 class AuthorRef {
   const AuthorRef({required this.id, required this.name});
@@ -52,9 +53,14 @@ class BookChapter {
 
 /// `GET /api/items/:id?expanded=1&include=progress` — see
 /// `~/Code/audiobookshelf/server/models/{LibraryItem,Book}.js`
-/// (`toOldJSONExpanded`). Podcast items are only minimally populated here
-/// (title/cover/description) — full podcast browsing is Milestone 2 /
-/// Phase 7, not this pass.
+/// (`toOldJSONExpanded`). For a podcast, [episodes] is populated from
+/// `media.episodes[]` (PLAN.md Phase 7.1/7.2).
+///
+/// This class doubles as the player's unit of playback. A single podcast
+/// *episode* is represented as a one-track item whose [id] is still the
+/// parent podcast's library-item id (so the cover URL and progress endpoint
+/// resolve correctly) but with [episodeId] set — see [downloadId] and
+/// [PlaybackController.playEpisode].
 class LibraryItemDetail {
   const LibraryItemDetail({
     required this.id,
@@ -74,6 +80,8 @@ class LibraryItemDetail {
     required this.hasEbook,
     required this.progress,
     required this.tracks,
+    this.episodes = const [],
+    this.episodeId,
   });
 
   factory LibraryItemDetail.fromJson(Map<String, dynamic> json) {
@@ -109,6 +117,17 @@ class LibraryItemDetail {
             ? null
             : MediaProgress.fromJson(progressJson),
         tracks: const [],
+        episodes:
+            (media['episodes'] as List<dynamic>?)
+                ?.cast<Map<String, dynamic>>()
+                .map(
+                  (e) => PodcastEpisode.fromJson(
+                    e,
+                    libraryItemId: json['id'] as String?,
+                  ),
+                )
+                .toList() ??
+            const [],
       );
     }
 
@@ -176,6 +195,21 @@ class LibraryItemDetail {
   final MediaProgress? progress;
   final List<AudioTrack> tracks;
 
+  /// Populated only for podcast items (PLAN.md Phase 7.1).
+  final List<PodcastEpisode> episodes;
+
+  /// Set only when this item *is* a single podcast episode loaded for
+  /// playback (never on a fetched item response). [id] stays the parent
+  /// podcast's id in that case.
+  final String? episodeId;
+
   bool get isPodcast => mediaType == 'podcast';
+  bool get isEpisode => episodeId != null;
   String get authorNames => authors.map((a) => a.name).join(', ');
+
+  /// The key downloads and local-playback are stored under. For a book this
+  /// is just the library-item id; for a podcast episode it's a composite
+  /// `podcastId::episodeId` so multiple episodes of one podcast don't collide
+  /// on the [DownloadedItems] primary key — see [DownloadRepository].
+  String get downloadId => episodeId == null ? id : '$id::$episodeId';
 }
