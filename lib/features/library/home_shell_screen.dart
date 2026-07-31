@@ -10,6 +10,7 @@ import '../../models/personalized_shelf.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../player/mini_player.dart';
 import 'state/library_providers.dart';
 
 /// PLAN.md Phase 4.2 (libraries + switcher) and 4.3 (personalized home
@@ -75,6 +76,7 @@ class HomeShellScreen extends ConsumerWidget {
           );
         },
       ),
+      bottomNavigationBar: const MiniPlayer(),
     );
   }
 }

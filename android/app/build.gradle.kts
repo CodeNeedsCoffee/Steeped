@@ -6,7 +6,11 @@ plugins {
 
 android {
     namespace = "com.steeped.steeped"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android requires compileSdk 37+; Flutter's bundled
+    // default (flutter.compileSdkVersion) hasn't caught up yet, so pin it
+    // explicitly. targetSdk raised to match (AGP recommends keeping them in
+    // sync); minSdk stays on Flutter's default.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -20,7 +24,7 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

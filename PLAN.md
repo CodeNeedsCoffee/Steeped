@@ -141,23 +141,23 @@ Legend used inline below:
 
 ### Phase 5 — Audio Playback Engine (major milestone)
 
-- [ ] 5.1 `just_audio` + `audio_service` streaming from the server. Support **Direct play vs server Transcode** (the app requests a transcoded stream when needed) and handle all common audio formats.
-- [ ] 5.2 Mini-player (persistent bottom bar) + full-screen "Now Playing".
-- [ ] 5.3 Background playback (alive when backgrounded/locked).
-- [ ] 5.4 Lock-screen / notification media controls; "allow position seeking on media controls" option.
-- [ ] 5.5 Chapters + chapter track, chapter navigation, customizable **jump forward/back** intervals.
-- [ ] 5.6 Playback speed + "scale elapsed time by speed" option.
-- [ ] 5.7 **Sleep timer (full feature set):** manual duration, **end-of-chapter**, **auto sleep timer** (auto-start within a time window) with auto-rewind, **shake-to-reset** (+ shake-sensitivity), vibrate-on-reset toggle, audio **fade-out** toggle, "almost done" chime at 30s.
-- [ ] 5.8 Bookmarks (create/list/remove, "Your Bookmarks").
-- [ ] 5.9 Progress sync to server (session reporting every ~15s–1m) + **"progress sync failed"** handling/retry.
-- [ ] 5.10 Mark as **Finished / Not Finished**; discard/reset progress.
-- [ ] 5.11 **Navigate with volume keys** (on/off, mirrored, allow-while-playing).
-- [ ] 5.12 **Media-session foundation**: expose proper now-playing metadata + a playback queue through `audio_service` — the substrate the **CarPlay & Android Auto** browse trees build on in **Phase 10 (Milestone 4)**. At this stage iOS already shows standard Control-Center/lock-screen now-playing, which also surfaces in CarPlay's Now-Playing screen automatically.
-- [ ] 5.13 Lock/unlock player UI; keep-screen-awake toggle; MP3 index-seeking advanced option.
+- [x] 5.1 `just_audio` + `audio_service` streaming from the server. **Direct play only** — the `/play` session endpoint and its format-compatibility negotiation are deliberately skipped (research confirmed `GET /api/items/:id?expanded=1` already returns the same `media.tracks[]`/`contentUrl`s the session endpoint would, with no session bookkeeping needed); transcode fallback for incompatible formats is **not implemented**. Multi-file books use a gapless multi-source `just_audio` playlist (one child per track, matching the server's un-concatenated `Book.getTracklist()` model) rather than one continuous stream.
+- [x] 5.2 Mini-player (persistent bottom bar, shown on home/library/detail) + full-screen "Now Playing" (`/now-playing`).
+- [x] 5.3 Background playback via `audio_service`'s Android foreground service — confirmed alive with active audio decoding after backgrounding.
+- [x] 5.4 Lock-screen / notification media controls — confirmed via the real system media-control card (title/artist, play-pause, seek, rewind/fast-forward). "Allow position seeking on media controls" toggle not built (no Settings screen yet — Milestone 2).
+- [x] 5.5 Chapters + chapter navigation (tap-to-seek list, current chapter highlighted) + jump forward/back — **fixed 30s interval**, not yet customizable (Settings, Phase 9).
+- [x] 5.6 Playback speed (0.75x–2x dropdown). "Scale elapsed time by speed" display option not built.
+- [ ] 5.7 **Sleep timer.** **Deferred** — a large standalone feature (manual/end-of-chapter/auto-timer/shake-to-reset/fade-out/chime); not built in this pass.
+- [ ] 5.8 Bookmarks. **Deferred** — separate feature, not built in this pass.
+- [x] 5.9 Progress sync — sessionless `PATCH /api/me/progress/:id` every 15s while playing + on pause (research found this simpler than the session-based `/api/session/:id/sync` path, which requires calling `/play` first). No metered-connection throttling and no dedicated "sync failed" UI (best-effort, silently retries next tick) — both deferred.
+- [x] 5.10 Mark as **Finished / Not Finished** (overflow menu on Now Playing) — same progress endpoint, `isFinished` flag. Discard/reset progress not built as a separate action.
+- [ ] 5.11 Volume key navigation. **Deferred**.
+- [x] 5.12 **Media-session foundation** — real `MediaSession` confirmed via the system media-control card and notification's `android.mediaSession` token; this is the substrate Milestone 4's CarPlay/Android Auto browse trees will build on.
+- [ ] 5.13 Lock/unlock player UI, keep-screen-awake toggle, MP3 index-seeking. **Deferred** — advanced/power-user items.
 
-> 🤖 **Android checkpoint:** background playback + lock-screen controls survive screen-off, app-switch, phone-lock; volume-key nav; sleep-timer behaviors. (Full Android Auto browse UI is tested in Milestone 4.)
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real Audiobookshelf server — played "The Tower of the Swallow" (resumed correctly at 14:42:32 of 16:24:11, matching its 89% server-side progress) and "Heir to the Empire" (started at 0:00). Confirmed via real device signals, not just UI: the system media-control notification (title/artist/transport/seek), an active `MediaSession` token, continued AAC decoding after backgrounding, and accurate chapter-boundary highlighting during playback. Also fixed along the way: `permission_handler` needed `compileSdk`/`targetSdk` bumped to 37 in `android/app/build.gradle.kts` (Flutter's bundled default hadn't caught up).
 >
-> 🍎 **Xcode checkpoint 2 (major landmark):** iOS **Background Modes → Audio** entitlement, `audio_service` iOS config, silent-switch behavior, Control-Center/lock-screen controls (these auto-surface in CarPlay's Now-Playing; the full CarPlay browse experience comes in Milestone 4). First point where iOS entitlements truly matter.
+> 🍎 **Xcode checkpoint 2 (major landmark):** iOS **Background Modes → Audio** entitlement, `audio_service` iOS config, silent-switch behavior, Control-Center/lock-screen controls (these auto-surface in CarPlay's Now-Playing; the full CarPlay browse experience comes in Milestone 4). Not yet done — needs the Mac.
 
 ---
 
@@ -335,20 +335,20 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [ ] Search (incl. podcast RSS-URL search) · 4.7
 - [x] Item detail (metadata, chapters, tracks, tags, genres, narrators) · 4.8
 - [ ] Playlist create / add-to / remove / reorder · 4.5 + 4.8
-- [ ] Mark finished / not finished, discard progress · 5.10
+- [x] Mark finished / not finished · 5.10 — discard/reset progress as a separate action not built
 
 **Playback**
-- [ ] Stream (direct + transcode), all formats · 5.1
-- [ ] Mini-player + Now Playing · 5.2
-- [ ] Background playback · 5.3
-- [ ] Lock-screen/notification controls + seek-on-controls · 5.4
-- [ ] Chapters + jump fwd/back intervals · 5.5
-- [ ] Playback speed + scale-elapsed-by-speed · 5.6
+- [ ] Stream (direct + transcode), all formats · 5.1 — direct play only, no transcode fallback
+- [x] Mini-player + Now Playing · 5.2
+- [x] Background playback · 5.3
+- [x] Lock-screen/notification controls · 5.4 — seek-on-controls toggle not built
+- [x] Chapters + jump fwd/back intervals · 5.5 — fixed 30s, not yet customizable
+- [x] Playback speed · 5.6 — scale-elapsed-by-speed display option not built
 - [ ] Sleep timer (manual, end-of-chapter, auto-timer, shake-to-reset, vibrate, fade-out, chime) · 5.7
 - [ ] Bookmarks · 5.8
-- [ ] Progress sync + sync-failed handling · 5.9
+- [x] Progress sync · 5.9 — sync-failed UI not built (best-effort retry)
 - [ ] Volume-key navigation · 5.11
-- [ ] Media-session foundation (now-playing metadata + queue) · 5.12
+- [x] Media-session foundation (now-playing metadata + queue) · 5.12
 - [ ] Keep-screen-awake, lock player, MP3 index seeking · 5.13
 - [ ] **Android Auto** (full browse tree + settings) · 10.4–10.6
 - [ ] **CarPlay** (full browse hierarchy + Now-Playing; beyond reference app) · 10.8–10.10

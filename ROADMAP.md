@@ -10,7 +10,7 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 | Milestone | Focus                                             | Phases        | Status |
 |-----------|----------------------------------------------------|---------------|--------|
-| 1         | Core streaming — connect, authenticate, browse, stream, basic UI | 0, 1, 3, 4, 5 | 🟡 (0, 1, 3, 4 done) |
+| 1         | Core streaming — connect, authenticate, browse, stream, basic UI | 0, 1, 3, 4, 5 | 🟢 done |
 | 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | ⚪     |
 | 3         | UI customization & skins                          | 2             | ⚪     |
 | 4         | Car integration — Android Auto & CarPlay          | 10            | ⚪     |
@@ -32,18 +32,22 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   item detail with real metadata/cover/progress — all confirmed against evan's real library. 4.5
   (authors/series/collections/playlists screens), 4.6 (filter/sort UI), 4.7 (search) deliberately deferred
   — see `PLAN.md` Phase 4 for why.
+- Phase 5 (Audio Playback Engine) built ✅ and verified end-to-end ✅ on the Pixel 8 Pro: real streaming
+  (direct play only, no transcode), mini-player + Now Playing, background playback, lock-screen/notification
+  controls with a working system media-control card, chapter seeking, speed control, progress sync,
+  mark-finished. 5.7 (sleep timer), 5.8 (bookmarks), 5.11 (volume keys), 5.13 (advanced player settings)
+  deliberately deferred — see `PLAN.md` Phase 5 for why.
+- **Milestone 1 is done.** 🎉
 
 ## Next
 
-- Phase 5: Audio Playback Engine — `just_audio` + `audio_service` streaming, mini-player, background
-  playback, chapters, sleep timer, progress sync. The "Play" button on the item detail screen is currently
-  a stub waiting on this.
+- Phase 6: Offline Downloads & On-Device Local Media (Milestone 2) — `background_downloader`, download
+  location selection, offline playback, local-media folder scanning.
 
 ## Later
 
-- Milestone 1 → 2 → 3 → 4 → 5, in that order. The two big native-divergence points to budget Mac/Xcode
-  time around are **Phase 5** (background audio, Milestone 1) and **Phase 6** (offline downloads/local
-  media, Milestone 2).
+- Milestone 2 → 3 → 4 → 5, in that order. The next big native-divergence point is **Phase 6** (offline
+  downloads/local media, Milestone 2) — budget Mac/Xcode time there once the iOS side starts.
 
 ---
 

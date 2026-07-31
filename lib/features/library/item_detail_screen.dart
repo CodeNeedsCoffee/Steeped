@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/network/cover_image_url.dart';
 import '../../models/library_item_detail.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../player/mini_player.dart';
+import '../player/state/playback_controller.dart';
 import 'state/library_providers.dart';
 
 /// PLAN.md Phase 4.8: item detail screen. "Play"/"Read"/"Download"/"Add to
@@ -37,11 +40,12 @@ class ItemDetailScreen extends ConsumerWidget {
             ? const SizedBox.shrink()
             : _ItemDetailBody(item: item, serverUrl: serverUrl, token: token),
       ),
+      bottomNavigationBar: const MiniPlayer(),
     );
   }
 }
 
-class _ItemDetailBody extends StatelessWidget {
+class _ItemDetailBody extends ConsumerWidget {
   const _ItemDetailBody({required this.item, required this.serverUrl, required this.token});
 
   final LibraryItemDetail item;
@@ -49,7 +53,7 @@ class _ItemDetailBody extends StatelessWidget {
   final String? token;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -103,7 +107,14 @@ class _ItemDetailBody extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             FilledButton.icon(
-              onPressed: () => _showComingSoon(context, 'Playback'),
+              onPressed: item.isPodcast || item.tracks.isEmpty
+                  ? null
+                  : () {
+                      ref
+                          .read(playbackControllerProvider.notifier)
+                          .playItem(item.id);
+                      context.push('/now-playing');
+                    },
               icon: const Icon(Icons.play_arrow),
               label: const Text('Play'),
             ),
