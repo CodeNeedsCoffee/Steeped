@@ -313,6 +313,31 @@ class $DownloadedItemsTable extends DownloadedItems
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _progressCurrentTimeMeta =
+      const VerificationMeta('progressCurrentTime');
+  @override
+  late final GeneratedColumn<double> progressCurrentTime =
+      GeneratedColumn<double>(
+        'progress_current_time',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _progressIsFinishedMeta =
+      const VerificationMeta('progressIsFinished');
+  @override
+  late final GeneratedColumn<bool> progressIsFinished = GeneratedColumn<bool>(
+    'progress_is_finished',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("progress_is_finished" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     itemId,
@@ -324,6 +349,8 @@ class $DownloadedItemsTable extends DownloadedItems
     coverLocalPath,
     status,
     createdAt,
+    progressCurrentTime,
+    progressIsFinished,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -409,6 +436,24 @@ class $DownloadedItemsTable extends DownloadedItems
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('progress_current_time')) {
+      context.handle(
+        _progressCurrentTimeMeta,
+        progressCurrentTime.isAcceptableOrUnknown(
+          data['progress_current_time']!,
+          _progressCurrentTimeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('progress_is_finished')) {
+      context.handle(
+        _progressIsFinishedMeta,
+        progressIsFinished.isAcceptableOrUnknown(
+          data['progress_is_finished']!,
+          _progressIsFinishedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -454,6 +499,14 @@ class $DownloadedItemsTable extends DownloadedItems
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      progressCurrentTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}progress_current_time'],
+      ),
+      progressIsFinished: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}progress_is_finished'],
+      )!,
     );
   }
 
@@ -473,6 +526,8 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
   final String? coverLocalPath;
   final String status;
   final DateTime createdAt;
+  final double? progressCurrentTime;
+  final bool progressIsFinished;
   const DownloadedItem({
     required this.itemId,
     required this.serverUrl,
@@ -483,6 +538,8 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
     this.coverLocalPath,
     required this.status,
     required this.createdAt,
+    this.progressCurrentTime,
+    required this.progressIsFinished,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -502,6 +559,10 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
     }
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || progressCurrentTime != null) {
+      map['progress_current_time'] = Variable<double>(progressCurrentTime);
+    }
+    map['progress_is_finished'] = Variable<bool>(progressIsFinished);
     return map;
   }
 
@@ -522,6 +583,10 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
           : Value(coverLocalPath),
       status: Value(status),
       createdAt: Value(createdAt),
+      progressCurrentTime: progressCurrentTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(progressCurrentTime),
+      progressIsFinished: Value(progressIsFinished),
     );
   }
 
@@ -540,6 +605,10 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
       coverLocalPath: serializer.fromJson<String?>(json['coverLocalPath']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      progressCurrentTime: serializer.fromJson<double?>(
+        json['progressCurrentTime'],
+      ),
+      progressIsFinished: serializer.fromJson<bool>(json['progressIsFinished']),
     );
   }
   @override
@@ -555,6 +624,8 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
       'coverLocalPath': serializer.toJson<String?>(coverLocalPath),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'progressCurrentTime': serializer.toJson<double?>(progressCurrentTime),
+      'progressIsFinished': serializer.toJson<bool>(progressIsFinished),
     };
   }
 
@@ -568,6 +639,8 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
     Value<String?> coverLocalPath = const Value.absent(),
     String? status,
     DateTime? createdAt,
+    Value<double?> progressCurrentTime = const Value.absent(),
+    bool? progressIsFinished,
   }) => DownloadedItem(
     itemId: itemId ?? this.itemId,
     serverUrl: serverUrl ?? this.serverUrl,
@@ -582,6 +655,10 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
         : this.coverLocalPath,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
+    progressCurrentTime: progressCurrentTime.present
+        ? progressCurrentTime.value
+        : this.progressCurrentTime,
+    progressIsFinished: progressIsFinished ?? this.progressIsFinished,
   );
   DownloadedItem copyWithCompanion(DownloadedItemsCompanion data) {
     return DownloadedItem(
@@ -602,6 +679,12 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
           : this.coverLocalPath,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      progressCurrentTime: data.progressCurrentTime.present
+          ? data.progressCurrentTime.value
+          : this.progressCurrentTime,
+      progressIsFinished: data.progressIsFinished.present
+          ? data.progressIsFinished.value
+          : this.progressIsFinished,
     );
   }
 
@@ -616,7 +699,9 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
           ..write('chaptersJson: $chaptersJson, ')
           ..write('coverLocalPath: $coverLocalPath, ')
           ..write('status: $status, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('progressCurrentTime: $progressCurrentTime, ')
+          ..write('progressIsFinished: $progressIsFinished')
           ..write(')'))
         .toString();
   }
@@ -632,6 +717,8 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
     coverLocalPath,
     status,
     createdAt,
+    progressCurrentTime,
+    progressIsFinished,
   );
   @override
   bool operator ==(Object other) =>
@@ -645,7 +732,9 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
           other.chaptersJson == this.chaptersJson &&
           other.coverLocalPath == this.coverLocalPath &&
           other.status == this.status &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.progressCurrentTime == this.progressCurrentTime &&
+          other.progressIsFinished == this.progressIsFinished);
 }
 
 class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
@@ -658,6 +747,8 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
   final Value<String?> coverLocalPath;
   final Value<String> status;
   final Value<DateTime> createdAt;
+  final Value<double?> progressCurrentTime;
+  final Value<bool> progressIsFinished;
   final Value<int> rowid;
   const DownloadedItemsCompanion({
     this.itemId = const Value.absent(),
@@ -669,6 +760,8 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     this.coverLocalPath = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.progressCurrentTime = const Value.absent(),
+    this.progressIsFinished = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DownloadedItemsCompanion.insert({
@@ -681,6 +774,8 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     this.coverLocalPath = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.progressCurrentTime = const Value.absent(),
+    this.progressIsFinished = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : itemId = Value(itemId),
        serverUrl = Value(serverUrl),
@@ -695,6 +790,8 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     Expression<String>? coverLocalPath,
     Expression<String>? status,
     Expression<DateTime>? createdAt,
+    Expression<double>? progressCurrentTime,
+    Expression<bool>? progressIsFinished,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -707,6 +804,10 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
       if (coverLocalPath != null) 'cover_local_path': coverLocalPath,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
+      if (progressCurrentTime != null)
+        'progress_current_time': progressCurrentTime,
+      if (progressIsFinished != null)
+        'progress_is_finished': progressIsFinished,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -721,6 +822,8 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     Value<String?>? coverLocalPath,
     Value<String>? status,
     Value<DateTime>? createdAt,
+    Value<double?>? progressCurrentTime,
+    Value<bool>? progressIsFinished,
     Value<int>? rowid,
   }) {
     return DownloadedItemsCompanion(
@@ -733,6 +836,8 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
       coverLocalPath: coverLocalPath ?? this.coverLocalPath,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
+      progressCurrentTime: progressCurrentTime ?? this.progressCurrentTime,
+      progressIsFinished: progressIsFinished ?? this.progressIsFinished,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -767,6 +872,14 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (progressCurrentTime.present) {
+      map['progress_current_time'] = Variable<double>(
+        progressCurrentTime.value,
+      );
+    }
+    if (progressIsFinished.present) {
+      map['progress_is_finished'] = Variable<bool>(progressIsFinished.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -785,6 +898,8 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
           ..write('coverLocalPath: $coverLocalPath, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
+          ..write('progressCurrentTime: $progressCurrentTime, ')
+          ..write('progressIsFinished: $progressIsFinished, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1429,6 +1544,8 @@ typedef $$DownloadedItemsTableCreateCompanionBuilder =
       Value<String?> coverLocalPath,
       Value<String> status,
       Value<DateTime> createdAt,
+      Value<double?> progressCurrentTime,
+      Value<bool> progressIsFinished,
       Value<int> rowid,
     });
 typedef $$DownloadedItemsTableUpdateCompanionBuilder =
@@ -1442,6 +1559,8 @@ typedef $$DownloadedItemsTableUpdateCompanionBuilder =
       Value<String?> coverLocalPath,
       Value<String> status,
       Value<DateTime> createdAt,
+      Value<double?> progressCurrentTime,
+      Value<bool> progressIsFinished,
       Value<int> rowid,
     });
 
@@ -1529,6 +1648,16 @@ class $$DownloadedItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<double> get progressCurrentTime => $composableBuilder(
+    column: $table.progressCurrentTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get progressIsFinished => $composableBuilder(
+    column: $table.progressIsFinished,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> downloadedTracksRefs(
     Expression<bool> Function($$DownloadedTracksTableFilterComposer f) f,
   ) {
@@ -1608,6 +1737,16 @@ class $$DownloadedItemsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<double> get progressCurrentTime => $composableBuilder(
+    column: $table.progressCurrentTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get progressIsFinished => $composableBuilder(
+    column: $table.progressIsFinished,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DownloadedItemsTableAnnotationComposer
@@ -1653,6 +1792,16 @@ class $$DownloadedItemsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<double> get progressCurrentTime => $composableBuilder(
+    column: $table.progressCurrentTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get progressIsFinished => $composableBuilder(
+    column: $table.progressIsFinished,
+    builder: (column) => column,
+  );
 
   Expression<T> downloadedTracksRefs<T extends Object>(
     Expression<T> Function($$DownloadedTracksTableAnnotationComposer a) f,
@@ -1719,6 +1868,8 @@ class $$DownloadedItemsTableTableManager
                 Value<String?> coverLocalPath = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<double?> progressCurrentTime = const Value.absent(),
+                Value<bool> progressIsFinished = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DownloadedItemsCompanion(
                 itemId: itemId,
@@ -1730,6 +1881,8 @@ class $$DownloadedItemsTableTableManager
                 coverLocalPath: coverLocalPath,
                 status: status,
                 createdAt: createdAt,
+                progressCurrentTime: progressCurrentTime,
+                progressIsFinished: progressIsFinished,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -1743,6 +1896,8 @@ class $$DownloadedItemsTableTableManager
                 Value<String?> coverLocalPath = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<double?> progressCurrentTime = const Value.absent(),
+                Value<bool> progressIsFinished = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DownloadedItemsCompanion.insert(
                 itemId: itemId,
@@ -1754,6 +1909,8 @@ class $$DownloadedItemsTableTableManager
                 coverLocalPath: coverLocalPath,
                 status: status,
                 createdAt: createdAt,
+                progressCurrentTime: progressCurrentTime,
+                progressIsFinished: progressIsFinished,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

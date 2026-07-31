@@ -48,6 +48,13 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   session bootstrap (Phase 3) doesn't distinguish "network unreachable" from "token actually invalid."
   6.2 (series download), 6.8 (local-media folders), 6.9 (cellular controls), 6.10 (storage management), and
   a durable offline-sync retry queue (6.7) deliberately deferred — see `PLAN.md` Phase 6 for why.
+- **Bug fix (2026-07-31, reported by evan)**: a downloaded book wasn't resuming from its saved position.
+  Root cause: the progress-sync timer only stopped via in-app pause, not hardware/notification pause (which
+  calls the audio handler directly) — it kept ticking in the background and, once connectivity returned from
+  the Phase 6 offline test above, synced a stale near-zero position to the real server, silently overwriting
+  real progress. Fixed by tying the timer to actual playback state instead. **This did corrupt real progress
+  on evan's server for one book during testing**; repaired using the still-intact progress percentage.
+  Verified fixed: resumes correctly now. See `PLAN.md` Phase 5.9 for details.
 
 ## Next
 

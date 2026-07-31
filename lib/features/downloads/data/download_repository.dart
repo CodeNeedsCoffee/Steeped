@@ -10,6 +10,7 @@ import '../../../core/network/cover_image_url.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../models/audio_track.dart';
 import '../../../models/library_item_detail.dart';
+import '../../../models/media_progress.dart';
 
 /// PLAN.md Phase 6.1/6.4/6.6: downloads server items for offline playback.
 /// [buildOfflineItemDetail] reconstructs a fully playable item from local
@@ -46,6 +47,8 @@ class DownloadRepository {
             totalDuration: Value(item.duration),
             chaptersJson: Value(chaptersJson),
             status: const Value('downloading'),
+            progressCurrentTime: Value(item.progress?.currentTime),
+            progressIsFinished: Value(item.progress?.isFinished ?? false),
           ),
         );
 
@@ -152,6 +155,25 @@ class DownloadRepository {
     return row?.status == 'complete';
   }
 
+  /// Keeps the local progress cache fresh so a downloaded item resumes from
+  /// where playback actually left off, not from wherever it happened to be
+  /// when the download started. Called by [PlaybackController] alongside
+  /// every server sync — a no-op if this item was never downloaded.
+  Future<void> updateLocalProgress({
+    required String itemId,
+    required double currentTime,
+    required bool isFinished,
+  }) async {
+    await (_db.update(
+      _db.downloadedItems,
+    )..where((i) => i.itemId.equals(itemId))).write(
+      DownloadedItemsCompanion(
+        progressCurrentTime: Value(currentTime),
+        progressIsFinished: Value(isFinished),
+      ),
+    );
+  }
+
   Future<List<DownloadedTrack>> localTracksFor(String itemId) {
     return (_db.select(_db.downloadedTracks)
           ..where((t) => t.itemId.equals(itemId))
@@ -199,7 +221,18 @@ class DownloadRepository {
       duration: row.totalDuration,
       chapters: chapters,
       hasEbook: false,
-      progress: null,
+      progress: row.progressCurrentTime == null
+          ? null
+          : MediaProgress(
+              currentTime: row.progressCurrentTime!,
+              isFinished: row.progressIsFinished,
+              progress: (row.totalDuration ?? 0) > 0
+                  ? (row.progressCurrentTime! / row.totalDuration!).clamp(
+                      0,
+                      1,
+                    )
+                  : 0,
+            ),
       tracks: tracks
           .map(
             (t) => AudioTrack(
