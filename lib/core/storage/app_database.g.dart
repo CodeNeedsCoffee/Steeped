@@ -211,17 +211,1066 @@ class KeyValueEntriesCompanion extends UpdateCompanion<KeyValueEntry> {
   }
 }
 
+class $DownloadedItemsTable extends DownloadedItems
+    with TableInfo<$DownloadedItemsTable, DownloadedItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadedItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+    'item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serverUrlMeta = const VerificationMeta(
+    'serverUrl',
+  );
+  @override
+  late final GeneratedColumn<String> serverUrl = GeneratedColumn<String>(
+    'server_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorNamesMeta = const VerificationMeta(
+    'authorNames',
+  );
+  @override
+  late final GeneratedColumn<String> authorNames = GeneratedColumn<String>(
+    'author_names',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _totalDurationMeta = const VerificationMeta(
+    'totalDuration',
+  );
+  @override
+  late final GeneratedColumn<double> totalDuration = GeneratedColumn<double>(
+    'total_duration',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _chaptersJsonMeta = const VerificationMeta(
+    'chaptersJson',
+  );
+  @override
+  late final GeneratedColumn<String> chaptersJson = GeneratedColumn<String>(
+    'chapters_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _coverLocalPathMeta = const VerificationMeta(
+    'coverLocalPath',
+  );
+  @override
+  late final GeneratedColumn<String> coverLocalPath = GeneratedColumn<String>(
+    'cover_local_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('downloading'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    itemId,
+    serverUrl,
+    title,
+    authorNames,
+    totalDuration,
+    chaptersJson,
+    coverLocalPath,
+    status,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'downloaded_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DownloadedItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('server_url')) {
+      context.handle(
+        _serverUrlMeta,
+        serverUrl.isAcceptableOrUnknown(data['server_url']!, _serverUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_serverUrlMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('author_names')) {
+      context.handle(
+        _authorNamesMeta,
+        authorNames.isAcceptableOrUnknown(
+          data['author_names']!,
+          _authorNamesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_duration')) {
+      context.handle(
+        _totalDurationMeta,
+        totalDuration.isAcceptableOrUnknown(
+          data['total_duration']!,
+          _totalDurationMeta,
+        ),
+      );
+    }
+    if (data.containsKey('chapters_json')) {
+      context.handle(
+        _chaptersJsonMeta,
+        chaptersJson.isAcceptableOrUnknown(
+          data['chapters_json']!,
+          _chaptersJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cover_local_path')) {
+      context.handle(
+        _coverLocalPathMeta,
+        coverLocalPath.isAcceptableOrUnknown(
+          data['cover_local_path']!,
+          _coverLocalPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {itemId};
+  @override
+  DownloadedItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadedItem(
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_id'],
+      )!,
+      serverUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_url'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      authorNames: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_names'],
+      )!,
+      totalDuration: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}total_duration'],
+      ),
+      chaptersJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chapters_json'],
+      ),
+      coverLocalPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_local_path'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DownloadedItemsTable createAlias(String alias) {
+    return $DownloadedItemsTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
+  final String itemId;
+  final String serverUrl;
+  final String title;
+  final String authorNames;
+  final double? totalDuration;
+  final String? chaptersJson;
+  final String? coverLocalPath;
+  final String status;
+  final DateTime createdAt;
+  const DownloadedItem({
+    required this.itemId,
+    required this.serverUrl,
+    required this.title,
+    required this.authorNames,
+    this.totalDuration,
+    this.chaptersJson,
+    this.coverLocalPath,
+    required this.status,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['item_id'] = Variable<String>(itemId);
+    map['server_url'] = Variable<String>(serverUrl);
+    map['title'] = Variable<String>(title);
+    map['author_names'] = Variable<String>(authorNames);
+    if (!nullToAbsent || totalDuration != null) {
+      map['total_duration'] = Variable<double>(totalDuration);
+    }
+    if (!nullToAbsent || chaptersJson != null) {
+      map['chapters_json'] = Variable<String>(chaptersJson);
+    }
+    if (!nullToAbsent || coverLocalPath != null) {
+      map['cover_local_path'] = Variable<String>(coverLocalPath);
+    }
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DownloadedItemsCompanion toCompanion(bool nullToAbsent) {
+    return DownloadedItemsCompanion(
+      itemId: Value(itemId),
+      serverUrl: Value(serverUrl),
+      title: Value(title),
+      authorNames: Value(authorNames),
+      totalDuration: totalDuration == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalDuration),
+      chaptersJson: chaptersJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chaptersJson),
+      coverLocalPath: coverLocalPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverLocalPath),
+      status: Value(status),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DownloadedItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadedItem(
+      itemId: serializer.fromJson<String>(json['itemId']),
+      serverUrl: serializer.fromJson<String>(json['serverUrl']),
+      title: serializer.fromJson<String>(json['title']),
+      authorNames: serializer.fromJson<String>(json['authorNames']),
+      totalDuration: serializer.fromJson<double?>(json['totalDuration']),
+      chaptersJson: serializer.fromJson<String?>(json['chaptersJson']),
+      coverLocalPath: serializer.fromJson<String?>(json['coverLocalPath']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'itemId': serializer.toJson<String>(itemId),
+      'serverUrl': serializer.toJson<String>(serverUrl),
+      'title': serializer.toJson<String>(title),
+      'authorNames': serializer.toJson<String>(authorNames),
+      'totalDuration': serializer.toJson<double?>(totalDuration),
+      'chaptersJson': serializer.toJson<String?>(chaptersJson),
+      'coverLocalPath': serializer.toJson<String?>(coverLocalPath),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DownloadedItem copyWith({
+    String? itemId,
+    String? serverUrl,
+    String? title,
+    String? authorNames,
+    Value<double?> totalDuration = const Value.absent(),
+    Value<String?> chaptersJson = const Value.absent(),
+    Value<String?> coverLocalPath = const Value.absent(),
+    String? status,
+    DateTime? createdAt,
+  }) => DownloadedItem(
+    itemId: itemId ?? this.itemId,
+    serverUrl: serverUrl ?? this.serverUrl,
+    title: title ?? this.title,
+    authorNames: authorNames ?? this.authorNames,
+    totalDuration: totalDuration.present
+        ? totalDuration.value
+        : this.totalDuration,
+    chaptersJson: chaptersJson.present ? chaptersJson.value : this.chaptersJson,
+    coverLocalPath: coverLocalPath.present
+        ? coverLocalPath.value
+        : this.coverLocalPath,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DownloadedItem copyWithCompanion(DownloadedItemsCompanion data) {
+    return DownloadedItem(
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      serverUrl: data.serverUrl.present ? data.serverUrl.value : this.serverUrl,
+      title: data.title.present ? data.title.value : this.title,
+      authorNames: data.authorNames.present
+          ? data.authorNames.value
+          : this.authorNames,
+      totalDuration: data.totalDuration.present
+          ? data.totalDuration.value
+          : this.totalDuration,
+      chaptersJson: data.chaptersJson.present
+          ? data.chaptersJson.value
+          : this.chaptersJson,
+      coverLocalPath: data.coverLocalPath.present
+          ? data.coverLocalPath.value
+          : this.coverLocalPath,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedItem(')
+          ..write('itemId: $itemId, ')
+          ..write('serverUrl: $serverUrl, ')
+          ..write('title: $title, ')
+          ..write('authorNames: $authorNames, ')
+          ..write('totalDuration: $totalDuration, ')
+          ..write('chaptersJson: $chaptersJson, ')
+          ..write('coverLocalPath: $coverLocalPath, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    itemId,
+    serverUrl,
+    title,
+    authorNames,
+    totalDuration,
+    chaptersJson,
+    coverLocalPath,
+    status,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadedItem &&
+          other.itemId == this.itemId &&
+          other.serverUrl == this.serverUrl &&
+          other.title == this.title &&
+          other.authorNames == this.authorNames &&
+          other.totalDuration == this.totalDuration &&
+          other.chaptersJson == this.chaptersJson &&
+          other.coverLocalPath == this.coverLocalPath &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt);
+}
+
+class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
+  final Value<String> itemId;
+  final Value<String> serverUrl;
+  final Value<String> title;
+  final Value<String> authorNames;
+  final Value<double?> totalDuration;
+  final Value<String?> chaptersJson;
+  final Value<String?> coverLocalPath;
+  final Value<String> status;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const DownloadedItemsCompanion({
+    this.itemId = const Value.absent(),
+    this.serverUrl = const Value.absent(),
+    this.title = const Value.absent(),
+    this.authorNames = const Value.absent(),
+    this.totalDuration = const Value.absent(),
+    this.chaptersJson = const Value.absent(),
+    this.coverLocalPath = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DownloadedItemsCompanion.insert({
+    required String itemId,
+    required String serverUrl,
+    required String title,
+    this.authorNames = const Value.absent(),
+    this.totalDuration = const Value.absent(),
+    this.chaptersJson = const Value.absent(),
+    this.coverLocalPath = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : itemId = Value(itemId),
+       serverUrl = Value(serverUrl),
+       title = Value(title);
+  static Insertable<DownloadedItem> custom({
+    Expression<String>? itemId,
+    Expression<String>? serverUrl,
+    Expression<String>? title,
+    Expression<String>? authorNames,
+    Expression<double>? totalDuration,
+    Expression<String>? chaptersJson,
+    Expression<String>? coverLocalPath,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (itemId != null) 'item_id': itemId,
+      if (serverUrl != null) 'server_url': serverUrl,
+      if (title != null) 'title': title,
+      if (authorNames != null) 'author_names': authorNames,
+      if (totalDuration != null) 'total_duration': totalDuration,
+      if (chaptersJson != null) 'chapters_json': chaptersJson,
+      if (coverLocalPath != null) 'cover_local_path': coverLocalPath,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DownloadedItemsCompanion copyWith({
+    Value<String>? itemId,
+    Value<String>? serverUrl,
+    Value<String>? title,
+    Value<String>? authorNames,
+    Value<double?>? totalDuration,
+    Value<String?>? chaptersJson,
+    Value<String?>? coverLocalPath,
+    Value<String>? status,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return DownloadedItemsCompanion(
+      itemId: itemId ?? this.itemId,
+      serverUrl: serverUrl ?? this.serverUrl,
+      title: title ?? this.title,
+      authorNames: authorNames ?? this.authorNames,
+      totalDuration: totalDuration ?? this.totalDuration,
+      chaptersJson: chaptersJson ?? this.chaptersJson,
+      coverLocalPath: coverLocalPath ?? this.coverLocalPath,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (serverUrl.present) {
+      map['server_url'] = Variable<String>(serverUrl.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (authorNames.present) {
+      map['author_names'] = Variable<String>(authorNames.value);
+    }
+    if (totalDuration.present) {
+      map['total_duration'] = Variable<double>(totalDuration.value);
+    }
+    if (chaptersJson.present) {
+      map['chapters_json'] = Variable<String>(chaptersJson.value);
+    }
+    if (coverLocalPath.present) {
+      map['cover_local_path'] = Variable<String>(coverLocalPath.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedItemsCompanion(')
+          ..write('itemId: $itemId, ')
+          ..write('serverUrl: $serverUrl, ')
+          ..write('title: $title, ')
+          ..write('authorNames: $authorNames, ')
+          ..write('totalDuration: $totalDuration, ')
+          ..write('chaptersJson: $chaptersJson, ')
+          ..write('coverLocalPath: $coverLocalPath, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DownloadedTracksTable extends DownloadedTracks
+    with TableInfo<$DownloadedTracksTable, DownloadedTrack> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadedTracksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+    'item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES downloaded_items (item_id)',
+    ),
+  );
+  static const VerificationMeta _trackIndexMeta = const VerificationMeta(
+    'trackIndex',
+  );
+  @override
+  late final GeneratedColumn<int> trackIndex = GeneratedColumn<int>(
+    'track_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startOffsetMeta = const VerificationMeta(
+    'startOffset',
+  );
+  @override
+  late final GeneratedColumn<double> startOffset = GeneratedColumn<double>(
+    'start_offset',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _durationMeta = const VerificationMeta(
+    'duration',
+  );
+  @override
+  late final GeneratedColumn<double> duration = GeneratedColumn<double>(
+    'duration',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localPathMeta = const VerificationMeta(
+    'localPath',
+  );
+  @override
+  late final GeneratedColumn<String> localPath = GeneratedColumn<String>(
+    'local_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    itemId,
+    trackIndex,
+    startOffset,
+    duration,
+    localPath,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'downloaded_tracks';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DownloadedTrack> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('track_index')) {
+      context.handle(
+        _trackIndexMeta,
+        trackIndex.isAcceptableOrUnknown(data['track_index']!, _trackIndexMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_trackIndexMeta);
+    }
+    if (data.containsKey('start_offset')) {
+      context.handle(
+        _startOffsetMeta,
+        startOffset.isAcceptableOrUnknown(
+          data['start_offset']!,
+          _startOffsetMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_startOffsetMeta);
+    }
+    if (data.containsKey('duration')) {
+      context.handle(
+        _durationMeta,
+        duration.isAcceptableOrUnknown(data['duration']!, _durationMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_durationMeta);
+    }
+    if (data.containsKey('local_path')) {
+      context.handle(
+        _localPathMeta,
+        localPath.isAcceptableOrUnknown(data['local_path']!, _localPathMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DownloadedTrack map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadedTrack(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_id'],
+      )!,
+      trackIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}track_index'],
+      )!,
+      startOffset: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}start_offset'],
+      )!,
+      duration: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}duration'],
+      )!,
+      localPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_path'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $DownloadedTracksTable createAlias(String alias) {
+    return $DownloadedTracksTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadedTrack extends DataClass implements Insertable<DownloadedTrack> {
+  final int id;
+  final String itemId;
+  final int trackIndex;
+  final double startOffset;
+  final double duration;
+  final String? localPath;
+  final String status;
+  const DownloadedTrack({
+    required this.id,
+    required this.itemId,
+    required this.trackIndex,
+    required this.startOffset,
+    required this.duration,
+    this.localPath,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['item_id'] = Variable<String>(itemId);
+    map['track_index'] = Variable<int>(trackIndex);
+    map['start_offset'] = Variable<double>(startOffset);
+    map['duration'] = Variable<double>(duration);
+    if (!nullToAbsent || localPath != null) {
+      map['local_path'] = Variable<String>(localPath);
+    }
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  DownloadedTracksCompanion toCompanion(bool nullToAbsent) {
+    return DownloadedTracksCompanion(
+      id: Value(id),
+      itemId: Value(itemId),
+      trackIndex: Value(trackIndex),
+      startOffset: Value(startOffset),
+      duration: Value(duration),
+      localPath: localPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(localPath),
+      status: Value(status),
+    );
+  }
+
+  factory DownloadedTrack.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadedTrack(
+      id: serializer.fromJson<int>(json['id']),
+      itemId: serializer.fromJson<String>(json['itemId']),
+      trackIndex: serializer.fromJson<int>(json['trackIndex']),
+      startOffset: serializer.fromJson<double>(json['startOffset']),
+      duration: serializer.fromJson<double>(json['duration']),
+      localPath: serializer.fromJson<String?>(json['localPath']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'itemId': serializer.toJson<String>(itemId),
+      'trackIndex': serializer.toJson<int>(trackIndex),
+      'startOffset': serializer.toJson<double>(startOffset),
+      'duration': serializer.toJson<double>(duration),
+      'localPath': serializer.toJson<String?>(localPath),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  DownloadedTrack copyWith({
+    int? id,
+    String? itemId,
+    int? trackIndex,
+    double? startOffset,
+    double? duration,
+    Value<String?> localPath = const Value.absent(),
+    String? status,
+  }) => DownloadedTrack(
+    id: id ?? this.id,
+    itemId: itemId ?? this.itemId,
+    trackIndex: trackIndex ?? this.trackIndex,
+    startOffset: startOffset ?? this.startOffset,
+    duration: duration ?? this.duration,
+    localPath: localPath.present ? localPath.value : this.localPath,
+    status: status ?? this.status,
+  );
+  DownloadedTrack copyWithCompanion(DownloadedTracksCompanion data) {
+    return DownloadedTrack(
+      id: data.id.present ? data.id.value : this.id,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      trackIndex: data.trackIndex.present
+          ? data.trackIndex.value
+          : this.trackIndex,
+      startOffset: data.startOffset.present
+          ? data.startOffset.value
+          : this.startOffset,
+      duration: data.duration.present ? data.duration.value : this.duration,
+      localPath: data.localPath.present ? data.localPath.value : this.localPath,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedTrack(')
+          ..write('id: $id, ')
+          ..write('itemId: $itemId, ')
+          ..write('trackIndex: $trackIndex, ')
+          ..write('startOffset: $startOffset, ')
+          ..write('duration: $duration, ')
+          ..write('localPath: $localPath, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    itemId,
+    trackIndex,
+    startOffset,
+    duration,
+    localPath,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadedTrack &&
+          other.id == this.id &&
+          other.itemId == this.itemId &&
+          other.trackIndex == this.trackIndex &&
+          other.startOffset == this.startOffset &&
+          other.duration == this.duration &&
+          other.localPath == this.localPath &&
+          other.status == this.status);
+}
+
+class DownloadedTracksCompanion extends UpdateCompanion<DownloadedTrack> {
+  final Value<int> id;
+  final Value<String> itemId;
+  final Value<int> trackIndex;
+  final Value<double> startOffset;
+  final Value<double> duration;
+  final Value<String?> localPath;
+  final Value<String> status;
+  const DownloadedTracksCompanion({
+    this.id = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.trackIndex = const Value.absent(),
+    this.startOffset = const Value.absent(),
+    this.duration = const Value.absent(),
+    this.localPath = const Value.absent(),
+    this.status = const Value.absent(),
+  });
+  DownloadedTracksCompanion.insert({
+    this.id = const Value.absent(),
+    required String itemId,
+    required int trackIndex,
+    required double startOffset,
+    required double duration,
+    this.localPath = const Value.absent(),
+    this.status = const Value.absent(),
+  }) : itemId = Value(itemId),
+       trackIndex = Value(trackIndex),
+       startOffset = Value(startOffset),
+       duration = Value(duration);
+  static Insertable<DownloadedTrack> custom({
+    Expression<int>? id,
+    Expression<String>? itemId,
+    Expression<int>? trackIndex,
+    Expression<double>? startOffset,
+    Expression<double>? duration,
+    Expression<String>? localPath,
+    Expression<String>? status,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (itemId != null) 'item_id': itemId,
+      if (trackIndex != null) 'track_index': trackIndex,
+      if (startOffset != null) 'start_offset': startOffset,
+      if (duration != null) 'duration': duration,
+      if (localPath != null) 'local_path': localPath,
+      if (status != null) 'status': status,
+    });
+  }
+
+  DownloadedTracksCompanion copyWith({
+    Value<int>? id,
+    Value<String>? itemId,
+    Value<int>? trackIndex,
+    Value<double>? startOffset,
+    Value<double>? duration,
+    Value<String?>? localPath,
+    Value<String>? status,
+  }) {
+    return DownloadedTracksCompanion(
+      id: id ?? this.id,
+      itemId: itemId ?? this.itemId,
+      trackIndex: trackIndex ?? this.trackIndex,
+      startOffset: startOffset ?? this.startOffset,
+      duration: duration ?? this.duration,
+      localPath: localPath ?? this.localPath,
+      status: status ?? this.status,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (trackIndex.present) {
+      map['track_index'] = Variable<int>(trackIndex.value);
+    }
+    if (startOffset.present) {
+      map['start_offset'] = Variable<double>(startOffset.value);
+    }
+    if (duration.present) {
+      map['duration'] = Variable<double>(duration.value);
+    }
+    if (localPath.present) {
+      map['local_path'] = Variable<String>(localPath.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedTracksCompanion(')
+          ..write('id: $id, ')
+          ..write('itemId: $itemId, ')
+          ..write('trackIndex: $trackIndex, ')
+          ..write('startOffset: $startOffset, ')
+          ..write('duration: $duration, ')
+          ..write('localPath: $localPath, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $KeyValueEntriesTable keyValueEntries = $KeyValueEntriesTable(
     this,
   );
+  late final $DownloadedItemsTable downloadedItems = $DownloadedItemsTable(
+    this,
+  );
+  late final $DownloadedTracksTable downloadedTracks = $DownloadedTracksTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [keyValueEntries];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    keyValueEntries,
+    downloadedItems,
+    downloadedTracks,
+  ];
 }
 
 typedef $$KeyValueEntriesTableCreateCompanionBuilder =
@@ -369,10 +1418,773 @@ typedef $$KeyValueEntriesTableProcessedTableManager =
       KeyValueEntry,
       PrefetchHooks Function()
     >;
+typedef $$DownloadedItemsTableCreateCompanionBuilder =
+    DownloadedItemsCompanion Function({
+      required String itemId,
+      required String serverUrl,
+      required String title,
+      Value<String> authorNames,
+      Value<double?> totalDuration,
+      Value<String?> chaptersJson,
+      Value<String?> coverLocalPath,
+      Value<String> status,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$DownloadedItemsTableUpdateCompanionBuilder =
+    DownloadedItemsCompanion Function({
+      Value<String> itemId,
+      Value<String> serverUrl,
+      Value<String> title,
+      Value<String> authorNames,
+      Value<double?> totalDuration,
+      Value<String?> chaptersJson,
+      Value<String?> coverLocalPath,
+      Value<String> status,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$DownloadedItemsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $DownloadedItemsTable, DownloadedItem> {
+  $$DownloadedItemsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$DownloadedTracksTable, List<DownloadedTrack>>
+  _downloadedTracksRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.downloadedTracks,
+    aliasName: 'downloaded_items__item_id__downloaded_tracks__item_id',
+  );
+
+  $$DownloadedTracksTableProcessedTableManager get downloadedTracksRefs {
+    final manager =
+        $$DownloadedTracksTableTableManager($_db, $_db.downloadedTracks).filter(
+          (f) => f.itemId.itemId.sqlEquals($_itemColumn<String>('item_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _downloadedTracksRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$DownloadedItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadedItemsTable> {
+  $$DownloadedItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverUrl => $composableBuilder(
+    column: $table.serverUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorNames => $composableBuilder(
+    column: $table.authorNames,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get totalDuration => $composableBuilder(
+    column: $table.totalDuration,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get chaptersJson => $composableBuilder(
+    column: $table.chaptersJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverLocalPath => $composableBuilder(
+    column: $table.coverLocalPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> downloadedTracksRefs(
+    Expression<bool> Function($$DownloadedTracksTableFilterComposer f) f,
+  ) {
+    final $$DownloadedTracksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.itemId,
+      referencedTable: $db.downloadedTracks,
+      getReferencedColumn: (t) => t.itemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DownloadedTracksTableFilterComposer(
+            $db: $db,
+            $table: $db.downloadedTracks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DownloadedItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadedItemsTable> {
+  $$DownloadedItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverUrl => $composableBuilder(
+    column: $table.serverUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorNames => $composableBuilder(
+    column: $table.authorNames,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get totalDuration => $composableBuilder(
+    column: $table.totalDuration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get chaptersJson => $composableBuilder(
+    column: $table.chaptersJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverLocalPath => $composableBuilder(
+    column: $table.coverLocalPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DownloadedItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadedItemsTable> {
+  $$DownloadedItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumn<String> get serverUrl =>
+      $composableBuilder(column: $table.serverUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get authorNames => $composableBuilder(
+    column: $table.authorNames,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get totalDuration => $composableBuilder(
+    column: $table.totalDuration,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get chaptersJson => $composableBuilder(
+    column: $table.chaptersJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverLocalPath => $composableBuilder(
+    column: $table.coverLocalPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> downloadedTracksRefs<T extends Object>(
+    Expression<T> Function($$DownloadedTracksTableAnnotationComposer a) f,
+  ) {
+    final $$DownloadedTracksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.itemId,
+      referencedTable: $db.downloadedTracks,
+      getReferencedColumn: (t) => t.itemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DownloadedTracksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.downloadedTracks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DownloadedItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DownloadedItemsTable,
+          DownloadedItem,
+          $$DownloadedItemsTableFilterComposer,
+          $$DownloadedItemsTableOrderingComposer,
+          $$DownloadedItemsTableAnnotationComposer,
+          $$DownloadedItemsTableCreateCompanionBuilder,
+          $$DownloadedItemsTableUpdateCompanionBuilder,
+          (DownloadedItem, $$DownloadedItemsTableReferences),
+          DownloadedItem,
+          PrefetchHooks Function({bool downloadedTracksRefs})
+        > {
+  $$DownloadedItemsTableTableManager(
+    _$AppDatabase db,
+    $DownloadedItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadedItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadedItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DownloadedItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> itemId = const Value.absent(),
+                Value<String> serverUrl = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> authorNames = const Value.absent(),
+                Value<double?> totalDuration = const Value.absent(),
+                Value<String?> chaptersJson = const Value.absent(),
+                Value<String?> coverLocalPath = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DownloadedItemsCompanion(
+                itemId: itemId,
+                serverUrl: serverUrl,
+                title: title,
+                authorNames: authorNames,
+                totalDuration: totalDuration,
+                chaptersJson: chaptersJson,
+                coverLocalPath: coverLocalPath,
+                status: status,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String itemId,
+                required String serverUrl,
+                required String title,
+                Value<String> authorNames = const Value.absent(),
+                Value<double?> totalDuration = const Value.absent(),
+                Value<String?> chaptersJson = const Value.absent(),
+                Value<String?> coverLocalPath = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DownloadedItemsCompanion.insert(
+                itemId: itemId,
+                serverUrl: serverUrl,
+                title: title,
+                authorNames: authorNames,
+                totalDuration: totalDuration,
+                chaptersJson: chaptersJson,
+                coverLocalPath: coverLocalPath,
+                status: status,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DownloadedItemsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({downloadedTracksRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (downloadedTracksRefs) db.downloadedTracks,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (downloadedTracksRefs)
+                    await $_getPrefetchedData<
+                      DownloadedItem,
+                      $DownloadedItemsTable,
+                      DownloadedTrack
+                    >(
+                      currentTable: table,
+                      referencedTable: $$DownloadedItemsTableReferences
+                          ._downloadedTracksRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$DownloadedItemsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).downloadedTracksRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.itemId == item.itemId),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DownloadedItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DownloadedItemsTable,
+      DownloadedItem,
+      $$DownloadedItemsTableFilterComposer,
+      $$DownloadedItemsTableOrderingComposer,
+      $$DownloadedItemsTableAnnotationComposer,
+      $$DownloadedItemsTableCreateCompanionBuilder,
+      $$DownloadedItemsTableUpdateCompanionBuilder,
+      (DownloadedItem, $$DownloadedItemsTableReferences),
+      DownloadedItem,
+      PrefetchHooks Function({bool downloadedTracksRefs})
+    >;
+typedef $$DownloadedTracksTableCreateCompanionBuilder =
+    DownloadedTracksCompanion Function({
+      Value<int> id,
+      required String itemId,
+      required int trackIndex,
+      required double startOffset,
+      required double duration,
+      Value<String?> localPath,
+      Value<String> status,
+    });
+typedef $$DownloadedTracksTableUpdateCompanionBuilder =
+    DownloadedTracksCompanion Function({
+      Value<int> id,
+      Value<String> itemId,
+      Value<int> trackIndex,
+      Value<double> startOffset,
+      Value<double> duration,
+      Value<String?> localPath,
+      Value<String> status,
+    });
+
+final class $$DownloadedTracksTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $DownloadedTracksTable, DownloadedTrack> {
+  $$DownloadedTracksTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DownloadedItemsTable _itemIdTable(_$AppDatabase db) => db
+      .downloadedItems
+      .createAlias('downloaded_tracks__item_id__downloaded_items__item_id');
+
+  $$DownloadedItemsTableProcessedTableManager get itemId {
+    final $_column = $_itemColumn<String>('item_id')!;
+
+    final manager = $$DownloadedItemsTableTableManager(
+      $_db,
+      $_db.downloadedItems,
+    ).filter((f) => f.itemId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_itemIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DownloadedTracksTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadedTracksTable> {
+  $$DownloadedTracksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get trackIndex => $composableBuilder(
+    column: $table.trackIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get startOffset => $composableBuilder(
+    column: $table.startOffset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localPath => $composableBuilder(
+    column: $table.localPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DownloadedItemsTableFilterComposer get itemId {
+    final $$DownloadedItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.itemId,
+      referencedTable: $db.downloadedItems,
+      getReferencedColumn: (t) => t.itemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DownloadedItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.downloadedItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DownloadedTracksTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadedTracksTable> {
+  $$DownloadedTracksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get trackIndex => $composableBuilder(
+    column: $table.trackIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get startOffset => $composableBuilder(
+    column: $table.startOffset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localPath => $composableBuilder(
+    column: $table.localPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DownloadedItemsTableOrderingComposer get itemId {
+    final $$DownloadedItemsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.itemId,
+      referencedTable: $db.downloadedItems,
+      getReferencedColumn: (t) => t.itemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DownloadedItemsTableOrderingComposer(
+            $db: $db,
+            $table: $db.downloadedItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DownloadedTracksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadedTracksTable> {
+  $$DownloadedTracksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get trackIndex => $composableBuilder(
+    column: $table.trackIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get startOffset => $composableBuilder(
+    column: $table.startOffset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get duration =>
+      $composableBuilder(column: $table.duration, builder: (column) => column);
+
+  GeneratedColumn<String> get localPath =>
+      $composableBuilder(column: $table.localPath, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  $$DownloadedItemsTableAnnotationComposer get itemId {
+    final $$DownloadedItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.itemId,
+      referencedTable: $db.downloadedItems,
+      getReferencedColumn: (t) => t.itemId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DownloadedItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.downloadedItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DownloadedTracksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DownloadedTracksTable,
+          DownloadedTrack,
+          $$DownloadedTracksTableFilterComposer,
+          $$DownloadedTracksTableOrderingComposer,
+          $$DownloadedTracksTableAnnotationComposer,
+          $$DownloadedTracksTableCreateCompanionBuilder,
+          $$DownloadedTracksTableUpdateCompanionBuilder,
+          (DownloadedTrack, $$DownloadedTracksTableReferences),
+          DownloadedTrack,
+          PrefetchHooks Function({bool itemId})
+        > {
+  $$DownloadedTracksTableTableManager(
+    _$AppDatabase db,
+    $DownloadedTracksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadedTracksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadedTracksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DownloadedTracksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> itemId = const Value.absent(),
+                Value<int> trackIndex = const Value.absent(),
+                Value<double> startOffset = const Value.absent(),
+                Value<double> duration = const Value.absent(),
+                Value<String?> localPath = const Value.absent(),
+                Value<String> status = const Value.absent(),
+              }) => DownloadedTracksCompanion(
+                id: id,
+                itemId: itemId,
+                trackIndex: trackIndex,
+                startOffset: startOffset,
+                duration: duration,
+                localPath: localPath,
+                status: status,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String itemId,
+                required int trackIndex,
+                required double startOffset,
+                required double duration,
+                Value<String?> localPath = const Value.absent(),
+                Value<String> status = const Value.absent(),
+              }) => DownloadedTracksCompanion.insert(
+                id: id,
+                itemId: itemId,
+                trackIndex: trackIndex,
+                startOffset: startOffset,
+                duration: duration,
+                localPath: localPath,
+                status: status,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DownloadedTracksTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({itemId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (itemId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.itemId,
+                                referencedTable:
+                                    $$DownloadedTracksTableReferences
+                                        ._itemIdTable(db),
+                                referencedColumn:
+                                    $$DownloadedTracksTableReferences
+                                        ._itemIdTable(db)
+                                        .itemId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DownloadedTracksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DownloadedTracksTable,
+      DownloadedTrack,
+      $$DownloadedTracksTableFilterComposer,
+      $$DownloadedTracksTableOrderingComposer,
+      $$DownloadedTracksTableAnnotationComposer,
+      $$DownloadedTracksTableCreateCompanionBuilder,
+      $$DownloadedTracksTableUpdateCompanionBuilder,
+      (DownloadedTrack, $$DownloadedTracksTableReferences),
+      DownloadedTrack,
+      PrefetchHooks Function({bool itemId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
   $$KeyValueEntriesTableTableManager get keyValueEntries =>
       $$KeyValueEntriesTableTableManager(_db, _db.keyValueEntries);
+  $$DownloadedItemsTableTableManager get downloadedItems =>
+      $$DownloadedItemsTableTableManager(_db, _db.downloadedItems);
+  $$DownloadedTracksTableTableManager get downloadedTracks =>
+      $$DownloadedTracksTableTableManager(_db, _db.downloadedTracks);
 }

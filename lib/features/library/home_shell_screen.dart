@@ -10,6 +10,7 @@ import '../../models/personalized_shelf.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../downloads/state/download_controller.dart';
 import '../player/mini_player.dart';
 import 'state/library_providers.dart';
 
@@ -26,6 +27,10 @@ class HomeShellScreen extends ConsumerWidget {
     if (session is! SessionAuthenticated) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    // Activates the global background_downloader update listener (Phase
+    // 6.1) — no UI here, just needs to be watched somewhere near app root.
+    ref.watch(downloadControllerProvider);
 
     final librariesAsync = ref.watch(librariesProvider);
 
@@ -51,6 +56,11 @@ class HomeShellScreen extends ConsumerWidget {
             child: Center(
               child: _ConnectionBadge(status: ref.watch(socketServiceProvider)),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.download_done_outlined),
+            tooltip: 'Downloads',
+            onPressed: () => context.push('/downloads'),
           ),
           IconButton(
             icon: const Icon(Icons.logout),

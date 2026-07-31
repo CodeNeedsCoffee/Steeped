@@ -3,17 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/network/cover_image_url.dart';
+import '../../core/storage/app_database.dart';
 import '../../models/library_item_detail.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../downloads/state/download_controller.dart';
 import '../player/mini_player.dart';
 import '../player/state/playback_controller.dart';
 import 'state/library_providers.dart';
 
-/// PLAN.md Phase 4.8: item detail screen. "Play"/"Read"/"Download"/"Add to
-/// Playlist" actions are stubs for now — real playback is Phase 5,
-/// downloads are Milestone 2, playlists are deferred (see Phase 4.5 note).
+/// PLAN.md Phase 4.8: item detail screen. Play (Phase 5) and Download
+/// (Phase 6) are real; "Read" and "Add to Playlist" remain stubs (ebook
+/// reading is Milestone 2 Phase 8; playlists are deferred, see 4.5 note).
 class ItemDetailScreen extends ConsumerWidget {
   const ItemDetailScreen({required this.itemId, super.key});
 
@@ -126,6 +128,10 @@ class _ItemDetailBody extends ConsumerWidget {
                 label: const Text('Read'),
               ),
             ],
+            if (!item.isPodcast && item.tracks.isNotEmpty) ...[
+              const SizedBox(width: 12),
+              _DownloadButton(item: item, serverUrl: serverUrl, token: token),
+            ],
           ],
         ),
         if (item.isPodcast) ...[
@@ -180,5 +186,66 @@ class _ItemDetailBody extends ConsumerWidget {
     final minutes = totalMinutes % 60;
     if (hours == 0) return '${minutes}m';
     return '${hours}h ${minutes}m';
+  }
+}
+
+/// PLAN.md Phase 6.1: not-downloaded / downloading (with progress) /
+/// downloaded (with delete) states.
+class _DownloadButton extends ConsumerWidget {
+  const _DownloadButton({
+    required this.item,
+    required this.serverUrl,
+    required this.token,
+  });
+
+  final LibraryItemDetail item;
+  final String serverUrl;
+  final String? token;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final downloads = ref.watch(downloadsListProvider).valueOrNull ?? const [];
+    DownloadedItem? existing;
+    for (final d in downloads) {
+      if (d.itemId == item.id) {
+        existing = d;
+        break;
+      }
+    }
+
+    if (existing == null) {
+      return OutlinedButton.icon(
+        onPressed: () => ref
+            .read(downloadControllerProvider.notifier)
+            .download(item: item, serverUrl: serverUrl, token: token),
+        icon: const Icon(Icons.download_outlined),
+        label: const Text('Download'),
+      );
+    }
+
+    if (existing.status == 'complete') {
+      return OutlinedButton.icon(
+        onPressed: () =>
+            ref.read(downloadControllerProvider.notifier).delete(item.id),
+        icon: const Icon(Icons.download_done),
+        label: const Text('Downloaded'),
+      );
+    }
+
+    final progress = ref.watch(downloadProgressProvider)[item.id];
+    return SizedBox(
+      width: 130,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(value: progress),
+          const SizedBox(height: 4),
+          Text(
+            progress == null ? 'Downloading…' : '${(progress * 100).round()}%',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
   }
 }

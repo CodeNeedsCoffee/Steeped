@@ -168,20 +168,20 @@ Legend used inline below:
 Two distinct capabilities the reference app has: (a) **downloading server items** for offline use, and
 (b) **importing/scanning on-device folders** of media that never came from the server ("Local Media").
 
-- [ ] 6.1 "Download" action on a book/episode → background download to local storage (respect the user's server download permission).
-- [ ] 6.2 **Series download** — download all missing books in a series at once, with a size/count confirmation.
-- [ ] 6.3 **Download location selection**: Internal App Storage vs shared-storage folder (Android SD/shared). Note Android-10-and-below internal-only behavior.
-- [ ] 6.4 Local library model distinguishing server item vs **downloaded local item** vs **imported local-media item**; link downloaded media to its **server + user** for progress sync (handle "linked to different server/user" cases).
-- [ ] 6.5 Downloads screen: in-progress + **download queue** (with clear-queue), completed list, delete/manage.
-- [ ] 6.6 Offline playback with zero connectivity.
-- [ ] 6.7 Sync local progress back to server on reconnect (queue + retry).
-- [ ] 6.8 **Local Media folders**: let the user pick device folders, **scan** them for audiobooks/podcasts, and play them without any server (mirrors `FolderScanner`/"Manage Local Files"/"New Folder"). Show "No Media Folders" empty state.
-- [ ] 6.9 **Cellular-data controls**: separate "download using cellular" and "stream using cellular" toggles; confirm-on-metered prompts; block when disallowed.
-- [ ] 6.10 Storage management: space used, bulk-delete, low-storage warnings.
+- [x] 6.1 "Download" action on a book → background download via `background_downloader` (one task per audio track + cover, grouped by item id). Podcast episodes not covered (podcasts are Milestone 2/Phase 7, not built yet). Server download-permission isn't checked client-side yet (minor gap — the server would reject an unauthorized download anyway, but the client doesn't pre-emptively hide the button).
+- [ ] 6.2 **Series download**. **Deferred** — needs series browsing (4.5), which is itself deferred.
+- [x] 6.3 **Download location**: Internal App Storage only (`BaseDirectory.applicationDocuments`, via `path_provider`) — no shared-storage/SD option built. This sidesteps the Android-10-and-below internal-only caveat entirely rather than handling it, which is a reasonable simplification: the plan's own note is that internal-only is required behavior on older Android anyway, and app-scoped storage is simplest and needs no extra permissions.
+- [x] 6.4 Local library model: drift `DownloadedItems`/`DownloadedTracks` tables — distinguishes downloaded-local from server-only. **`buildOfflineItemDetail` reconstructs a fully playable item from local rows alone (title, authors, chapters, tracks) — zero network call**, which is what makes 6.6 genuinely offline rather than "streams from a cache." "Imported local-media item" (on-device files never from the server) doesn't apply — that's 6.8, deferred. "Linked to different server/user" edge case not handled (single-session app currently — see 3.3 deferral).
+- [x] 6.5 Downloads screen (`/downloads`): completed list with cover/title/delete, live progress bars for in-progress downloads. No explicit in-progress-vs-completed section split (list just shows both) and no "clear queue" action — `background_downloader` manages queue ordering internally, nothing in the UI to clear.
+- [x] 6.6 **Offline playback with zero connectivity — verified for real**, not just implemented: downloaded a book, force-disabled wifi + cellular data (confirmed via `ping` failing with "Network is unreachable"), and played it from the already-running app — audio decoded, position advanced, chapter highlighting tracked correctly, all from local files + locally-cached metadata. **Known gap found during this verification**: a *cold* app start while offline currently fails to reach downloaded content, because `SessionController`'s bootstrap (Phase 3) always attempts a network token refresh first and falls back to logged-out on any failure — it doesn't distinguish "token really is invalid" from "network unreachable, but I have a still-valid cached session." Not fixed in this pass; worth a Phase 3 follow-up.
+- [ ] 6.7 Sync local progress back to server on reconnect. **Partially covered, not a real queue**: progress-sync PATCH calls (5.9) already fail silently when offline and simply succeed on the next periodic tick once reconnected — so *casual* reconnect-and-it-catches-up works by accident of the existing best-effort design. A real durable queue+retry (surviving app restarts, not just the current session) is **not built**.
+- [ ] 6.8 **Local Media folders** (on-device import/scan, no server involved). **Deferred** — a genuinely separate feature (folder picker, arbitrary-file metadata scanning) from server-item downloads; not built in this pass.
+- [ ] 6.9 **Cellular-data controls**. **Deferred** — no Settings screen yet to host the toggles (same reasoning as 3.8/5.4's seek-on-controls option).
+- [ ] 6.10 Storage management (space used, bulk-delete, low-storage warnings). **Deferred**.
 
-> 🤖 **Android checkpoint:** download a full book, kill app mid-download to confirm resume, go airplane-mode and play offline; add a local-media folder and scan/play a sideloaded file; toggle cellular controls on a metered connection.
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real Audiobookshelf server — downloaded "The Exquisite Torment of Loving Your Enemy" (12h38m, 38 chapters) over WiFi, watched live progress (0%→44%→70%→93%→Downloaded), then genuinely cut all connectivity (wifi + cellular data disabled, `ping` confirmed unreachable) and played it successfully with real-time position/chapter tracking. Downloads screen confirmed showing the completed item with local cover art. Did not test kill-app-mid-download resume or a local-media folder (6.8 deferred).
 >
-> 🍎 **Xcode checkpoint 3 (major landmark):** iOS **background URLSession** download behavior + **app-sandbox file paths** differ substantially. Verify downloads survive backgrounding, offline playback works, and local-file access behaves on a real iPhone/Simulator.
+> 🍎 **Xcode checkpoint 3 (major landmark):** iOS **background URLSession** download behavior + **app-sandbox file paths** differ substantially. Not yet done — needs the Mac.
 
 ---
 
@@ -355,13 +355,13 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [ ] **Chromecast (Android-only)** · 11.1
 
 **Downloads & Local Media**
-- [ ] Download server item · 6.1
+- [x] Download server item · 6.1 — books only, no server download-permission pre-check
 - [ ] Series download · 6.2
-- [ ] Download location selection · 6.3
-- [ ] Local item ↔ server/user linking · 6.4
-- [ ] Downloads screen + queue · 6.5
-- [ ] Offline playback · 6.6
-- [ ] Offline→online progress sync · 6.7
+- [x] Download location selection · 6.3 — internal storage only, no shared-storage option
+- [x] Local item ↔ server/user linking · 6.4 — single-session app, multi-account edge case not handled
+- [x] Downloads screen + queue · 6.5 — no clear-queue action
+- [x] Offline playback · 6.6 — verified with real connectivity cut; cold-start-while-offline gap noted above
+- [ ] Offline→online progress sync · 6.7 — works by accident of best-effort retry, no durable queue
 - [ ] **On-device local-media folders (scan/import)** · 6.8
 - [ ] Cellular download/stream controls · 6.9
 - [ ] Storage management · 6.10

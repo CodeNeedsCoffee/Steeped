@@ -5,6 +5,7 @@ import '../../features/auth/connect_server_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/state/session_controller.dart';
 import '../../features/auth/state/session_state.dart';
+import '../../features/downloads/downloads_screen.dart';
 import '../../features/library/home_shell_screen.dart';
 import '../../features/library/item_detail_screen.dart';
 import '../../features/library/library_grid_screen.dart';
@@ -72,6 +73,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/now-playing',
         builder: (context, state) => const NowPlayingScreen(),
+      ),
+      GoRoute(
+        path: '/downloads',
+        builder: (context, state) => const DownloadsScreen(),
       ),
       GoRoute(
         path: '/settings',
