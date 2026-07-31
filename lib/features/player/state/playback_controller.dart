@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/audio/audio_handler_provider.dart';
@@ -33,16 +34,46 @@ final isPlayingProvider = StreamProvider<bool>((ref) {
 
 /// PLAN.md Phase 5.9: syncs progress every 15s while playing (no
 /// metered/unmetered throttling like the reference app does — deferred,
-/// not core to proving playback works) plus on pause/finish/close.
+/// not core to proving playback works) plus on every pause.
+///
+/// The sync timer is driven by [SteepedAudioHandler.playbackState]'s
+/// `playing` flag rather than by explicit start/stop calls from [pause]/
+/// [resume] — those only fire for in-app UI taps. A hardware media button,
+/// the notification's pause action, or a headset button all call the
+/// handler's `pause()`/`play()` directly (that's the whole point of
+/// exposing a MediaSession), bypassing this class entirely. Tying the timer
+/// to actual playback state means it stops the moment audio actually stops,
+/// regardless of what stopped it — a previous version didn't, which let a
+/// stale position keep syncing to the server after a hardware pause.
 class PlaybackController extends Notifier<void> {
   Timer? _syncTimer;
+  StreamSubscription<PlaybackState>? _playbackStateSub;
+  bool _wasPlaying = false;
 
   @override
   void build() {
-    ref.onDispose(() => _syncTimer?.cancel());
+    _playbackStateSub = _handler.playbackState.listen(_onPlaybackStateChanged);
+    ref.onDispose(() {
+      _syncTimer?.cancel();
+      _playbackStateSub?.cancel();
+    });
   }
 
   SteepedAudioHandler get _handler => ref.read(audioHandlerProvider);
+
+  void _onPlaybackStateChanged(PlaybackState state) {
+    if (state.playing == _wasPlaying) return;
+    _wasPlaying = state.playing;
+    final item = ref.read(currentPlaybackItemProvider);
+    if (item == null) return;
+    if (state.playing) {
+      _startSyncTimer(item);
+    } else {
+      _syncTimer?.cancel();
+      _syncTimer = null;
+      _sync(item);
+    }
+  }
 
   /// PLAN.md Phase 6.6: a downloaded copy is preferred over streaming
   /// whenever one exists — not just as an offline fallback, but always,
@@ -104,13 +135,33 @@ class PlaybackController extends Notifier<void> {
     );
   }
 
+  /// Updates the local downloaded-item progress cache (a no-op if this item
+  /// was never downloaded) independently of whether the server sync below
+  /// succeeds — this is what lets a downloaded item resume correctly even
+  /// across multiple fully-offline play sessions, not just the first one.
+  Future<void> _updateLocalProgressCache(
+    String itemId,
+    double currentTime,
+    bool isFinished,
+  ) {
+    return ref
+        .read(downloadRepositoryProvider)
+        .updateLocalProgress(
+          itemId: itemId,
+          currentTime: currentTime,
+          isFinished: isFinished,
+        );
+  }
+
   Future<void> _sync(LibraryItemDetail item) async {
+    final currentTime = _handler.globalPositionSeconds;
+    await _updateLocalProgressCache(item.id, currentTime, false);
     try {
       await ref
           .read(progressRepositoryProvider)
           .updateProgress(
             libraryItemId: item.id,
-            currentTime: _handler.globalPositionSeconds,
+            currentTime: currentTime,
             duration: item.duration ?? 0,
           );
     } catch (_) {
@@ -120,23 +171,23 @@ class PlaybackController extends Notifier<void> {
 
   Future<void> _onFinished(LibraryItemDetail item) async {
     _syncTimer?.cancel();
+    final currentTime = item.duration ?? _handler.globalPositionSeconds;
+    await _updateLocalProgressCache(item.id, currentTime, true);
     try {
       await ref
           .read(progressRepositoryProvider)
           .updateProgress(
             libraryItemId: item.id,
-            currentTime: item.duration ?? _handler.globalPositionSeconds,
+            currentTime: currentTime,
             duration: item.duration ?? 0,
             isFinished: true,
           );
     } catch (_) {}
   }
 
-  Future<void> pause() async {
-    final item = ref.read(currentPlaybackItemProvider);
-    await _handler.pause();
-    if (item != null) await _sync(item);
-  }
+  /// No explicit sync here — the `playbackState` listener above reacts to
+  /// the resulting `playing: false` regardless of who paused it.
+  Future<void> pause() => _handler.pause();
 
   Future<void> resume() => _handler.play();
 
@@ -152,11 +203,13 @@ class PlaybackController extends Notifier<void> {
   Future<void> markFinished(bool finished) async {
     final item = ref.read(currentPlaybackItemProvider);
     if (item == null) return;
+    final currentTime = finished ? (item.duration ?? 0) : 0.0;
+    await _updateLocalProgressCache(item.id, currentTime, finished);
     await ref
         .read(progressRepositoryProvider)
         .updateProgress(
           libraryItemId: item.id,
-          currentTime: finished ? (item.duration ?? 0) : 0,
+          currentTime: currentTime,
           duration: item.duration ?? 0,
           isFinished: finished,
         );
@@ -166,8 +219,11 @@ class PlaybackController extends Notifier<void> {
     final item = ref.read(currentPlaybackItemProvider);
     _syncTimer?.cancel();
     if (item != null) await _sync(item);
-    await _handler.stop();
+    // Clear before stopping: `stop()` resets the player's position, and if
+    // the playbackState listener above saw the item still set, it would
+    // fire a second, wrong sync at position 0 right after the correct one.
     ref.read(currentPlaybackItemProvider.notifier).state = null;
+    await _handler.stop();
   }
 }
 

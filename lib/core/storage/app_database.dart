@@ -29,6 +29,12 @@ class DownloadedItems extends Table {
   TextColumn get status =>
       text().withDefault(const Constant('downloading'))(); // downloading | complete
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  // Local cache of listening progress, seeded at download time and kept
+  // fresh by PlaybackController on every sync — this is what a downloaded
+  // item resumes from when played with no network to ask the server.
+  RealColumn get progressCurrentTime => real().nullable()();
+  BoolColumn get progressIsFinished =>
+      boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {itemId};
@@ -50,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
