@@ -1,0 +1,7 @@
+{
+  "@@locale": "en",
+  "appName": "Steeped",
+  "@appName": {
+    "description": "The application name."
+  }
+}
