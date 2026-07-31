@@ -6,6 +6,8 @@ import '../../features/auth/login_screen.dart';
 import '../../features/auth/state/session_controller.dart';
 import '../../features/auth/state/session_state.dart';
 import '../../features/library/home_shell_screen.dart';
+import '../../features/library/item_detail_screen.dart';
+import '../../features/library/library_grid_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import 'go_router_refresh_notifier.dart';
 import 'splash_screen.dart';
@@ -32,8 +34,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           }
           return '/connect-server';
         case SessionAuthenticated():
-          if (location == '/home' || location == '/settings') return null;
-          return '/home';
+          if (location == '/' ||
+              location == '/connect-server' ||
+              location == '/login') {
+            return '/home';
+          }
+          return null;
       }
     },
     routes: [
@@ -50,6 +56,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/home',
         builder: (context, state) => const HomeShellScreen(),
+      ),
+      GoRoute(
+        path: '/library/:libraryId',
+        builder: (context, state) => LibraryGridScreen(
+          libraryId: state.pathParameters['libraryId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/item/:itemId',
+        builder: (context, state) =>
+            ItemDetailScreen(itemId: state.pathParameters['itemId']!),
       ),
       GoRoute(
         path: '/settings',
