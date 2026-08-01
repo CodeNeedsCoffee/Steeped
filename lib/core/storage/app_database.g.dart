@@ -1365,6 +1365,346 @@ class DownloadedTracksCompanion extends UpdateCompanion<DownloadedTrack> {
   }
 }
 
+class $LogEntriesTable extends LogEntries
+    with TableInfo<$LogEntriesTable, LogEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LogEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _levelMeta = const VerificationMeta('level');
+  @override
+  late final GeneratedColumn<String> level = GeneratedColumn<String>(
+    'level',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tagMeta = const VerificationMeta('tag');
+  @override
+  late final GeneratedColumn<String> tag = GeneratedColumn<String>(
+    'tag',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _messageMeta = const VerificationMeta(
+    'message',
+  );
+  @override
+  late final GeneratedColumn<String> message = GeneratedColumn<String>(
+    'message',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, timestamp, level, tag, message];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'log_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LogEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    }
+    if (data.containsKey('level')) {
+      context.handle(
+        _levelMeta,
+        level.isAcceptableOrUnknown(data['level']!, _levelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_levelMeta);
+    }
+    if (data.containsKey('tag')) {
+      context.handle(
+        _tagMeta,
+        tag.isAcceptableOrUnknown(data['tag']!, _tagMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagMeta);
+    }
+    if (data.containsKey('message')) {
+      context.handle(
+        _messageMeta,
+        message.isAcceptableOrUnknown(data['message']!, _messageMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_messageMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LogEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LogEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      level: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}level'],
+      )!,
+      tag: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag'],
+      )!,
+      message: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}message'],
+      )!,
+    );
+  }
+
+  @override
+  $LogEntriesTable createAlias(String alias) {
+    return $LogEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class LogEntry extends DataClass implements Insertable<LogEntry> {
+  final int id;
+  final DateTime timestamp;
+  final String level;
+  final String tag;
+  final String message;
+  const LogEntry({
+    required this.id,
+    required this.timestamp,
+    required this.level,
+    required this.tag,
+    required this.message,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    map['level'] = Variable<String>(level);
+    map['tag'] = Variable<String>(tag);
+    map['message'] = Variable<String>(message);
+    return map;
+  }
+
+  LogEntriesCompanion toCompanion(bool nullToAbsent) {
+    return LogEntriesCompanion(
+      id: Value(id),
+      timestamp: Value(timestamp),
+      level: Value(level),
+      tag: Value(tag),
+      message: Value(message),
+    );
+  }
+
+  factory LogEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LogEntry(
+      id: serializer.fromJson<int>(json['id']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+      level: serializer.fromJson<String>(json['level']),
+      tag: serializer.fromJson<String>(json['tag']),
+      message: serializer.fromJson<String>(json['message']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+      'level': serializer.toJson<String>(level),
+      'tag': serializer.toJson<String>(tag),
+      'message': serializer.toJson<String>(message),
+    };
+  }
+
+  LogEntry copyWith({
+    int? id,
+    DateTime? timestamp,
+    String? level,
+    String? tag,
+    String? message,
+  }) => LogEntry(
+    id: id ?? this.id,
+    timestamp: timestamp ?? this.timestamp,
+    level: level ?? this.level,
+    tag: tag ?? this.tag,
+    message: message ?? this.message,
+  );
+  LogEntry copyWithCompanion(LogEntriesCompanion data) {
+    return LogEntry(
+      id: data.id.present ? data.id.value : this.id,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      level: data.level.present ? data.level.value : this.level,
+      tag: data.tag.present ? data.tag.value : this.tag,
+      message: data.message.present ? data.message.value : this.message,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LogEntry(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('level: $level, ')
+          ..write('tag: $tag, ')
+          ..write('message: $message')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, timestamp, level, tag, message);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LogEntry &&
+          other.id == this.id &&
+          other.timestamp == this.timestamp &&
+          other.level == this.level &&
+          other.tag == this.tag &&
+          other.message == this.message);
+}
+
+class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
+  final Value<int> id;
+  final Value<DateTime> timestamp;
+  final Value<String> level;
+  final Value<String> tag;
+  final Value<String> message;
+  const LogEntriesCompanion({
+    this.id = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.level = const Value.absent(),
+    this.tag = const Value.absent(),
+    this.message = const Value.absent(),
+  });
+  LogEntriesCompanion.insert({
+    this.id = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    required String level,
+    required String tag,
+    required String message,
+  }) : level = Value(level),
+       tag = Value(tag),
+       message = Value(message);
+  static Insertable<LogEntry> custom({
+    Expression<int>? id,
+    Expression<DateTime>? timestamp,
+    Expression<String>? level,
+    Expression<String>? tag,
+    Expression<String>? message,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (level != null) 'level': level,
+      if (tag != null) 'tag': tag,
+      if (message != null) 'message': message,
+    });
+  }
+
+  LogEntriesCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? timestamp,
+    Value<String>? level,
+    Value<String>? tag,
+    Value<String>? message,
+  }) {
+    return LogEntriesCompanion(
+      id: id ?? this.id,
+      timestamp: timestamp ?? this.timestamp,
+      level: level ?? this.level,
+      tag: tag ?? this.tag,
+      message: message ?? this.message,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    if (level.present) {
+      map['level'] = Variable<String>(level.value);
+    }
+    if (tag.present) {
+      map['tag'] = Variable<String>(tag.value);
+    }
+    if (message.present) {
+      map['message'] = Variable<String>(message.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LogEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('level: $level, ')
+          ..write('tag: $tag, ')
+          ..write('message: $message')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1377,6 +1717,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DownloadedTracksTable downloadedTracks = $DownloadedTracksTable(
     this,
   );
+  late final $LogEntriesTable logEntries = $LogEntriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1385,6 +1726,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     keyValueEntries,
     downloadedItems,
     downloadedTracks,
+    logEntries,
   ];
 }
 
@@ -2334,6 +2676,194 @@ typedef $$DownloadedTracksTableProcessedTableManager =
       DownloadedTrack,
       PrefetchHooks Function({bool itemId})
     >;
+typedef $$LogEntriesTableCreateCompanionBuilder =
+    LogEntriesCompanion Function({
+      Value<int> id,
+      Value<DateTime> timestamp,
+      required String level,
+      required String tag,
+      required String message,
+    });
+typedef $$LogEntriesTableUpdateCompanionBuilder =
+    LogEntriesCompanion Function({
+      Value<int> id,
+      Value<DateTime> timestamp,
+      Value<String> level,
+      Value<String> tag,
+      Value<String> message,
+    });
+
+class $$LogEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $LogEntriesTable> {
+  $$LogEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tag => $composableBuilder(
+    column: $table.tag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LogEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $LogEntriesTable> {
+  $$LogEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tag => $composableBuilder(
+    column: $table.tag,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LogEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LogEntriesTable> {
+  $$LogEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get level =>
+      $composableBuilder(column: $table.level, builder: (column) => column);
+
+  GeneratedColumn<String> get tag =>
+      $composableBuilder(column: $table.tag, builder: (column) => column);
+
+  GeneratedColumn<String> get message =>
+      $composableBuilder(column: $table.message, builder: (column) => column);
+}
+
+class $$LogEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LogEntriesTable,
+          LogEntry,
+          $$LogEntriesTableFilterComposer,
+          $$LogEntriesTableOrderingComposer,
+          $$LogEntriesTableAnnotationComposer,
+          $$LogEntriesTableCreateCompanionBuilder,
+          $$LogEntriesTableUpdateCompanionBuilder,
+          (LogEntry, BaseReferences<_$AppDatabase, $LogEntriesTable, LogEntry>),
+          LogEntry,
+          PrefetchHooks Function()
+        > {
+  $$LogEntriesTableTableManager(_$AppDatabase db, $LogEntriesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LogEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LogEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LogEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<String> level = const Value.absent(),
+                Value<String> tag = const Value.absent(),
+                Value<String> message = const Value.absent(),
+              }) => LogEntriesCompanion(
+                id: id,
+                timestamp: timestamp,
+                level: level,
+                tag: tag,
+                message: message,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                required String level,
+                required String tag,
+                required String message,
+              }) => LogEntriesCompanion.insert(
+                id: id,
+                timestamp: timestamp,
+                level: level,
+                tag: tag,
+                message: message,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LogEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LogEntriesTable,
+      LogEntry,
+      $$LogEntriesTableFilterComposer,
+      $$LogEntriesTableOrderingComposer,
+      $$LogEntriesTableAnnotationComposer,
+      $$LogEntriesTableCreateCompanionBuilder,
+      $$LogEntriesTableUpdateCompanionBuilder,
+      (LogEntry, BaseReferences<_$AppDatabase, $LogEntriesTable, LogEntry>),
+      LogEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2344,4 +2874,6 @@ class $AppDatabaseManager {
       $$DownloadedItemsTableTableManager(_db, _db.downloadedItems);
   $$DownloadedTracksTableTableManager get downloadedTracks =>
       $$DownloadedTracksTableTableManager(_db, _db.downloadedTracks);
+  $$LogEntriesTableTableManager get logEntries =>
+      $$LogEntriesTableTableManager(_db, _db.logEntries);
 }

@@ -50,13 +50,27 @@ class DownloadedTracks extends Table {
   TextColumn get status => text().withDefault(const Constant('pending'))();
 }
 
-@DriftDatabase(tables: [KeyValueEntries, DownloadedItems, DownloadedTracks])
+/// PLAN.md Phase 9.6: a genuinely useful debug log, not a stub — hooked
+/// into real failure paths (auth refresh, progress sync, downloads) so
+/// evan can see what actually went wrong on a self-hosted connection
+/// without needing `adb logcat`.
+class LogEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
+  TextColumn get level => text()(); // info | warning | error
+  TextColumn get tag => text()();
+  TextColumn get message => text()();
+}
+
+@DriftDatabase(
+  tables: [KeyValueEntries, DownloadedItems, DownloadedTracks, LogEntries],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

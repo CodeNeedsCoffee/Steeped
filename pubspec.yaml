@@ -58,6 +58,7 @@ dependencies:
   flutter_html: ^3.0.0
   pdfx: ^2.9.2
   archive: ^3.6.1
+  wakelock_plus: ^1.7.0
 
 dev_dependencies:
   flutter_test:

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/settings/data/app_settings.dart';
+import 'features/settings/state/settings_providers.dart';
 import 'l10n/gen/app_localizations.dart';
 
 class SteepedApp extends ConsumerWidget {
@@ -11,6 +14,14 @@ class SteepedApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    // PLAN.md Phase 9.3: lock-orientation toggle.
+    final settings =
+        ref.watch(appSettingsProvider).valueOrNull ?? const AppSettings();
+    SystemChrome.setPreferredOrientations(
+      settings.lockPortrait
+          ? [DeviceOrientation.portraitUp]
+          : DeviceOrientation.values,
+    );
     return MaterialApp.router(
       title: 'Steeped',
       debugShowCheckedModeBanner: false,

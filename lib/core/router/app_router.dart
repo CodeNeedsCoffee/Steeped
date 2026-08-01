@@ -14,7 +14,12 @@ import '../../features/library/item_detail_screen.dart';
 import '../../features/library/library_grid_screen.dart';
 import '../../features/player/now_playing_screen.dart';
 import '../../features/podcasts/recent_episodes_screen.dart';
+import '../../features/settings/account_screen.dart';
+import '../../features/settings/logs_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/stats/history_screen.dart';
+import '../../features/stats/stats_screen.dart';
+import '../../features/stats/year_in_review_screen.dart';
 import 'go_router_refresh_notifier.dart';
 import 'splash_screen.dart';
 
@@ -107,6 +112,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
       ),
+      GoRoute(
+        path: '/account',
+        builder: (context, state) => const AccountScreen(),
+      ),
+      GoRoute(
+        path: '/stats',
+        builder: (context, state) => const StatsScreen(),
+      ),
+      GoRoute(
+        path: '/stats/year-in-review',
+        builder: (context, state) => const YearInReviewScreen(),
+      ),
+      GoRoute(
+        path: '/history',
+        builder: (context, state) => const HistoryScreen(),
+      ),
+      GoRoute(path: '/logs', builder: (context, state) => const LogsScreen()),
     ],
   );
 });

@@ -63,10 +63,9 @@ class HomeShellScreen extends ConsumerWidget {
             onPressed: () => context.push('/downloads'),
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Log out',
-            onPressed: () =>
-                ref.read(sessionControllerProvider.notifier).logout(),
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => context.push('/settings'),
           ),
         ],
       ),

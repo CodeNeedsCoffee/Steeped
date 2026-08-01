@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/audio/audio_handler_provider.dart';
 import '../../../core/audio/steeped_audio_handler.dart';
+import '../../../core/logging/log_repository.dart';
 import '../../../core/network/audio_stream_url.dart';
+import '../../../core/network/connectivity_service.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/podcast_episode.dart';
@@ -13,6 +15,8 @@ import '../../auth/state/session_controller.dart';
 import '../../auth/state/session_state.dart';
 import '../../downloads/state/download_controller.dart';
 import '../../library/state/library_providers.dart';
+import '../../settings/data/app_settings.dart';
+import '../../settings/state/settings_providers.dart';
 import '../data/progress_repository.dart';
 
 final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
@@ -33,6 +37,21 @@ final isPlayingProvider = StreamProvider<bool>((ref) {
   return ref.watch(audioHandlerProvider).playbackState.map((s) => s.playing);
 });
 
+/// PLAN.md Phase 9.3: backs the "scale elapsed time by speed" display
+/// option — needs the live speed, not just the value the speed dropdown
+/// last set locally.
+final playbackSpeedProvider = StreamProvider<double>((ref) {
+  return ref
+      .watch(audioHandlerProvider)
+      .playbackState
+      .map((s) => s.speed == 0 ? 1.0 : s.speed);
+});
+
+/// PLAN.md Phase 5.7/9.3: time left on an active sleep timer, or null if
+/// none is running. A real, working (if basic) timer — manual duration
+/// only; end-of-chapter/shake-to-reset/fade-out are still deferred.
+final sleepTimerRemainingProvider = StateProvider<Duration?>((ref) => null);
+
 /// PLAN.md Phase 5.9: syncs progress every 15s while playing (no
 /// metered/unmetered throttling like the reference app does — deferred,
 /// not core to proving playback works) plus on every pause.
@@ -48,6 +67,7 @@ final isPlayingProvider = StreamProvider<bool>((ref) {
 /// stale position keep syncing to the server after a hardware pause.
 class PlaybackController extends Notifier<void> {
   Timer? _syncTimer;
+  Timer? _sleepCountdown;
   StreamSubscription<PlaybackState>? _playbackStateSub;
   bool _wasPlaying = false;
 
@@ -56,8 +76,31 @@ class PlaybackController extends Notifier<void> {
     _playbackStateSub = _handler.playbackState.listen(_onPlaybackStateChanged);
     ref.onDispose(() {
       _syncTimer?.cancel();
+      _sleepCountdown?.cancel();
       _playbackStateSub?.cancel();
     });
+  }
+
+  void startSleepTimer(Duration duration) {
+    _sleepCountdown?.cancel();
+    var remaining = duration;
+    ref.read(sleepTimerRemainingProvider.notifier).state = remaining;
+    _sleepCountdown = Timer.periodic(const Duration(seconds: 1), (timer) {
+      remaining -= const Duration(seconds: 1);
+      if (remaining <= Duration.zero) {
+        timer.cancel();
+        ref.read(sleepTimerRemainingProvider.notifier).state = null;
+        pause();
+      } else {
+        ref.read(sleepTimerRemainingProvider.notifier).state = remaining;
+      }
+    });
+  }
+
+  void cancelSleepTimer() {
+    _sleepCountdown?.cancel();
+    _sleepCountdown = null;
+    ref.read(sleepTimerRemainingProvider.notifier).state = null;
   }
 
   SteepedAudioHandler get _handler => ref.read(audioHandlerProvider);
@@ -99,6 +142,7 @@ class PlaybackController extends Notifier<void> {
     } else {
       final session = ref.read(sessionControllerProvider);
       if (session is! SessionAuthenticated) return;
+      if (await _blockedByCellularSetting()) return;
       final fetched = await ref
           .read(libraryRepositoryProvider)
           .fetchItemDetail(itemId);
@@ -147,6 +191,7 @@ class PlaybackController extends Notifier<void> {
 
     final session = ref.read(sessionControllerProvider);
     if (session is! SessionAuthenticated) return;
+    if (await _blockedByCellularSetting()) return;
     final track = episode.audioTrack;
     if (track == null) return;
 
@@ -190,6 +235,21 @@ class PlaybackController extends Notifier<void> {
     _startSyncTimer(item);
   }
 
+  /// PLAN.md Phase 9.3 (Data/cellular controls). Only gates *streaming* —
+  /// downloaded/offline playback never touches the network regardless.
+  Future<bool> _blockedByCellularSetting() async {
+    final settings =
+        ref.read(appSettingsProvider).valueOrNull ?? const AppSettings();
+    if (settings.allowCellularStreaming) return false;
+    final onCellular = await isOnCellularConnection(
+      ref.read(connectivityProvider),
+    );
+    if (!onCellular) return false;
+    ref.read(cellularBlockNoticeProvider.notifier).state =
+        'Streaming over cellular is off in Settings → Data.';
+    return true;
+  }
+
   void _startSyncTimer(LibraryItemDetail item) {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(
@@ -228,8 +288,15 @@ class PlaybackController extends Notifier<void> {
             currentTime: currentTime,
             duration: item.duration ?? 0,
           );
-    } catch (_) {
+    } catch (e) {
       // Best-effort — a dedicated "sync failed" UI is deferred (5.9 note).
+      // Still logged (9.6) so a persistent sync failure is at least visible
+      // somewhere instead of silently vanishing.
+      unawaited(
+        ref
+            .read(logRepositoryProvider)
+            .log('warning', 'progress-sync', 'Sync failed for ${item.id}: $e'),
+      );
     }
   }
 
@@ -256,9 +323,15 @@ class PlaybackController extends Notifier<void> {
 
   Future<void> resume() => _handler.play();
 
-  Future<void> jumpForward() => _handler.jumpBy(30);
+  /// PLAN.md Phase 9.3: jump interval is now configurable in Settings →
+  /// Playback (was fixed at 30s per the PLAN.md 5.5 note).
+  Future<void> jumpForward() => _handler.jumpBy(_jumpIntervalSeconds.toDouble());
 
-  Future<void> jumpBackward() => _handler.jumpBy(-30);
+  Future<void> jumpBackward() =>
+      _handler.jumpBy(-_jumpIntervalSeconds.toDouble());
+
+  int get _jumpIntervalSeconds =>
+      ref.read(appSettingsProvider).valueOrNull?.jumpIntervalSeconds ?? 30;
 
   Future<void> seekToGlobalPosition(double seconds) =>
       _handler.seekToGlobalPosition(seconds);
