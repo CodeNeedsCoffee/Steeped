@@ -13,7 +13,7 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 | 1         | Core streaming — connect, authenticate, browse, stream, basic UI | 0, 1, 3, 4, 5 | 🟢 done |
 | 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | 🟢 done |
 | 3         | UI customization & skins                          | 2             | 🟡     |
-| 4         | Car integration — Android Auto & CarPlay          | 10            | ⚪     |
+| 4         | Car integration — Android Auto & CarPlay          | 10            | 🟡     |
 | 5         | Stretch goals & release prep                      | 11, 12        | ⚪     |
 
 ## Now
@@ -153,11 +153,40 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   and whether Bookshelf should later get literal textures are open questions for evan to weigh in on, not
   settled by this pass.
 
+- **Bug fix (2026-08-01, reported by evan: "auth fails randomly")**: the socket "Live" badge would
+  permanently get stuck on "Auth failed" after the access token expired, because `SocketService` kept
+  re-sending a stale token captured at connect time on every reconnect — including the ones
+  `socket_io_client` triggers automatically after a network blip, which happen often enough over a real day
+  that this wasn't a rare edge case. Fixed to always use a fresh token and to force a real token refresh on
+  a genuine auth failure. Verified live: reproduced the permanent-stuck bug on the old build via a wifi
+  toggle, confirmed the fixed build recovers automatically. See `PLAN.md` Phase 3.6 for full detail.
+
+- **Milestone 4 (Phase 10 — Car Integration) started 2026-08-01**, on the same `milestone-3-ui-skins` branch
+  (picked up out of strict milestone order, at evan's request to "continue onto the next phase"). Built the
+  shared car content-tree foundation (10.1–10.3) and the Android Auto side of it (10.4, 10.6): a real
+  browsable tree (Downloaded/Local Media/Continue Listening/Libraries → items, podcasts → episodes),
+  wired into `audio_service`'s `MediaBrowserService`, with the `automotive_app_desc.xml` manifest
+  declaration Android Auto specifically requires. Installed the Desktop Head Unit and got it to a real
+  "connected" state over ADB — confirming the phone accepts Steeped as a car media source — but **couldn't
+  visually drive or screenshot the DHU's own window in this environment** (no working desktop screenshot
+  tool, and installing `xdotool` needed a sudo password that wasn't available). Verified the underlying
+  logic directly instead: temporary debug logging (reverted after use) exercised the real
+  `getChildren`/`playFromMediaId` methods against evan's real account — confirmed the correct tree, all 4
+  real libraries, a podcast correctly branching into its episode list, and a full playback dispatch that
+  actually started real audio (confirmed both via `playbackState.playing=true` and visually in the app's own
+  mini-player). Found and fixed a real bug this way: "Continue Listening" depended on a provider that stays
+  null until a user manually touches the in-app library picker, so it silently returned empty for most real
+  sessions, not just a first-launch edge case. **Still open**: an actual visual pass through the DHU (or a
+  real car) once screenshot/input tooling is available, 10.5 (Android-Auto-specific settings), a full
+  Android-for-Cars content/quality guideline audit, and all of CarPlay (10.8–10.12, Mac-gated). See
+  `PLAN.md` Phase 10 for full detail.
+
 ## Next
 
-- Continue Milestone 3 Phase 2: 2.5 (shared component library), brightness variants, deeper accessibility
-  audit — or move on to Phase 10 (car integration) if evan would rather revisit skin polish later once
-  there's real feedback on the two skins built so far.
+- Two parallel threads are open — Milestone 3 (skins) and Milestone 4 (car integration) — pick up either:
+  - Milestone 3 Phase 2: 2.5 (shared component library), brightness variants, deeper accessibility audit.
+  - Milestone 4 Phase 10: an actual DHU visual pass (needs desktop screenshot/input tooling — `xdotool`
+    install needs a sudo password), or move on to CarPlay groundwork once on the Mac.
 - Still worth a look next time on-device: confirm a real PDF item exists somewhere in evan's library to
   close out Phase 8.3's verification gap; verify Phase 9's cellular controls against a real cellular-only
   connection (needs airplane mode + manually re-enabled mobile data).
@@ -172,4 +201,4 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ---
 
-*Last updated: 2026-08-01 (Milestone 2 fully complete; Milestone 3 skin engine + library retrofit built and verified live)*
+*Last updated: 2026-08-01 (Milestone 2 fully complete; Milestone 3 skin engine + Milestone 4 Android Auto foundation both started; socket auth bug fixed)*
