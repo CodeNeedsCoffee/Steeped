@@ -12,6 +12,7 @@ import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../downloads/state/download_controller.dart';
 import '../player/mini_player.dart';
+import '../player/state/pending_sync_controller.dart';
 import 'state/library_providers.dart';
 
 /// PLAN.md Phase 4.2 (libraries + switcher) and 4.3 (personalized home
@@ -31,6 +32,10 @@ class HomeShellScreen extends ConsumerWidget {
     // Activates the global background_downloader update listener (Phase
     // 6.1) — no UI here, just needs to be watched somewhere near app root.
     ref.watch(downloadControllerProvider);
+    // PLAN.md Phase 6.7: activates the durable pending-progress-sync flush
+    // listener (connectivity-regained + app-start) — same "just needs to be
+    // watched somewhere" pattern as the line above.
+    ref.watch(pendingSyncControllerProvider);
 
     final librariesAsync = ref.watch(librariesProvider);
 

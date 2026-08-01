@@ -62,15 +62,40 @@ class LogEntries extends Table {
   TextColumn get message => text()();
 }
 
+/// PLAN.md Phase 6.7: a real durable queue for progress syncs that failed
+/// while offline — survives app restarts, unlike the prior best-effort
+/// design that only caught up if the app happened to still be open on the
+/// next 15s tick when connectivity returned. One row per item/episode
+/// ([syncKey]); a later failed sync overwrites the earlier one since only
+/// the latest position is worth uploading.
+class PendingProgressSyncs extends Table {
+  TextColumn get syncKey => text()(); // libraryItemId, or 'id::episodeId'
+  TextColumn get libraryItemId => text()();
+  TextColumn get episodeId => text().nullable()();
+  RealColumn get currentTime => real()();
+  RealColumn get duration => real()();
+  BoolColumn get isFinished => boolean().nullable()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {syncKey};
+}
+
 @DriftDatabase(
-  tables: [KeyValueEntries, DownloadedItems, DownloadedTracks, LogEntries],
+  tables: [
+    KeyValueEntries,
+    DownloadedItems,
+    DownloadedTracks,
+    LogEntries,
+    PendingProgressSyncs,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(

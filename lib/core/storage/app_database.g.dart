@@ -1705,6 +1705,492 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
   }
 }
 
+class $PendingProgressSyncsTable extends PendingProgressSyncs
+    with TableInfo<$PendingProgressSyncsTable, PendingProgressSync> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingProgressSyncsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _syncKeyMeta = const VerificationMeta(
+    'syncKey',
+  );
+  @override
+  late final GeneratedColumn<String> syncKey = GeneratedColumn<String>(
+    'sync_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _libraryItemIdMeta = const VerificationMeta(
+    'libraryItemId',
+  );
+  @override
+  late final GeneratedColumn<String> libraryItemId = GeneratedColumn<String>(
+    'library_item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _episodeIdMeta = const VerificationMeta(
+    'episodeId',
+  );
+  @override
+  late final GeneratedColumn<String> episodeId = GeneratedColumn<String>(
+    'episode_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currentTimeMeta = const VerificationMeta(
+    'currentTime',
+  );
+  @override
+  late final GeneratedColumn<double> currentTime = GeneratedColumn<double>(
+    'current_time',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _durationMeta = const VerificationMeta(
+    'duration',
+  );
+  @override
+  late final GeneratedColumn<double> duration = GeneratedColumn<double>(
+    'duration',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isFinishedMeta = const VerificationMeta(
+    'isFinished',
+  );
+  @override
+  late final GeneratedColumn<bool> isFinished = GeneratedColumn<bool>(
+    'is_finished',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_finished" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    syncKey,
+    libraryItemId,
+    episodeId,
+    currentTime,
+    duration,
+    isFinished,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_progress_syncs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingProgressSync> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('sync_key')) {
+      context.handle(
+        _syncKeyMeta,
+        syncKey.isAcceptableOrUnknown(data['sync_key']!, _syncKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_syncKeyMeta);
+    }
+    if (data.containsKey('library_item_id')) {
+      context.handle(
+        _libraryItemIdMeta,
+        libraryItemId.isAcceptableOrUnknown(
+          data['library_item_id']!,
+          _libraryItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_libraryItemIdMeta);
+    }
+    if (data.containsKey('episode_id')) {
+      context.handle(
+        _episodeIdMeta,
+        episodeId.isAcceptableOrUnknown(data['episode_id']!, _episodeIdMeta),
+      );
+    }
+    if (data.containsKey('current_time')) {
+      context.handle(
+        _currentTimeMeta,
+        currentTime.isAcceptableOrUnknown(
+          data['current_time']!,
+          _currentTimeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_currentTimeMeta);
+    }
+    if (data.containsKey('duration')) {
+      context.handle(
+        _durationMeta,
+        duration.isAcceptableOrUnknown(data['duration']!, _durationMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_durationMeta);
+    }
+    if (data.containsKey('is_finished')) {
+      context.handle(
+        _isFinishedMeta,
+        isFinished.isAcceptableOrUnknown(data['is_finished']!, _isFinishedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {syncKey};
+  @override
+  PendingProgressSync map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingProgressSync(
+      syncKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_key'],
+      )!,
+      libraryItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}library_item_id'],
+      )!,
+      episodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}episode_id'],
+      ),
+      currentTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}current_time'],
+      )!,
+      duration: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}duration'],
+      )!,
+      isFinished: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_finished'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PendingProgressSyncsTable createAlias(String alias) {
+    return $PendingProgressSyncsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingProgressSync extends DataClass
+    implements Insertable<PendingProgressSync> {
+  final String syncKey;
+  final String libraryItemId;
+  final String? episodeId;
+  final double currentTime;
+  final double duration;
+  final bool? isFinished;
+  final DateTime updatedAt;
+  const PendingProgressSync({
+    required this.syncKey,
+    required this.libraryItemId,
+    this.episodeId,
+    required this.currentTime,
+    required this.duration,
+    this.isFinished,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['sync_key'] = Variable<String>(syncKey);
+    map['library_item_id'] = Variable<String>(libraryItemId);
+    if (!nullToAbsent || episodeId != null) {
+      map['episode_id'] = Variable<String>(episodeId);
+    }
+    map['current_time'] = Variable<double>(currentTime);
+    map['duration'] = Variable<double>(duration);
+    if (!nullToAbsent || isFinished != null) {
+      map['is_finished'] = Variable<bool>(isFinished);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PendingProgressSyncsCompanion toCompanion(bool nullToAbsent) {
+    return PendingProgressSyncsCompanion(
+      syncKey: Value(syncKey),
+      libraryItemId: Value(libraryItemId),
+      episodeId: episodeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(episodeId),
+      currentTime: Value(currentTime),
+      duration: Value(duration),
+      isFinished: isFinished == null && nullToAbsent
+          ? const Value.absent()
+          : Value(isFinished),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PendingProgressSync.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingProgressSync(
+      syncKey: serializer.fromJson<String>(json['syncKey']),
+      libraryItemId: serializer.fromJson<String>(json['libraryItemId']),
+      episodeId: serializer.fromJson<String?>(json['episodeId']),
+      currentTime: serializer.fromJson<double>(json['currentTime']),
+      duration: serializer.fromJson<double>(json['duration']),
+      isFinished: serializer.fromJson<bool?>(json['isFinished']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'syncKey': serializer.toJson<String>(syncKey),
+      'libraryItemId': serializer.toJson<String>(libraryItemId),
+      'episodeId': serializer.toJson<String?>(episodeId),
+      'currentTime': serializer.toJson<double>(currentTime),
+      'duration': serializer.toJson<double>(duration),
+      'isFinished': serializer.toJson<bool?>(isFinished),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PendingProgressSync copyWith({
+    String? syncKey,
+    String? libraryItemId,
+    Value<String?> episodeId = const Value.absent(),
+    double? currentTime,
+    double? duration,
+    Value<bool?> isFinished = const Value.absent(),
+    DateTime? updatedAt,
+  }) => PendingProgressSync(
+    syncKey: syncKey ?? this.syncKey,
+    libraryItemId: libraryItemId ?? this.libraryItemId,
+    episodeId: episodeId.present ? episodeId.value : this.episodeId,
+    currentTime: currentTime ?? this.currentTime,
+    duration: duration ?? this.duration,
+    isFinished: isFinished.present ? isFinished.value : this.isFinished,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PendingProgressSync copyWithCompanion(PendingProgressSyncsCompanion data) {
+    return PendingProgressSync(
+      syncKey: data.syncKey.present ? data.syncKey.value : this.syncKey,
+      libraryItemId: data.libraryItemId.present
+          ? data.libraryItemId.value
+          : this.libraryItemId,
+      episodeId: data.episodeId.present ? data.episodeId.value : this.episodeId,
+      currentTime: data.currentTime.present
+          ? data.currentTime.value
+          : this.currentTime,
+      duration: data.duration.present ? data.duration.value : this.duration,
+      isFinished: data.isFinished.present
+          ? data.isFinished.value
+          : this.isFinished,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingProgressSync(')
+          ..write('syncKey: $syncKey, ')
+          ..write('libraryItemId: $libraryItemId, ')
+          ..write('episodeId: $episodeId, ')
+          ..write('currentTime: $currentTime, ')
+          ..write('duration: $duration, ')
+          ..write('isFinished: $isFinished, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    syncKey,
+    libraryItemId,
+    episodeId,
+    currentTime,
+    duration,
+    isFinished,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingProgressSync &&
+          other.syncKey == this.syncKey &&
+          other.libraryItemId == this.libraryItemId &&
+          other.episodeId == this.episodeId &&
+          other.currentTime == this.currentTime &&
+          other.duration == this.duration &&
+          other.isFinished == this.isFinished &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PendingProgressSyncsCompanion
+    extends UpdateCompanion<PendingProgressSync> {
+  final Value<String> syncKey;
+  final Value<String> libraryItemId;
+  final Value<String?> episodeId;
+  final Value<double> currentTime;
+  final Value<double> duration;
+  final Value<bool?> isFinished;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const PendingProgressSyncsCompanion({
+    this.syncKey = const Value.absent(),
+    this.libraryItemId = const Value.absent(),
+    this.episodeId = const Value.absent(),
+    this.currentTime = const Value.absent(),
+    this.duration = const Value.absent(),
+    this.isFinished = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PendingProgressSyncsCompanion.insert({
+    required String syncKey,
+    required String libraryItemId,
+    this.episodeId = const Value.absent(),
+    required double currentTime,
+    required double duration,
+    this.isFinished = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : syncKey = Value(syncKey),
+       libraryItemId = Value(libraryItemId),
+       currentTime = Value(currentTime),
+       duration = Value(duration);
+  static Insertable<PendingProgressSync> custom({
+    Expression<String>? syncKey,
+    Expression<String>? libraryItemId,
+    Expression<String>? episodeId,
+    Expression<double>? currentTime,
+    Expression<double>? duration,
+    Expression<bool>? isFinished,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (syncKey != null) 'sync_key': syncKey,
+      if (libraryItemId != null) 'library_item_id': libraryItemId,
+      if (episodeId != null) 'episode_id': episodeId,
+      if (currentTime != null) 'current_time': currentTime,
+      if (duration != null) 'duration': duration,
+      if (isFinished != null) 'is_finished': isFinished,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PendingProgressSyncsCompanion copyWith({
+    Value<String>? syncKey,
+    Value<String>? libraryItemId,
+    Value<String?>? episodeId,
+    Value<double>? currentTime,
+    Value<double>? duration,
+    Value<bool?>? isFinished,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return PendingProgressSyncsCompanion(
+      syncKey: syncKey ?? this.syncKey,
+      libraryItemId: libraryItemId ?? this.libraryItemId,
+      episodeId: episodeId ?? this.episodeId,
+      currentTime: currentTime ?? this.currentTime,
+      duration: duration ?? this.duration,
+      isFinished: isFinished ?? this.isFinished,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (syncKey.present) {
+      map['sync_key'] = Variable<String>(syncKey.value);
+    }
+    if (libraryItemId.present) {
+      map['library_item_id'] = Variable<String>(libraryItemId.value);
+    }
+    if (episodeId.present) {
+      map['episode_id'] = Variable<String>(episodeId.value);
+    }
+    if (currentTime.present) {
+      map['current_time'] = Variable<double>(currentTime.value);
+    }
+    if (duration.present) {
+      map['duration'] = Variable<double>(duration.value);
+    }
+    if (isFinished.present) {
+      map['is_finished'] = Variable<bool>(isFinished.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingProgressSyncsCompanion(')
+          ..write('syncKey: $syncKey, ')
+          ..write('libraryItemId: $libraryItemId, ')
+          ..write('episodeId: $episodeId, ')
+          ..write('currentTime: $currentTime, ')
+          ..write('duration: $duration, ')
+          ..write('isFinished: $isFinished, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1718,6 +2204,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $LogEntriesTable logEntries = $LogEntriesTable(this);
+  late final $PendingProgressSyncsTable pendingProgressSyncs =
+      $PendingProgressSyncsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1727,6 +2215,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     downloadedItems,
     downloadedTracks,
     logEntries,
+    pendingProgressSyncs,
   ];
 }
 
@@ -2864,6 +3353,266 @@ typedef $$LogEntriesTableProcessedTableManager =
       LogEntry,
       PrefetchHooks Function()
     >;
+typedef $$PendingProgressSyncsTableCreateCompanionBuilder =
+    PendingProgressSyncsCompanion Function({
+      required String syncKey,
+      required String libraryItemId,
+      Value<String?> episodeId,
+      required double currentTime,
+      required double duration,
+      Value<bool?> isFinished,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PendingProgressSyncsTableUpdateCompanionBuilder =
+    PendingProgressSyncsCompanion Function({
+      Value<String> syncKey,
+      Value<String> libraryItemId,
+      Value<String?> episodeId,
+      Value<double> currentTime,
+      Value<double> duration,
+      Value<bool?> isFinished,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$PendingProgressSyncsTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingProgressSyncsTable> {
+  $$PendingProgressSyncsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get syncKey => $composableBuilder(
+    column: $table.syncKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get libraryItemId => $composableBuilder(
+    column: $table.libraryItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get episodeId => $composableBuilder(
+    column: $table.episodeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get currentTime => $composableBuilder(
+    column: $table.currentTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFinished => $composableBuilder(
+    column: $table.isFinished,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingProgressSyncsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingProgressSyncsTable> {
+  $$PendingProgressSyncsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get syncKey => $composableBuilder(
+    column: $table.syncKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get libraryItemId => $composableBuilder(
+    column: $table.libraryItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get episodeId => $composableBuilder(
+    column: $table.episodeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get currentTime => $composableBuilder(
+    column: $table.currentTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFinished => $composableBuilder(
+    column: $table.isFinished,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingProgressSyncsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingProgressSyncsTable> {
+  $$PendingProgressSyncsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get syncKey =>
+      $composableBuilder(column: $table.syncKey, builder: (column) => column);
+
+  GeneratedColumn<String> get libraryItemId => $composableBuilder(
+    column: $table.libraryItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get episodeId =>
+      $composableBuilder(column: $table.episodeId, builder: (column) => column);
+
+  GeneratedColumn<double> get currentTime => $composableBuilder(
+    column: $table.currentTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get duration =>
+      $composableBuilder(column: $table.duration, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFinished => $composableBuilder(
+    column: $table.isFinished,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$PendingProgressSyncsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PendingProgressSyncsTable,
+          PendingProgressSync,
+          $$PendingProgressSyncsTableFilterComposer,
+          $$PendingProgressSyncsTableOrderingComposer,
+          $$PendingProgressSyncsTableAnnotationComposer,
+          $$PendingProgressSyncsTableCreateCompanionBuilder,
+          $$PendingProgressSyncsTableUpdateCompanionBuilder,
+          (
+            PendingProgressSync,
+            BaseReferences<
+              _$AppDatabase,
+              $PendingProgressSyncsTable,
+              PendingProgressSync
+            >,
+          ),
+          PendingProgressSync,
+          PrefetchHooks Function()
+        > {
+  $$PendingProgressSyncsTableTableManager(
+    _$AppDatabase db,
+    $PendingProgressSyncsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingProgressSyncsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PendingProgressSyncsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PendingProgressSyncsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> syncKey = const Value.absent(),
+                Value<String> libraryItemId = const Value.absent(),
+                Value<String?> episodeId = const Value.absent(),
+                Value<double> currentTime = const Value.absent(),
+                Value<double> duration = const Value.absent(),
+                Value<bool?> isFinished = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingProgressSyncsCompanion(
+                syncKey: syncKey,
+                libraryItemId: libraryItemId,
+                episodeId: episodeId,
+                currentTime: currentTime,
+                duration: duration,
+                isFinished: isFinished,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String syncKey,
+                required String libraryItemId,
+                Value<String?> episodeId = const Value.absent(),
+                required double currentTime,
+                required double duration,
+                Value<bool?> isFinished = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingProgressSyncsCompanion.insert(
+                syncKey: syncKey,
+                libraryItemId: libraryItemId,
+                episodeId: episodeId,
+                currentTime: currentTime,
+                duration: duration,
+                isFinished: isFinished,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingProgressSyncsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PendingProgressSyncsTable,
+      PendingProgressSync,
+      $$PendingProgressSyncsTableFilterComposer,
+      $$PendingProgressSyncsTableOrderingComposer,
+      $$PendingProgressSyncsTableAnnotationComposer,
+      $$PendingProgressSyncsTableCreateCompanionBuilder,
+      $$PendingProgressSyncsTableUpdateCompanionBuilder,
+      (
+        PendingProgressSync,
+        BaseReferences<
+          _$AppDatabase,
+          $PendingProgressSyncsTable,
+          PendingProgressSync
+        >,
+      ),
+      PendingProgressSync,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2876,4 +3625,6 @@ class $AppDatabaseManager {
       $$DownloadedTracksTableTableManager(_db, _db.downloadedTracks);
   $$LogEntriesTableTableManager get logEntries =>
       $$LogEntriesTableTableManager(_db, _db.logEntries);
+  $$PendingProgressSyncsTableTableManager get pendingProgressSyncs =>
+      $$PendingProgressSyncsTableTableManager(_db, _db.pendingProgressSyncs);
 }

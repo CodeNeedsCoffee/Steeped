@@ -18,6 +18,7 @@ import '../../library/state/library_providers.dart';
 import '../../settings/data/app_settings.dart';
 import '../../settings/state/settings_providers.dart';
 import '../data/progress_repository.dart';
+import 'pending_sync_controller.dart';
 
 final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
   return ProgressRepository(ref.watch(dioProvider));
@@ -289,9 +290,18 @@ class PlaybackController extends Notifier<void> {
             duration: item.duration ?? 0,
           );
     } catch (e) {
-      // Best-effort — a dedicated "sync failed" UI is deferred (5.9 note).
-      // Still logged (9.6) so a persistent sync failure is at least visible
-      // somewhere instead of silently vanishing.
+      // Best-effort in the moment (a dedicated "sync failed" UI is deferred,
+      // 5.9 note), but PLAN.md Phase 6.7: also durably queue it so a
+      // reconnect *after the app restarts* still uploads it, not just a
+      // reconnect within the same still-open session (the old behavior).
+      await ref
+          .read(pendingSyncRepositoryProvider)
+          .enqueue(
+            libraryItemId: item.id,
+            episodeId: item.episodeId,
+            currentTime: currentTime,
+            duration: item.duration ?? 0,
+          );
       unawaited(
         ref
             .read(logRepositoryProvider)
@@ -314,7 +324,17 @@ class PlaybackController extends Notifier<void> {
             duration: item.duration ?? 0,
             isFinished: true,
           );
-    } catch (_) {}
+    } catch (_) {
+      await ref
+          .read(pendingSyncRepositoryProvider)
+          .enqueue(
+            libraryItemId: item.id,
+            episodeId: item.episodeId,
+            currentTime: currentTime,
+            duration: item.duration ?? 0,
+            isFinished: true,
+          );
+    }
   }
 
   /// No explicit sync here — the `playbackState` listener above reacts to
@@ -343,15 +363,27 @@ class PlaybackController extends Notifier<void> {
     if (item == null) return;
     final currentTime = finished ? (item.duration ?? 0) : 0.0;
     await _updateLocalProgressCache(item.downloadId, currentTime, finished);
-    await ref
-        .read(progressRepositoryProvider)
-        .updateProgress(
-          libraryItemId: item.id,
-          episodeId: item.episodeId,
-          currentTime: currentTime,
-          duration: item.duration ?? 0,
-          isFinished: finished,
-        );
+    try {
+      await ref
+          .read(progressRepositoryProvider)
+          .updateProgress(
+            libraryItemId: item.id,
+            episodeId: item.episodeId,
+            currentTime: currentTime,
+            duration: item.duration ?? 0,
+            isFinished: finished,
+          );
+    } catch (_) {
+      await ref
+          .read(pendingSyncRepositoryProvider)
+          .enqueue(
+            libraryItemId: item.id,
+            episodeId: item.episodeId,
+            currentTime: currentTime,
+            duration: item.duration ?? 0,
+            isFinished: finished,
+          );
+    }
   }
 
   Future<void> closePlayer() async {
