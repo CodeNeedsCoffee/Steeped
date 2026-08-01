@@ -85,6 +85,7 @@ class LibraryItemDetail {
     this.episodes = const [],
     this.episodeId,
     this.ebookFile,
+    this.isLocalOnly = false,
   });
 
   factory LibraryItemDetail.fromJson(Map<String, dynamic> json) {
@@ -218,6 +219,14 @@ class LibraryItemDetail {
   /// Populated for a book item with `media.ebookFile` — covers both text
   /// ebooks and comic archives (PLAN.md Phase 8).
   final EbookFile? ebookFile;
+
+  /// PLAN.md Phase 6.8: true only for a [LocalMediaRepository]-built item —
+  /// an on-device file that never came from the server. No server item id
+  /// exists to sync progress against, so [PlaybackController] skips the
+  /// network progress-sync path entirely for these and persists position
+  /// locally instead (mirroring how a downloaded item's local progress
+  /// cache works, but as the only copy rather than a resume-offline cache).
+  final bool isLocalOnly;
 
   bool get isPodcast => mediaType == 'podcast';
   bool get isEpisode => episodeId != null;

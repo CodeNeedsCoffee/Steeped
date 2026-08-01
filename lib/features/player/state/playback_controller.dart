@@ -15,6 +15,7 @@ import '../../auth/state/session_controller.dart';
 import '../../auth/state/session_state.dart';
 import '../../downloads/state/download_controller.dart';
 import '../../library/state/library_providers.dart';
+import '../../localmedia/state/local_media_providers.dart';
 import '../../settings/data/app_settings.dart';
 import '../../settings/state/settings_providers.dart';
 import '../data/progress_repository.dart';
@@ -236,6 +237,27 @@ class PlaybackController extends Notifier<void> {
     _startSyncTimer(item);
   }
 
+  /// PLAN.md Phase 6.8: play an on-device file that never came from the
+  /// server. No network involved at all — not even a cellular check, since
+  /// there's nothing to fetch.
+  Future<void> playLocalMedia(String id) async {
+    final item = await ref
+        .read(localMediaRepositoryProvider)
+        .buildPlayableItem(id);
+    if (item == null || item.tracks.isEmpty) return;
+    final sourceUri = Uri.file(item.tracks.first.contentUrl);
+
+    ref.read(currentPlaybackItemProvider.notifier).state = item;
+    await _handler.loadItem(
+      item: item,
+      sourceUris: [sourceUri],
+      startPosition: item.progress?.currentTime ?? 0,
+    );
+    _handler.onItemFinished = () => _onFinished(item);
+    await _handler.play();
+    _startSyncTimer(item);
+  }
+
   /// PLAN.md Phase 9.3 (Data/cellular controls). Only gates *streaming* —
   /// downloaded/offline playback never touches the network regardless.
   Future<bool> _blockedByCellularSetting() async {
@@ -279,6 +301,12 @@ class PlaybackController extends Notifier<void> {
 
   Future<void> _sync(LibraryItemDetail item) async {
     final currentTime = _handler.globalPositionSeconds;
+    if (item.isLocalOnly) {
+      await ref
+          .read(localMediaRepositoryProvider)
+          .updateProgress(item.id, currentTime);
+      return;
+    }
     await _updateLocalProgressCache(item.downloadId, currentTime, false);
     try {
       await ref
@@ -313,6 +341,12 @@ class PlaybackController extends Notifier<void> {
   Future<void> _onFinished(LibraryItemDetail item) async {
     _syncTimer?.cancel();
     final currentTime = item.duration ?? _handler.globalPositionSeconds;
+    if (item.isLocalOnly) {
+      await ref
+          .read(localMediaRepositoryProvider)
+          .updateProgress(item.id, currentTime);
+      return;
+    }
     await _updateLocalProgressCache(item.downloadId, currentTime, true);
     try {
       await ref
@@ -362,6 +396,12 @@ class PlaybackController extends Notifier<void> {
     final item = ref.read(currentPlaybackItemProvider);
     if (item == null) return;
     final currentTime = finished ? (item.duration ?? 0) : 0.0;
+    if (item.isLocalOnly) {
+      await ref
+          .read(localMediaRepositoryProvider)
+          .updateProgress(item.id, currentTime);
+      return;
+    }
     await _updateLocalProgressCache(item.downloadId, currentTime, finished);
     try {
       await ref

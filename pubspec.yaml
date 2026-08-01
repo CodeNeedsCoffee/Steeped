@@ -59,6 +59,14 @@ dependencies:
   pdfx: ^2.9.2
   archive: ^3.6.1
   wakelock_plus: ^1.7.0
+  # Phase 6.8 (Local Media import). Chose this over `file_picker`: every
+  # file_picker version compatible with our `wakelock_plus` constraint is a
+  # pre-release (>=12.0.0-beta.1) because file_picker's Windows plugin pulls
+  # a `win32` version wakelock_plus conflicts with — irrelevant to this
+  # Android/iOS-only app, but pub's resolver still enforces it. Android+iOS
+  # only, `copyFileToCacheDir` gives a real usable file path with no SAF
+  # tree-URI path-resolution headaches, no new transitive deps.
+  flutter_file_dialog: ^3.3.2
 
 dev_dependencies:
   flutter_test:

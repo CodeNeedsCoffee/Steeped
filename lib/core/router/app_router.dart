@@ -12,6 +12,7 @@ import '../../features/ebook/pdf_reader_screen.dart';
 import '../../features/library/home_shell_screen.dart';
 import '../../features/library/item_detail_screen.dart';
 import '../../features/library/library_grid_screen.dart';
+import '../../features/localmedia/local_media_screen.dart';
 import '../../features/player/now_playing_screen.dart';
 import '../../features/podcasts/recent_episodes_screen.dart';
 import '../../features/settings/account_screen.dart';
@@ -107,6 +108,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/downloads',
         builder: (context, state) => const DownloadsScreen(),
+      ),
+      GoRoute(
+        path: '/local-media',
+        builder: (context, state) => const LocalMediaScreen(),
       ),
       GoRoute(
         path: '/settings',

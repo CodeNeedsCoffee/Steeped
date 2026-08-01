@@ -2191,6 +2191,439 @@ class PendingProgressSyncsCompanion
   }
 }
 
+class $LocalMediaItemsTable extends LocalMediaItems
+    with TableInfo<$LocalMediaItemsTable, LocalMediaItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalMediaItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localPathMeta = const VerificationMeta(
+    'localPath',
+  );
+  @override
+  late final GeneratedColumn<String> localPath = GeneratedColumn<String>(
+    'local_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _durationSecondsMeta = const VerificationMeta(
+    'durationSeconds',
+  );
+  @override
+  late final GeneratedColumn<double> durationSeconds = GeneratedColumn<double>(
+    'duration_seconds',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _progressCurrentTimeMeta =
+      const VerificationMeta('progressCurrentTime');
+  @override
+  late final GeneratedColumn<double> progressCurrentTime =
+      GeneratedColumn<double>(
+        'progress_current_time',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _addedAtMeta = const VerificationMeta(
+    'addedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> addedAt = GeneratedColumn<DateTime>(
+    'added_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    localPath,
+    durationSeconds,
+    progressCurrentTime,
+    addedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_media_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalMediaItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('local_path')) {
+      context.handle(
+        _localPathMeta,
+        localPath.isAcceptableOrUnknown(data['local_path']!, _localPathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_localPathMeta);
+    }
+    if (data.containsKey('duration_seconds')) {
+      context.handle(
+        _durationSecondsMeta,
+        durationSeconds.isAcceptableOrUnknown(
+          data['duration_seconds']!,
+          _durationSecondsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('progress_current_time')) {
+      context.handle(
+        _progressCurrentTimeMeta,
+        progressCurrentTime.isAcceptableOrUnknown(
+          data['progress_current_time']!,
+          _progressCurrentTimeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('added_at')) {
+      context.handle(
+        _addedAtMeta,
+        addedAt.isAcceptableOrUnknown(data['added_at']!, _addedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalMediaItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalMediaItem(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      localPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_path'],
+      )!,
+      durationSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}duration_seconds'],
+      ),
+      progressCurrentTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}progress_current_time'],
+      ),
+      addedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}added_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalMediaItemsTable createAlias(String alias) {
+    return $LocalMediaItemsTable(attachedDatabase, alias);
+  }
+}
+
+class LocalMediaItem extends DataClass implements Insertable<LocalMediaItem> {
+  final String id;
+  final String title;
+  final String localPath;
+  final double? durationSeconds;
+  final double? progressCurrentTime;
+  final DateTime addedAt;
+  const LocalMediaItem({
+    required this.id,
+    required this.title,
+    required this.localPath,
+    this.durationSeconds,
+    this.progressCurrentTime,
+    required this.addedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['local_path'] = Variable<String>(localPath);
+    if (!nullToAbsent || durationSeconds != null) {
+      map['duration_seconds'] = Variable<double>(durationSeconds);
+    }
+    if (!nullToAbsent || progressCurrentTime != null) {
+      map['progress_current_time'] = Variable<double>(progressCurrentTime);
+    }
+    map['added_at'] = Variable<DateTime>(addedAt);
+    return map;
+  }
+
+  LocalMediaItemsCompanion toCompanion(bool nullToAbsent) {
+    return LocalMediaItemsCompanion(
+      id: Value(id),
+      title: Value(title),
+      localPath: Value(localPath),
+      durationSeconds: durationSeconds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(durationSeconds),
+      progressCurrentTime: progressCurrentTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(progressCurrentTime),
+      addedAt: Value(addedAt),
+    );
+  }
+
+  factory LocalMediaItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalMediaItem(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      localPath: serializer.fromJson<String>(json['localPath']),
+      durationSeconds: serializer.fromJson<double?>(json['durationSeconds']),
+      progressCurrentTime: serializer.fromJson<double?>(
+        json['progressCurrentTime'],
+      ),
+      addedAt: serializer.fromJson<DateTime>(json['addedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'localPath': serializer.toJson<String>(localPath),
+      'durationSeconds': serializer.toJson<double?>(durationSeconds),
+      'progressCurrentTime': serializer.toJson<double?>(progressCurrentTime),
+      'addedAt': serializer.toJson<DateTime>(addedAt),
+    };
+  }
+
+  LocalMediaItem copyWith({
+    String? id,
+    String? title,
+    String? localPath,
+    Value<double?> durationSeconds = const Value.absent(),
+    Value<double?> progressCurrentTime = const Value.absent(),
+    DateTime? addedAt,
+  }) => LocalMediaItem(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    localPath: localPath ?? this.localPath,
+    durationSeconds: durationSeconds.present
+        ? durationSeconds.value
+        : this.durationSeconds,
+    progressCurrentTime: progressCurrentTime.present
+        ? progressCurrentTime.value
+        : this.progressCurrentTime,
+    addedAt: addedAt ?? this.addedAt,
+  );
+  LocalMediaItem copyWithCompanion(LocalMediaItemsCompanion data) {
+    return LocalMediaItem(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      localPath: data.localPath.present ? data.localPath.value : this.localPath,
+      durationSeconds: data.durationSeconds.present
+          ? data.durationSeconds.value
+          : this.durationSeconds,
+      progressCurrentTime: data.progressCurrentTime.present
+          ? data.progressCurrentTime.value
+          : this.progressCurrentTime,
+      addedAt: data.addedAt.present ? data.addedAt.value : this.addedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalMediaItem(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('localPath: $localPath, ')
+          ..write('durationSeconds: $durationSeconds, ')
+          ..write('progressCurrentTime: $progressCurrentTime, ')
+          ..write('addedAt: $addedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    localPath,
+    durationSeconds,
+    progressCurrentTime,
+    addedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalMediaItem &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.localPath == this.localPath &&
+          other.durationSeconds == this.durationSeconds &&
+          other.progressCurrentTime == this.progressCurrentTime &&
+          other.addedAt == this.addedAt);
+}
+
+class LocalMediaItemsCompanion extends UpdateCompanion<LocalMediaItem> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> localPath;
+  final Value<double?> durationSeconds;
+  final Value<double?> progressCurrentTime;
+  final Value<DateTime> addedAt;
+  final Value<int> rowid;
+  const LocalMediaItemsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.localPath = const Value.absent(),
+    this.durationSeconds = const Value.absent(),
+    this.progressCurrentTime = const Value.absent(),
+    this.addedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalMediaItemsCompanion.insert({
+    required String id,
+    required String title,
+    required String localPath,
+    this.durationSeconds = const Value.absent(),
+    this.progressCurrentTime = const Value.absent(),
+    this.addedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       title = Value(title),
+       localPath = Value(localPath);
+  static Insertable<LocalMediaItem> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? localPath,
+    Expression<double>? durationSeconds,
+    Expression<double>? progressCurrentTime,
+    Expression<DateTime>? addedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (localPath != null) 'local_path': localPath,
+      if (durationSeconds != null) 'duration_seconds': durationSeconds,
+      if (progressCurrentTime != null)
+        'progress_current_time': progressCurrentTime,
+      if (addedAt != null) 'added_at': addedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalMediaItemsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? title,
+    Value<String>? localPath,
+    Value<double?>? durationSeconds,
+    Value<double?>? progressCurrentTime,
+    Value<DateTime>? addedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalMediaItemsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      localPath: localPath ?? this.localPath,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      progressCurrentTime: progressCurrentTime ?? this.progressCurrentTime,
+      addedAt: addedAt ?? this.addedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (localPath.present) {
+      map['local_path'] = Variable<String>(localPath.value);
+    }
+    if (durationSeconds.present) {
+      map['duration_seconds'] = Variable<double>(durationSeconds.value);
+    }
+    if (progressCurrentTime.present) {
+      map['progress_current_time'] = Variable<double>(
+        progressCurrentTime.value,
+      );
+    }
+    if (addedAt.present) {
+      map['added_at'] = Variable<DateTime>(addedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalMediaItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('localPath: $localPath, ')
+          ..write('durationSeconds: $durationSeconds, ')
+          ..write('progressCurrentTime: $progressCurrentTime, ')
+          ..write('addedAt: $addedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2206,6 +2639,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $LogEntriesTable logEntries = $LogEntriesTable(this);
   late final $PendingProgressSyncsTable pendingProgressSyncs =
       $PendingProgressSyncsTable(this);
+  late final $LocalMediaItemsTable localMediaItems = $LocalMediaItemsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2216,6 +2652,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     downloadedTracks,
     logEntries,
     pendingProgressSyncs,
+    localMediaItems,
   ];
 }
 
@@ -3613,6 +4050,235 @@ typedef $$PendingProgressSyncsTableProcessedTableManager =
       PendingProgressSync,
       PrefetchHooks Function()
     >;
+typedef $$LocalMediaItemsTableCreateCompanionBuilder =
+    LocalMediaItemsCompanion Function({
+      required String id,
+      required String title,
+      required String localPath,
+      Value<double?> durationSeconds,
+      Value<double?> progressCurrentTime,
+      Value<DateTime> addedAt,
+      Value<int> rowid,
+    });
+typedef $$LocalMediaItemsTableUpdateCompanionBuilder =
+    LocalMediaItemsCompanion Function({
+      Value<String> id,
+      Value<String> title,
+      Value<String> localPath,
+      Value<double?> durationSeconds,
+      Value<double?> progressCurrentTime,
+      Value<DateTime> addedAt,
+      Value<int> rowid,
+    });
+
+class $$LocalMediaItemsTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalMediaItemsTable> {
+  $$LocalMediaItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localPath => $composableBuilder(
+    column: $table.localPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get durationSeconds => $composableBuilder(
+    column: $table.durationSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get progressCurrentTime => $composableBuilder(
+    column: $table.progressCurrentTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalMediaItemsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalMediaItemsTable> {
+  $$LocalMediaItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localPath => $composableBuilder(
+    column: $table.localPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get durationSeconds => $composableBuilder(
+    column: $table.durationSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get progressCurrentTime => $composableBuilder(
+    column: $table.progressCurrentTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get addedAt => $composableBuilder(
+    column: $table.addedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalMediaItemsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalMediaItemsTable> {
+  $$LocalMediaItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get localPath =>
+      $composableBuilder(column: $table.localPath, builder: (column) => column);
+
+  GeneratedColumn<double> get durationSeconds => $composableBuilder(
+    column: $table.durationSeconds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get progressCurrentTime => $composableBuilder(
+    column: $table.progressCurrentTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get addedAt =>
+      $composableBuilder(column: $table.addedAt, builder: (column) => column);
+}
+
+class $$LocalMediaItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalMediaItemsTable,
+          LocalMediaItem,
+          $$LocalMediaItemsTableFilterComposer,
+          $$LocalMediaItemsTableOrderingComposer,
+          $$LocalMediaItemsTableAnnotationComposer,
+          $$LocalMediaItemsTableCreateCompanionBuilder,
+          $$LocalMediaItemsTableUpdateCompanionBuilder,
+          (
+            LocalMediaItem,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalMediaItemsTable,
+              LocalMediaItem
+            >,
+          ),
+          LocalMediaItem,
+          PrefetchHooks Function()
+        > {
+  $$LocalMediaItemsTableTableManager(
+    _$AppDatabase db,
+    $LocalMediaItemsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalMediaItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalMediaItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalMediaItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> localPath = const Value.absent(),
+                Value<double?> durationSeconds = const Value.absent(),
+                Value<double?> progressCurrentTime = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalMediaItemsCompanion(
+                id: id,
+                title: title,
+                localPath: localPath,
+                durationSeconds: durationSeconds,
+                progressCurrentTime: progressCurrentTime,
+                addedAt: addedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String title,
+                required String localPath,
+                Value<double?> durationSeconds = const Value.absent(),
+                Value<double?> progressCurrentTime = const Value.absent(),
+                Value<DateTime> addedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalMediaItemsCompanion.insert(
+                id: id,
+                title: title,
+                localPath: localPath,
+                durationSeconds: durationSeconds,
+                progressCurrentTime: progressCurrentTime,
+                addedAt: addedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalMediaItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalMediaItemsTable,
+      LocalMediaItem,
+      $$LocalMediaItemsTableFilterComposer,
+      $$LocalMediaItemsTableOrderingComposer,
+      $$LocalMediaItemsTableAnnotationComposer,
+      $$LocalMediaItemsTableCreateCompanionBuilder,
+      $$LocalMediaItemsTableUpdateCompanionBuilder,
+      (
+        LocalMediaItem,
+        BaseReferences<_$AppDatabase, $LocalMediaItemsTable, LocalMediaItem>,
+      ),
+      LocalMediaItem,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3627,4 +4293,6 @@ class $AppDatabaseManager {
       $$LogEntriesTableTableManager(_db, _db.logEntries);
   $$PendingProgressSyncsTableTableManager get pendingProgressSyncs =>
       $$PendingProgressSyncsTableTableManager(_db, _db.pendingProgressSyncs);
+  $$LocalMediaItemsTableTableManager get localMediaItems =>
+      $$LocalMediaItemsTableTableManager(_db, _db.localMediaItems);
 }

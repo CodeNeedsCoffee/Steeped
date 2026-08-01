@@ -148,6 +148,15 @@ class SettingsScreen extends ConsumerWidget {
 
           const _SectionHeader('Advanced'),
           ListTile(
+            leading: const Icon(Icons.folder_outlined),
+            title: const Text('Local Media'),
+            subtitle: const Text(
+              'Import on-device audio files that never came from the server',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/local-media'),
+          ),
+          ListTile(
             leading: const Icon(Icons.article_outlined),
             title: const Text('Logs'),
             trailing: const Icon(Icons.chevron_right),
