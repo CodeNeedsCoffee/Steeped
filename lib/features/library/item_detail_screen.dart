@@ -97,6 +97,15 @@ class _ItemDetailBody extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
           ),
+        if (item.series.isNotEmpty && item.libraryId != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: _DownloadSeriesButton(
+              item: item,
+              serverUrl: serverUrl,
+              token: token,
+            ),
+          ),
         if (item.progress != null) ...[
           const SizedBox(height: 12),
           LinearProgressIndicator(value: _displayProgressFraction(item)),
@@ -216,6 +225,74 @@ class _ItemDetailBody extends ConsumerWidget {
     final duration = item.duration;
     if (duration == null || duration <= 0) return progress.progress;
     return (progress.currentTime / duration).clamp(0, 1);
+  }
+}
+
+/// PLAN.md Phase 6.2: "download series" without the full series-browse UI
+/// (4.5, still deferred) — one tap queues every not-yet-downloaded book in
+/// the item's first series membership.
+class _DownloadSeriesButton extends ConsumerStatefulWidget {
+  const _DownloadSeriesButton({
+    required this.item,
+    required this.serverUrl,
+    required this.token,
+  });
+
+  final LibraryItemDetail item;
+  final String serverUrl;
+  final String? token;
+
+  @override
+  ConsumerState<_DownloadSeriesButton> createState() =>
+      _DownloadSeriesButtonState();
+}
+
+class _DownloadSeriesButtonState extends ConsumerState<_DownloadSeriesButton> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final series = widget.item.series.first;
+    return TextButton.icon(
+      onPressed: _busy
+          ? null
+          : () async {
+              setState(() => _busy = true);
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                final queued = await ref
+                    .read(downloadControllerProvider.notifier)
+                    .downloadSeries(
+                      libraryId: widget.item.libraryId!,
+                      seriesId: series.id,
+                      serverUrl: widget.serverUrl,
+                      token: widget.token,
+                    );
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      queued == 0
+                          ? 'Every book in "${series.name}" is already '
+                                'downloaded.'
+                          : 'Downloading $queued book'
+                                '${queued == 1 ? '' : 's'} from '
+                                '"${series.name}".',
+                    ),
+                  ),
+                );
+              } finally {
+                if (mounted) setState(() => _busy = false);
+              }
+            },
+      icon: _busy
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.download_outlined, size: 18),
+      label: Text('Download series: ${series.name}'),
+    );
   }
 }
 

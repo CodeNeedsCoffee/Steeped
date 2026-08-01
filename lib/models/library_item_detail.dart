@@ -65,6 +65,7 @@ class BookChapter {
 class LibraryItemDetail {
   const LibraryItemDetail({
     required this.id,
+    this.libraryId,
     required this.mediaType,
     required this.coverPath,
     required this.updatedAt,
@@ -97,6 +98,7 @@ class LibraryItemDetail {
     if (isPodcast) {
       return LibraryItemDetail(
         id: json['id'] as String,
+        libraryId: json['libraryId'] as String?,
         mediaType: mediaType,
         coverPath: media['coverPath'] as String?,
         updatedAt: json['updatedAt'] as int? ?? 0,
@@ -135,6 +137,7 @@ class LibraryItemDetail {
 
     return LibraryItemDetail(
       id: json['id'] as String,
+      libraryId: json['libraryId'] as String?,
       mediaType: mediaType,
       coverPath: media['coverPath'] as String?,
       updatedAt: json['updatedAt'] as int? ?? 0,
@@ -183,6 +186,10 @@ class LibraryItemDetail {
   }
 
   final String id;
+  /// Present on real server responses (`toOldJSONMinified`'s `libraryId`);
+  /// null only for the Phase 6.4 offline-rebuilt item, which doesn't need it
+  /// since [PLAN.md Phase 6.2]'s series-download only makes sense online.
+  final String? libraryId;
   final String mediaType;
   final String? coverPath;
   final int updatedAt;
