@@ -12,6 +12,7 @@ class AppSettings {
     this.keepScreenAwake = false,
     this.lockPortrait = false,
     this.sleepTimerDefaultMinutes = 30,
+    this.skinId = 'glassModern',
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -26,6 +27,7 @@ class AppSettings {
       lockPortrait: json['lockPortrait'] as bool? ?? false,
       sleepTimerDefaultMinutes:
           json['sleepTimerDefaultMinutes'] as int? ?? 30,
+      skinId: json['skinId'] as String? ?? 'glassModern',
     );
   }
 
@@ -53,6 +55,12 @@ class AppSettings {
   /// Sleep Timer: default duration offered when starting a timer.
   final int sleepTimerDefaultMinutes;
 
+  /// Appearance (PLAN.md Phase 2.4/2.6): the active [Skin.id.name]. Stored
+  /// as a string (not the enum directly) so an unrecognized value from an
+  /// older/newer app version just falls back to the default in
+  /// `skinByName` rather than failing to decode the whole settings blob.
+  final String skinId;
+
   Map<String, dynamic> toJson() => {
     'jumpIntervalSeconds': jumpIntervalSeconds,
     'scaleElapsedTimeBySpeed': scaleElapsedTimeBySpeed,
@@ -62,6 +70,7 @@ class AppSettings {
     'keepScreenAwake': keepScreenAwake,
     'lockPortrait': lockPortrait,
     'sleepTimerDefaultMinutes': sleepTimerDefaultMinutes,
+    'skinId': skinId,
   };
 
   AppSettings copyWith({
@@ -73,6 +82,7 @@ class AppSettings {
     bool? keepScreenAwake,
     bool? lockPortrait,
     int? sleepTimerDefaultMinutes,
+    String? skinId,
   }) {
     return AppSettings(
       jumpIntervalSeconds: jumpIntervalSeconds ?? this.jumpIntervalSeconds,
@@ -88,6 +98,7 @@ class AppSettings {
       lockPortrait: lockPortrait ?? this.lockPortrait,
       sleepTimerDefaultMinutes:
           sleepTimerDefaultMinutes ?? this.sleepTimerDefaultMinutes,
+      skinId: skinId ?? this.skinId,
     );
   }
 }

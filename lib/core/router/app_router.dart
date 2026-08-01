@@ -16,6 +16,7 @@ import '../../features/localmedia/local_media_screen.dart';
 import '../../features/player/now_playing_screen.dart';
 import '../../features/podcasts/recent_episodes_screen.dart';
 import '../../features/settings/account_screen.dart';
+import '../../features/settings/appearance_screen.dart';
 import '../../features/settings/logs_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/stats/history_screen.dart';
@@ -116,6 +117,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/appearance',
+        builder: (context, state) => const AppearanceScreen(),
       ),
       GoRoute(
         path: '/account',
