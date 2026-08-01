@@ -11,6 +11,7 @@ import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../downloads/state/download_controller.dart';
+import '../../widgets/glass_surface.dart';
 import '../player/mini_player.dart';
 import '../player/state/pending_sync_controller.dart';
 import 'state/library_providers.dart';
@@ -40,7 +41,16 @@ class HomeShellScreen extends ConsumerWidget {
     final librariesAsync = ref.watch(librariesProvider);
 
     return Scaffold(
+      // PLAN.md Phase 2.2: the shelves need to actually scroll *behind* the
+      // app bar for the frosted blur below to have anything to blur — see
+      // the matching top padding added in [_LibraryHome].
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        // Real frosted blur behind the app bar when the active skin wants
+        // it (a no-op passthrough for Bookshelf) — the scrolling shelves
+        // behind it show through, blurred, rather than the app bar just
+        // being a differently-colored opaque bar.
+        flexibleSpace: const GlassSurface(child: SizedBox.expand()),
         title: librariesAsync.maybeWhen(
           data: (libraries) {
             if (libraries.isEmpty) return const Text('Steeped');
@@ -145,10 +155,16 @@ class _LibraryHome extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final shelvesAsync = ref.watch(personalizedShelvesProvider(libraryId));
 
+    // Compensates for Scaffold.extendBodyBehindAppBar above — without this,
+    // content would start hidden underneath the (now body-overlapping) app
+    // bar instead of just below it as before.
+    final topInset =
+        MediaQuery.paddingOf(context).top + kToolbarHeight + 16;
+
     return RefreshIndicator(
       onRefresh: () => ref.refresh(personalizedShelvesProvider(libraryId).future),
       child: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: EdgeInsets.fromLTRB(0, topInset, 0, 16),
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
