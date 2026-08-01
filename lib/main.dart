@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/audio/audio_handler_provider.dart';
+import 'core/audio/car_content_tree.dart';
 import 'core/audio/steeped_audio_handler.dart';
 
 Future<void> main() async {
@@ -24,9 +25,21 @@ Future<void> main() async {
     ),
   );
 
+  // PLAN.md Phase 10.1: a manually-created container (rather than letting
+  // `ProviderScope` create one internally) so the car content tree can be
+  // wired into `audioHandler` *before* `runApp` — Android Auto can call
+  // `getChildren` on the handler as soon as the service exists, which may
+  // be before the widget tree ever builds. `UncontrolledProviderScope`
+  // hands this same container to the widget tree below, behaving
+  // identically to `ProviderScope` for every existing provider.
+  final container = ProviderContainer(
+    overrides: [audioHandlerProvider.overrideWithValue(audioHandler)],
+  );
+  audioHandler.contentTree = CarContentTree(container);
+
   runApp(
-    ProviderScope(
-      overrides: [audioHandlerProvider.overrideWithValue(audioHandler)],
+    UncontrolledProviderScope(
+      container: container,
       child: const SteepedApp(),
     ),
   );
