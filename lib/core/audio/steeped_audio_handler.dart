@@ -3,6 +3,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../../models/audio_track.dart';
 import '../../models/library_item_detail.dart';
+import 'car_content_tree.dart';
 
 /// PLAN.md Phase 5.1/5.3/5.4/5.12. Wraps a single `just_audio` [AudioPlayer]
 /// with a gapless multi-source playlist (one child per [AudioTrack]) via
@@ -34,6 +35,28 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
   /// Fired when the loaded item finishes playing entirely — used by
   /// [PlaybackController] to mark-finished / do a final progress sync.
   void Function()? onItemFinished;
+
+  /// PLAN.md Phase 10.1/10.4: set once from `main.dart` after a
+  /// [ProviderContainer] exists — this handler is constructed before
+  /// `runApp`/`ProviderScope`, so it can't reach Riverpod providers on its
+  /// own at construction time.
+  CarContentTree? contentTree;
+
+  @override
+  Future<List<MediaItem>> getChildren(
+    String parentMediaId, [
+    Map<String, dynamic>? options,
+  ]) async {
+    return contentTree?.getChildren(parentMediaId) ?? const [];
+  }
+
+  @override
+  Future<void> playFromMediaId(
+    String mediaId, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    await contentTree?.play(mediaId);
+  }
 
   AudioPlayer get player => _player;
   List<AudioTrack> get tracks => _tracks;
