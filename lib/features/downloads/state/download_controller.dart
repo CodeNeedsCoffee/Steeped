@@ -7,6 +7,7 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/storage/device_storage.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/podcast_episode.dart';
+import '../../library/state/library_providers.dart';
 import '../../settings/data/app_settings.dart';
 import '../../settings/state/settings_providers.dart';
 import '../data/download_repository.dart';
@@ -120,6 +121,41 @@ class DownloadController extends Notifier<void> {
     return ref
         .read(downloadRepositoryProvider)
         .startDownload(item: item, serverUrl: serverUrl, token: token);
+  }
+
+  /// PLAN.md Phase 6.2: download every book in [seriesId] not already
+  /// downloaded. Skips full series-browse UI (4.5, still deferred) — series
+  /// membership comes straight from the existing items-filter endpoint that
+  /// 4.4's library grid already uses, just with a `filter=series.<id>` query
+  /// param instead of none. Returns how many new downloads were queued, for
+  /// the caller to report back to the user.
+  Future<int> downloadSeries({
+    required String libraryId,
+    required String seriesId,
+    required String serverUrl,
+    required String? token,
+  }) async {
+    if (await _blockedByCellularSetting()) return 0;
+    final items = await ref
+        .read(libraryRepositoryProvider)
+        .fetchItemsInSeries(libraryId, seriesId);
+    final repo = ref.read(downloadRepositoryProvider);
+    var queued = 0;
+    for (final item in items) {
+      if (item.mediaType != 'book') continue;
+      if (await repo.isDownloaded(item.id)) continue;
+      final detail = await ref
+          .read(libraryRepositoryProvider)
+          .fetchItemDetail(item.id);
+      if (detail.tracks.isEmpty) continue;
+      await repo.startDownload(
+        item: detail,
+        serverUrl: serverUrl,
+        token: token,
+      );
+      queued++;
+    }
+    return queued;
   }
 
   /// PLAN.md Phase 7.5: download one podcast episode to the device.
