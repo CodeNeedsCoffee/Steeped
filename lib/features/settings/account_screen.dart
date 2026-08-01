@@ -62,6 +62,20 @@ class AccountScreen extends ConsumerWidget {
               user.permissions.upload ? Icons.check : Icons.close,
             ),
           ),
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Updates allowed'),
+            trailing: Icon(
+              user.permissions.update ? Icons.check : Icons.close,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: const Text('Deletes allowed'),
+            trailing: Icon(
+              user.permissions.delete ? Icons.check : Icons.close,
+            ),
+          ),
           const SizedBox(height: 24),
           FilledButton.tonalIcon(
             onPressed: () =>

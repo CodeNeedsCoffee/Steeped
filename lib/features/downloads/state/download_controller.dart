@@ -4,11 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/logging/log_repository.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/storage/app_database.dart';
+import '../../../core/storage/device_storage.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/podcast_episode.dart';
 import '../../settings/data/app_settings.dart';
 import '../../settings/state/settings_providers.dart';
 import '../data/download_repository.dart';
+
+/// Below this much free device space, the Downloads screen shows a
+/// low-storage warning (PLAN.md Phase 6.10).
+const lowStorageThresholdBytes = 500 * 1024 * 1024;
 
 final downloadRepositoryProvider = Provider<DownloadRepository>((ref) {
   return DownloadRepository(ref.watch(appDatabaseProvider));
@@ -17,6 +22,35 @@ final downloadRepositoryProvider = Provider<DownloadRepository>((ref) {
 /// Drives the Downloads screen.
 final downloadsListProvider = StreamProvider<List<DownloadedItem>>((ref) {
   return ref.watch(downloadRepositoryProvider).watchDownloads();
+});
+
+/// PLAN.md Phase 6.10: on-disk size of one downloaded item.
+final downloadItemSizeProvider = FutureProvider.family<int, String>((
+  ref,
+  itemId,
+) {
+  return ref.watch(downloadRepositoryProvider).sizeOfItem(itemId);
+});
+
+/// PLAN.md Phase 6.10: total space used by all downloads, recomputed
+/// whenever the downloads list changes.
+final downloadsTotalSizeProvider = FutureProvider<int>((ref) async {
+  final downloads = await ref.watch(downloadsListProvider.future);
+  final repo = ref.watch(downloadRepositoryProvider);
+  var total = 0;
+  for (final item in downloads) {
+    total += await repo.sizeOfItem(item.itemId);
+  }
+  return total;
+});
+
+/// PLAN.md Phase 6.10: free device storage, recomputed alongside the
+/// downloads list so it reflects space just freed/used. Null means unknown
+/// (e.g. iOS, where [DeviceStorage] isn't implemented yet) — the UI simply
+/// skips the low-storage banner in that case rather than guessing.
+final deviceFreeSpaceProvider = FutureProvider<int?>((ref) async {
+  ref.watch(downloadsListProvider);
+  return DeviceStorage.freeBytes();
 });
 
 /// Most recent progress (0..1) per item id — enough for a progress bar,
@@ -108,6 +142,11 @@ class DownloadController extends Notifier<void> {
 
   Future<void> delete(String itemId) {
     return ref.read(downloadRepositoryProvider).deleteDownload(itemId);
+  }
+
+  /// PLAN.md Phase 6.10: bulk-delete every downloaded item.
+  Future<void> deleteAll() {
+    return ref.read(downloadRepositoryProvider).deleteAllDownloads();
   }
 }
 
