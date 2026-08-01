@@ -11,7 +11,7 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 | Milestone | Focus                                             | Phases        | Status |
 |-----------|----------------------------------------------------|---------------|--------|
 | 1         | Core streaming — connect, authenticate, browse, stream, basic UI | 0, 1, 3, 4, 5 | 🟢 done |
-| 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | 🟡 (6, 7, 8 done) |
+| 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | 🟢 done |
 | 3         | UI customization & skins                          | 2             | ⚪     |
 | 4         | Car integration — Android Auto & CarPlay          | 10            | ⚪     |
 | 5         | Stretch goals & release prep                      | 11, 12        | ⚪     |
@@ -95,20 +95,48 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   library to test against. 8.5 (primary/supplementary ebook) and 8.6 (send-to-device/Kindle) deliberately
   deferred — see `PLAN.md` Phase 8 for why.
 
+- Phase 9 (RSS Feeds, Account, Settings, Stats, Polish) built ✅ and **verified end-to-end ✅ on the Pixel 8
+  Pro** (2026-07-31), driven live over adb against evan's real account. Two real endpoints confirmed live
+  before building: `GET /api/me/listening-stats` (the `/api/me/stats` guess 404s) and
+  `GET /api/me/listening-sessions`. Built and verified: **Account** screen (real user/server data),
+  **Settings** with every toggle wired to real behavior — jump interval, scale-elapsed-by-speed, cellular
+  stream/download controls (enforced via `connectivity_plus`), haptic feedback, keep-screen-awake
+  (`wakelock_plus`, confirmed persists across navigation), lock-portrait, a language picker (English only —
+  honestly scoped, no other ARB translations exist), the Ereader panel (now shared between Settings and the
+  Phase 8 reader via one provider), and a real **Sleep Timer** (5.7, previously deferred — manual duration,
+  confirmed live: started, icon filled, cancelled, icon reverted, playback unaffected). **Stats**: real 7-day
+  chart + best day/streak/average/items-finished, verified against evan's real account (573 days listened
+  all-time, 6-day streak, 63 items finished). **Year in Review**: client-side aggregation of the same stats
+  data (no dedicated annual endpoint exists). **History**: 1228 real sessions, verified paginated
+  infinite-scroll. **Logs**: a real drift-backed debug log hooked into actual failure paths (session
+  refresh, progress sync, downloads) — confirmed showing a genuine empty state (nothing failed this
+  session). **9.1 RSS feed management deferred** — `GET /api/feeds` returned a real 403 against evan's
+  account (`type: user`, `permissions.update: false`), confirming it's admin-gated server-side; the Settings
+  screen correctly hides the RSS section for non-admin accounts rather than showing a feature that would
+  always fail. **9.9 real app icon deferred** — no branding artwork exists yet, and the icon-generation
+  tooling was already removed from `pubspec.yaml` in Phase 8 for a real dependency conflict with the EPUB
+  reader. See `PLAN.md` Phase 9 for full detail.
+
+**Milestone 2 is done.** 🎉
+
 ## Next
 
-- Phase 9: RSS Feeds, Account, Settings, Stats, Polish (Milestone 2) — the last phase before Milestone 2 is
-  fully done.
-- Worth considering: the cold-start-while-offline gap found during Phase 6 verification (see above) —
+- Milestone 3: UI Customization & Skins (Phase 2) — the glass-modern and bookshelf skin engine, retrofitted
+  across every screen built in Milestones 1–2.
+- Worth considering first: the cold-start-while-offline gap found during Phase 6 verification (see above) —
   a Phase 3 follow-up, not scoped to any single phase yet.
 - Also worth a look next time on-device: confirm a real PDF item exists somewhere in evan's library to close
-  out Phase 8.3's verification gap.
+  out Phase 8.3's verification gap; verify Phase 9's cellular controls against a real cellular-only
+  connection (needs airplane mode + manually re-enabled mobile data).
+- Whenever real app-icon artwork exists: revisit Phase 9.9, including whether `epub_view`'s `image` ^3.x
+  pin still blocks `flutter_launcher_icons`/`flutter_native_splash`.
 
 ## Later
 
-- Milestone 2 → 3 → 4 → 5, in that order. The next big native-divergence point is iOS **background
-  URLSession** download behavior (Phase 6) — budget Mac/Xcode time there once the iOS side starts.
+- Milestone 3 → 4 → 5, in that order. The next big native-divergence point is iOS **background URLSession**
+  download behavior (Phase 6) — budget Mac/Xcode time there once the iOS side starts. CarPlay entitlement
+  (0.13) status should also be checked as Milestone 4 approaches.
 
 ---
 
-*Last updated: 2026-07-31 (Phase 8 built and verified)*
+*Last updated: 2026-07-31 (Phase 9 built and verified — Milestone 2 complete)*

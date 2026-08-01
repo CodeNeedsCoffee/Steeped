@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/logging/log_repository.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/storage/session_storage.dart';
 import '../../../models/server_status.dart';
@@ -53,7 +54,10 @@ class SessionController extends Notifier<SessionState> {
         await _storage.save(serverUrl: serverUrl, user: result.user);
         ref.read(dioProvider).options.baseUrl = serverUrl;
         state = SessionAuthenticated(serverUrl: serverUrl, user: result.user);
-      } catch (_) {
+      } catch (e) {
+        await ref
+            .read(logRepositoryProvider)
+            .log('error', 'session', 'Startup token refresh failed: $e');
         await _storage.clear();
         state = const SessionUnauthenticated();
       }

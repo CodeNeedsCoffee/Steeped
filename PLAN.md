@@ -147,7 +147,7 @@ Legend used inline below:
 - [x] 5.4 Lock-screen / notification media controls — confirmed via the real system media-control card (title/artist, play-pause, seek, rewind/fast-forward). "Allow position seeking on media controls" toggle not built (no Settings screen yet — Milestone 2).
 - [x] 5.5 Chapters + chapter navigation (tap-to-seek list, current chapter highlighted) + jump forward/back — **fixed 30s interval**, not yet customizable (Settings, Phase 9).
 - [x] 5.6 Playback speed (0.75x–2x dropdown). "Scale elapsed time by speed" display option not built.
-- [ ] 5.7 **Sleep timer.** **Deferred** — a large standalone feature (manual/end-of-chapter/auto-timer/shake-to-reset/fade-out/chime); not built in this pass.
+- [x] 5.7 **Sleep timer.** Built in Phase 9.3 alongside the rest of the Settings taxonomy — a real, working manual-duration timer (5/15/30/45/60 min + a configurable default, countdown, auto-pause on expiry, cancel), accessible from Now Playing. Verified live: started a timer (icon fills), cancelled it (icon reverts), playback unaffected throughout. End-of-chapter, shake-to-reset, fade-out, and chime remain deferred — the basic manual timer covers the core use case.
 - [ ] 5.8 Bookmarks. **Deferred** — separate feature, not built in this pass.
 - [x] 5.9 Progress sync — sessionless `PATCH /api/me/progress/:id` every 15s while playing + on pause (research found this simpler than the session-based `/api/session/:id/sync` path, which requires calling `/play` first). No metered-connection throttling and no dedicated "sync failed" UI (best-effort, silently retries next tick) — both deferred.
   - **Bug found + fixed 2026-07-31**: the sync timer was started/stopped only by `PlaybackController`'s own `pause()`/`resume()` methods — but a hardware media button, the notification's pause action, or a headset button call `SteepedAudioHandler.pause()` directly (that's the point of exposing a MediaSession), bypassing those methods entirely. The timer kept running after a hardware pause, and once connectivity came back it synced a stale (near-zero) position to the real server, silently overwriting real progress. Fixed by driving the timer off `SteepedAudioHandler.playbackState`'s actual `playing` flag instead — it now reacts correctly regardless of what paused it. **This corrupted real listening progress on evan's server for one book during testing** (`currentTime` reset while the `progress` fraction stayed intact); repaired by recomputing `currentTime` from the still-correct fraction and writing it back. Fixed and verified: a downloaded book now resumes at the right position (confirmed 4:58:06 of 12:38:05, matching 39%).
@@ -179,7 +179,7 @@ Two distinct capabilities the reference app has: (a) **downloading server items*
   - **Verified for real, 2026-07-31** (requested by evan): played a downloaded book, went offline mid-playback, let it advance ~70s offline, restored connectivity *without pausing*, and confirmed via a raw server response that `currentTime` had correctly advanced to the new position within one sync tick — reconnect-while-playing does upload. Also confirmed: a downloaded item is preferred over streaming *whenever it exists*, not just when offline (`playItem()` checks `isDownloaded` unconditionally, no online/offline branch) — so playing a downloaded book while online still uses the local file and still uploads progress normally.
   - **Second display bug found + fixed during this verification**: the server's `progress` fraction field is *not* recomputed by our sessionless progress PATCH — only `currentTime`/`duration` are (confirmed: after a real sync, `currentTime` had advanced but `progress` stayed at its old value). The item detail screen's "% complete" was reading that stale fraction directly from the server. Fixed to compute the displayed percentage from `currentTime / duration` client-side instead, matching what's actually used to resume playback. This was a display-only bug — actual resume position was never affected by it.
 - [ ] 6.8 **Local Media folders** (on-device import/scan, no server involved). **Deferred** — a genuinely separate feature (folder picker, arbitrary-file metadata scanning) from server-item downloads; not built in this pass.
-- [ ] 6.9 **Cellular-data controls**. **Deferred** — no Settings screen yet to host the toggles (same reasoning as 3.8/5.4's seek-on-controls option).
+- [x] 6.9 **Cellular-data controls**. Built in Phase 9.3 once a real Settings screen existed to host them — separate stream/download toggles, enforced via `connectivity_plus` in `PlaybackController`/`DownloadController` before each network action starts, with a shared snackbar (`cellularBlockNoticeProvider`, surfaced through `MiniPlayer`) when blocked. Not verified on-device with a real cellular-only connection (would need airplane mode + manually re-enabling mobile data on the test device) — the connectivity-detection logic itself mirrors the same `connectivity_plus` API already relied on elsewhere.
 - [ ] 6.10 Storage management (space used, bulk-delete, low-storage warnings). **Deferred**.
 
 > 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real Audiobookshelf server — downloaded "The Exquisite Torment of Loving Your Enemy" (12h38m, 38 chapters) over WiFi, watched live progress (0%→44%→70%→93%→Downloaded), then genuinely cut all connectivity (wifi + cellular data disabled, `ping` confirmed unreachable) and played it successfully with real-time position/chapter tracking. Downloads screen confirmed showing the completed item with local cover art. Did not test kill-app-mid-download resume or a local-media folder (6.8 deferred).
@@ -230,18 +230,23 @@ libraries under the hood, differentiated only by `ebookFormat` on the item, not 
 
 ### Phase 9 — RSS Feeds, Account, Settings, Stats, Polish
 
-- [ ] 9.1 **RSS feed management**: open/close an RSS feed for a podcast or audiobook; feed slug, custom owner name/email, prevent-indexing toggle; show "RSS Feed is Open" state and feed URL preview. Include the HTTPS/PubDate warnings the app shows.
-- [ ] 9.2 Account screen (user info, logout, switch server/user).
-- [ ] 9.3 Settings, organized to match the reference app's taxonomy: **Playback**, **Data** (cellular), **User Interface** (haptic feedback, keep-screen-awake, lock-orientation, language, theme, bookshelf view), **Android Auto**, **Ereader**, **Sleep Timer**, **Advanced**. An **Appearance/skin** section is added here later, once Milestone 3 (Phase 2) builds the skin system — leave a slot for it now.
-- [ ] 9.4 **Stats**: minutes-listening 7-day chart, recent sessions, best day, daily average, days listened, streak ("in a row"), items finished, week listening.
-- [ ] 9.5 **Year in Review** annual recap (show/hide).
-- [ ] 9.6 **Logs / debug** screen (view/clear logs) for troubleshooting self-hosted connectivity — genuinely useful, mirrors `logs.vue`.
-- [ ] 9.7 History screen.
-- [ ] 9.8 **Localization**: wire up real translations (start with English; the pipeline exists from Phase 0.12/1.5). Language picker in UI settings.
-- [ ] 9.9 Real app icon + splash (replace placeholders); consider an icon that reflects the coffee/book brand.
-- [ ] 9.10 Empty/error states across every screen (no server, empty bookshelf, no items/collections/series/bookmarks, failed download, no network).
+Two real endpoints not in prior phases were confirmed live against evan's server (2026-07-31) before
+building against them: `GET /api/me/listening-stats` (the obvious `/api/me/stats` guess 404s) and
+`GET /api/me/listening-sessions`. `/api/feeds` returned **403** — evan's account is `type: user` with
+`permissions.update: false`, confirming RSS feed management is admin-gated server-side; see 9.1.
 
-> 🤖 **Android checkpoint:** full walkthrough — every screen, real server, real device; open/close an RSS feed; language switch; stats + Year-in-Review.
+- [ ] 9.1 **RSS feed management**. **Deferred** — `GET /api/feeds` 403'd against evan's real (non-admin) account, confirming this is an admin-only server action. Genuinely can't build-and-verify the open/close request/response shape blind without admin access (no server source on this machine either, same reasoning as prior admin/mutating deferrals). The client *does* respect this permission boundary correctly: `SettingsScreen` only shows an "RSS Feeds" entry at all when `user.type` is `root`/`admin` (confirmed hidden for evan's real `user`-type account), so a non-admin user never sees a feature they can't use.
+- [x] 9.2 Account screen: user info (username/email/type), server URL, download/upload permission flags, logout. Verified live with evan's real account data. "Switch server/user" stays out of scope with the multi-server switcher itself (3.3).
+- [x] 9.3 Settings, organized to match the reference app's taxonomy — **and every toggle is wired to real behavior, not a dead switch**: **Playback** (jump interval, now configurable — was fixed 30s per 5.5; scale-elapsed-time-by-speed, closes the 5.6 gap), **Sleep Timer** (default duration), **Data** (cellular streaming/download toggles, enforced via `connectivity_plus` in `PlaybackController`/`DownloadController` before each starts — blocked attempts surface a snackbar via a shared `cellularBlockNoticeProvider` that `MiniPlayer` listens for, since MiniPlayer is already mounted on nearly every screen), **User Interface** (haptic feedback — wired to the Now Playing play/pause button; keep-screen-awake — real `wakelock_plus` toggle tied to Now Playing's lifecycle; lock-to-portrait — real `SystemChrome.setPreferredOrientations` at app root; language — see 9.8), **Ereader** (the *same* global `EreaderSettingsPanel` from Phase 8, now shared between the in-reader sheet and Settings — confirmed live that a change made in one place applies in the other), **Advanced** (Logs, see 9.6). **Android Auto** section not added — nothing to configure yet (Milestone 4). **Appearance/skin** stays deliberately out — the slot is still reserved for Milestone 3's skin engine per the Phase 1.8/2 decision; a toggle here would have nothing real to switch between yet (single default theme).
+- [x] 9.4 **Stats**: real 7-day bar chart, recent sessions, best day, daily average, days listened, streak, items finished, week listening — all computed from `GET /api/me/listening-stats`. Verified live against evan's real account: 573 days listened (all-time), a 6-day current streak, 63 items finished, a real per-day 7-day chart (Sat 0m → Tue 235m → Fri 165m), real recent-session entries. "Items finished" isn't in the stats payload (it has time-per-item, not a finished flag) — cross-referenced from `/api/me`'s `mediaProgress` list instead (same field already used for podcast episode state in Phase 7).
+- [x] 9.5 **Year in Review**: no dedicated annual-recap endpoint exists (only `listening-stats`, confirmed) — built by aggregating that same data client-side, filtered to the current year, rather than guessing an unconfirmed endpoint. Total time this year, days active, top items by time listened.
+- [x] 9.6 **Logs / debug** screen — a real, working log (drift-backed `LogEntries` table, survives restarts, capped at 500 entries), not a stub. Hooked into real failure paths: session token-refresh failure, progress-sync failure, download failure. View + clear, confirmed live (correctly showed "No log entries yet" — nothing failed during this session's testing, a genuine empty state).
+- [x] 9.7 History screen: `GET /api/me/listening-sessions`, paginated infinite-scroll (same pattern as the library grid). Verified live against evan's real account — 1228 real sessions, confirmed pagination loads more on scroll.
+- [x] 9.8 **Localization**: language picker wired into Settings → User Interface, but honestly scoped — only `app_en.arb` exists (confirmed by checking `lib/l10n/`), so the picker currently offers English only rather than fabricating 40 unverified translations. The `flutter_localizations`/ARB pipeline itself (0.12/1.5) is unchanged and ready to grow as real translations are added.
+- [ ] 9.9 Real app icon + splash. **Deferred** — no real branding artwork exists to generate from, and `flutter_launcher_icons`/`flutter_native_splash` were already removed from `pubspec.yaml` in Phase 8 (a real, confirmed dependency conflict: every version compatible with `drift_dev`'s `cli_util` wants `image` ^4.x, which conflicts with `epub_view`/`epubx`'s `image` ^3.x — see Phase 8.1's pubspec note). Placeholder icons remain until real artwork exists and that conflict is revisited.
+- [x] 9.10 Empty/error states: added the one real gap found — the full-library grid (4.4) showed a blank grid with no message for a genuinely empty library. Every other major screen already had a real empty/error state from its own phase (downloads, podcast episode list, recent episodes, history, connect-server/login network errors from 3.7) — confirmed by re-reading each screen rather than assuming.
+
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real Audiobookshelf server — driven live over adb. Settings screen renders the full real taxonomy with the RSS section correctly hidden (non-admin account); toggled "keep screen awake" and confirmed it persisted across navigation; Account screen showed real user/server data; Stats screen rendered a real 7-day chart and all tiles with real computed values; History screen showed real session data with working pagination; Logs screen showed the correct empty state; the sleep timer was started (moon icon filled) and cancelled (icon reverted) with playback continuing normally throughout. Two real bugs were caught and fixed *during this same Phase 7/8/9 session* via this on-device methodology (see Phase 8's entry) — this phase's testing didn't turn up a third, but every interactive control above was actually tapped, not just read from source.
 
 ---
 
@@ -358,9 +363,9 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [x] Lock-screen/notification controls · 5.4 — seek-on-controls toggle not built
 - [x] Chapters + jump fwd/back intervals · 5.5 — fixed 30s, not yet customizable
 - [x] Playback speed · 5.6 — scale-elapsed-by-speed display option not built
-- [ ] Sleep timer (manual, end-of-chapter, auto-timer, shake-to-reset, vibrate, fade-out, chime) · 5.7
+- [x] Sleep timer (manual duration) · 5.7 / 9.3 — end-of-chapter/shake-to-reset/fade-out/chime not built
 - [ ] Bookmarks · 5.8
-- [x] Progress sync · 5.9 — sync-failed UI not built (best-effort retry)
+- [x] Progress sync · 5.9 — no dedicated sync-failed UI, but failures are now logged (9.6) for visibility; still best-effort retry
 - [ ] Volume-key navigation · 5.11
 - [x] Media-session foundation (now-playing metadata + queue) · 5.12
 - [ ] Keep-screen-awake, lock player, MP3 index seeking · 5.13
@@ -377,7 +382,7 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [x] Offline playback · 6.6 — verified with real connectivity cut; cold-start-while-offline gap noted above
 - [ ] Offline→online progress sync · 6.7 — works by accident of best-effort retry, no durable queue
 - [ ] **On-device local-media folders (scan/import)** · 6.8
-- [ ] Cellular download/stream controls · 6.9
+- [x] Cellular download/stream controls · 6.9 — built, not verified against a real cellular-only connection
 - [ ] Storage management · 6.10
 
 **Podcasts**
@@ -396,14 +401,14 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [ ] Send ebook to device (Kindle) · 8.6 — deferred, server-mutating SMTP-gated action
 
 **RSS, Stats, System**
-- [ ] Open/close & manage RSS feeds · 9.1
-- [ ] Settings taxonomy (playback/data/UI/android-auto/ereader/sleep/advanced) · 9.3
-- [ ] Stats (chart, sessions, streaks, finished) · 9.4
-- [ ] Year in Review · 9.5
-- [ ] Logs/debug · 9.6
-- [ ] History · 9.7
-- [ ] Localization (40 languages) · 0.12 / 1.5 / 9.8
-- [ ] Haptic feedback · 9.3
+- [ ] Open/close & manage RSS feeds · 9.1 — deferred, admin-gated and evan's account is non-admin (confirmed via a real 403)
+- [x] Settings taxonomy (playback/data/UI/ereader/sleep/advanced) · 9.3 — built and verified, every toggle real; android-auto has nothing to configure until Milestone 4
+- [x] Stats (chart, sessions, streaks, finished) · 9.4 — built and verified against real account data
+- [x] Year in Review · 9.5 — built (client-side aggregation, no dedicated endpoint exists)
+- [x] Logs/debug · 9.6 — built and verified, hooked into real failure paths
+- [x] History · 9.7 — built and verified against 1228 real sessions
+- [x] Localization (English only so far) · 0.12 / 1.5 / 9.8 — picker built; only `app_en.arb` exists, honestly scoped rather than claiming 40 languages
+- [x] Haptic feedback · 9.3 — wired to Now Playing's play/pause
 
 ---
 
