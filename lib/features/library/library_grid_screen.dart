@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/network/cover_image_url.dart';
+import '../../core/theme/app_skin_style.dart';
 import '../../models/library_item.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
@@ -10,9 +11,12 @@ import '../auth/state/session_state.dart';
 import '../player/mini_player.dart';
 import 'state/library_providers.dart';
 
-/// PLAN.md Phase 4.4: full library view. Single default-theme grid — the
-/// shelf-of-spines-vs-modern-grid skin divergence is Milestone 3. Filtering
-/// & sorting (4.6) and search (4.7) are deferred; server default order only.
+/// PLAN.md Phase 4.4/2.7: full library view, with real skin divergence —
+/// [CoverStyle.modernCard] (Glass Modern) is a plain rounded-cover grid;
+/// [CoverStyle.bookSpine] (Bookshelf) adds spine-edge shading/shadow per
+/// tile (see [_BookSpineFrame]) on top of that skin's already-warm,
+/// opaque-card theme tokens. Filtering & sorting (4.6) and search (4.7)
+/// are deferred; server default order only.
 class LibraryGridScreen extends ConsumerStatefulWidget {
   const LibraryGridScreen({required this.libraryId, super.key});
 
@@ -99,22 +103,29 @@ class _GridTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final coverStyle =
+        Theme.of(context).extension<AppSkinStyle>()?.coverStyle ??
+        CoverStyle.modernCard;
+    final cover = CoverImage(
+      url: coverImageUrl(
+        serverUrl: serverUrl,
+        itemId: item.id,
+        token: token,
+        updatedAt: item.updatedAt,
+      ),
+      width: double.infinity,
+      height: double.infinity,
+    );
+
     return GestureDetector(
       onTap: () => context.push('/item/${item.id}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: CoverImage(
-              url: coverImageUrl(
-                serverUrl: serverUrl,
-                itemId: item.id,
-                token: token,
-                updatedAt: item.updatedAt,
-              ),
-              width: double.infinity,
-              height: double.infinity,
-            ),
+            child: coverStyle == CoverStyle.bookSpine
+                ? _BookSpineFrame(child: cover)
+                : cover,
           ),
           const SizedBox(height: 6),
           Text(
@@ -131,6 +142,79 @@ class _GridTile extends StatelessWidget {
               style: Theme.of(context).textTheme.labelSmall,
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// PLAN.md Phase 2.3/2.7: gives a real book its cover art a spine-like
+/// presence on the shelf — a bright highlight strip near the left (spine)
+/// edge, a dark page-block shadow along the right edge, and a drop shadow
+/// beneath, rather than just a flat rectangle. No literal wood/paper
+/// texture image (no branding art exists yet, Phase 9.9) — this is
+/// procedural shading layered over the real cover, not a placeholder.
+class _BookSpineFrame extends StatelessWidget {
+  const _BookSpineFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 6,
+            offset: const Offset(3, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            child,
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 6,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.28),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 10,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.35),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
