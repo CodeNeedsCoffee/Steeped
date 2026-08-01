@@ -134,13 +134,30 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 **Milestone 2 is done.** 🎉
 
+- **Milestone 3 (Phase 2 — Design System & Theming Engine) started 2026-08-01** on a new
+  `milestone-3-ui-skins` branch. Built and **verified live on the Pixel 8 Pro**: the `Skin` abstraction
+  (2.4) with two real, distinct skins — **Glass Modern** (2.2, new default: cool-blue dark palette,
+  translucent cards, and a genuine `BackdropFilter`-blurred app bar, confirmed live scrolling content
+  visibly blurs underneath it) and **Bookshelf** (2.3: warm wood-brown palette, opaque cards, sharper
+  radii, procedural book-spine cover shading — no literal wood/paper texture image, since no branding
+  artwork exists yet). A live Settings → Appearance switcher (2.6) — tapping a skin re-themes the whole
+  app instantly, persisted across restarts, verified switching both directions. The library grid (2.7) now
+  genuinely diverges per skin (spine shading vs. plain modern cards), confirmed against evan's real 60-item
+  library. A light accessibility pass (2.8): a semantic label on the skin cards, spot-checked 1.3x system
+  font scale with no clipping — not a full audit. **Still open**: 2.5 (a real shared skin-aware component
+  library — today only stock Material widgets pick up per-skin `ThemeData`, most other screens haven't been
+  retrofitted beyond that), light/dark/black brightness variants per skin (each skin ships one fixed
+  dark-first palette only), and a deeper 2.8 accessibility pass (formal contrast-ratio check on the glass
+  skin's translucent cards, a broader screen-reader-label sweep). See `PLAN.md` Phase 2 for full detail.
+  Real design-system work like this carries a lot of subjective taste — the exact palettes, blur strength,
+  and whether Bookshelf should later get literal textures are open questions for evan to weigh in on, not
+  settled by this pass.
+
 ## Next
 
-- **Milestone 2 is now fully closed — every deferred item from Phases 6–9 is either built or confirmed
-  genuinely blocked** (permission-gated, or waiting on real branding artwork). Work continues on a new
-  `milestone-3-ui-skins` branch (branched from `milestone-2-offline-downloads` once pushed).
-- Milestone 3: UI Customization & Skins (Phase 2) — the glass-modern and bookshelf skin engine, retrofitted
-  across every screen built in Milestones 1–2.
+- Continue Milestone 3 Phase 2: 2.5 (shared component library), brightness variants, deeper accessibility
+  audit — or move on to Phase 10 (car integration) if evan would rather revisit skin polish later once
+  there's real feedback on the two skins built so far.
 - Still worth a look next time on-device: confirm a real PDF item exists somewhere in evan's library to
   close out Phase 8.3's verification gap; verify Phase 9's cellular controls against a real cellular-only
   connection (needs airplane mode + manually re-enabled mobile data).
@@ -155,4 +172,4 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ---
 
-*Last updated: 2026-08-01 (Phase 6's remaining deferred items closed out — Milestone 2 fully complete; Milestone 3 started)*
+*Last updated: 2026-08-01 (Milestone 2 fully complete; Milestone 3 skin engine + library retrofit built and verified live)*
