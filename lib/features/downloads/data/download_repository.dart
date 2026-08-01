@@ -348,4 +348,36 @@ class DownloadRepository {
       _db.downloadedItems,
     )..where((i) => i.itemId.equals(itemId))).go();
   }
+
+  /// PLAN.md Phase 6.10: on-disk size of one downloaded item (all track
+  /// files + cover), for the Downloads screen's per-item size label and
+  /// total-storage-used figure. Reads real file sizes rather than trusting
+  /// track `duration`/bitrate estimates.
+  Future<int> sizeOfItem(String itemId) async {
+    var total = 0;
+    for (final track in await localTracksFor(itemId)) {
+      final path = track.localPath;
+      if (path == null) continue;
+      final file = File(path);
+      if (await file.exists()) total += await file.length();
+    }
+    final row =
+        await (_db.select(
+          _db.downloadedItems,
+        )..where((i) => i.itemId.equals(itemId))).getSingleOrNull();
+    final coverPath = row?.coverLocalPath;
+    if (coverPath != null) {
+      final file = File(coverPath);
+      if (await file.exists()) total += await file.length();
+    }
+    return total;
+  }
+
+  /// PLAN.md Phase 6.10: bulk-delete every downloaded item.
+  Future<void> deleteAllDownloads() async {
+    final items = await _db.select(_db.downloadedItems).get();
+    for (final item in items) {
+      await deleteDownload(item.itemId);
+    }
+  }
 }
