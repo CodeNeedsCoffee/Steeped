@@ -12,7 +12,7 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 |-----------|----------------------------------------------------|---------------|--------|
 | 1         | Core streaming — connect, authenticate, browse, stream, basic UI | 0, 1, 3, 4, 5 | 🟢 done |
 | 2         | Content, offline & downloads — downloads/local media, podcasts, e-books, account/settings/stats | 6, 7, 8, 9 | 🟢 done |
-| 3         | UI customization & skins                          | 2             | ⚪     |
+| 3         | UI customization & skins                          | 2             | 🟡     |
 | 4         | Car integration — Android Auto & CarPlay          | 10            | ⚪     |
 | 5         | Stretch goals & release prep                      | 11, 12        | ⚪     |
 
@@ -47,7 +47,21 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   the way: cold app start while offline currently fails before reaching downloaded content, because
   session bootstrap (Phase 3) doesn't distinguish "network unreachable" from "token actually invalid."
   6.2 (series download), 6.8 (local-media folders), 6.9 (cellular controls), 6.10 (storage management), and
-  a durable offline-sync retry queue (6.7) deliberately deferred — see `PLAN.md` Phase 6 for why.
+  a durable offline-sync retry queue (6.7) deferred initially — **all closed out 2026-08-01, see below.**
+- **Phase 6 fully closed out (2026-08-01)**, driven live over adb per item: **6.10 storage management**
+  (total/per-item download size, low-storage warning against real free device space via a native `StatFs`
+  channel, bulk-delete — verified against a real 292MB download and a 1.5GB 4-item batch); **6.7 durable
+  sync queue** (failed progress syncs now persist to drift and flush on reconnect, verified surviving a real
+  force-stop + cold relaunch while still offline); the **cold-start-while-offline session bug** from Phase 6
+  (session bootstrap now falls back to the cached session on a connectivity failure instead of logging out —
+  verified live, downloaded content stayed reachable after a cold offline relaunch); **6.2 series download**
+  (reuses the existing items-filter endpoint, no series-browse UI needed — verified downloading all 3 Thrawn
+  Trilogy books from one tap); and **6.8 local media** (single-file import rather than a folder scan — see
+  `PLAN.md` Phase 6.8 for why — verified importing, playing, and deleting a real file with zero network
+  calls). Also found, while investigating what's actually still blocked: server source
+  (`~/Code/audiobookshelf`) turned out to already be on this machine, so 7.3/7.4/delete-episode-from-server
+  were re-verified against real source + a new Account-screen permission check — they're genuinely
+  permission-blocked (evan's account can't update or delete), not source-blocked as previously written.
 - **Bug fix (2026-07-31, reported by evan)**: a downloaded book wasn't resuming from its saved position.
   Root cause: the progress-sync timer only stopped via in-app pause, not hardware/notification pause (which
   calls the audio handler directly) — it kept ticking in the background and, once connectivity returned from
@@ -73,9 +87,10 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   and the shared Downloads list correctly dropped the entry with no orphan row. The "Latest Episodes" feed
   (`/recent-episodes`) was confirmed against the real server response shape — evan's library only has one
   (2005-era) episode, so the feed's "No recent episodes" is a genuine empty state, not a bug. Deferred, with
-  reasoning in `PLAN.md` Phase 7: **7.3 add-podcast** (term/RSS subscribe + create) and **7.4 auto-download**
-  (both server-mutating, and the create body wants server source that isn't on this machine), plus
-  **delete-episode-from-server** and the minor new-episode-indicator / next-episode niceties from 7.6.
+  reasoning in `PLAN.md` Phase 7: **7.3 add-podcast** and **7.4 auto-download** (confirmed 2026-08-01 as
+  genuinely permission-blocked — `POST /api/podcasts` is admin-only server-side and evan's account is
+  non-admin), plus **delete-episode-from-server** (confirmed permission-blocked too — needs `canDelete`,
+  which evan's account doesn't have) and the minor new-episode-indicator / next-episode niceties from 7.6.
 
 - Phase 8 (E-Books & Comics) built ✅ and **verified end-to-end ✅ on the Pixel 8 Pro** (2026-07-31), driven
   live over adb against evan's real eBooks and Comics libraries. Read a real 44MB illustrated EPUB (Harry
@@ -121,12 +136,13 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ## Next
 
+- **Milestone 2 is now fully closed — every deferred item from Phases 6–9 is either built or confirmed
+  genuinely blocked** (permission-gated, or waiting on real branding artwork). Work continues on a new
+  `milestone-3-ui-skins` branch (branched from `milestone-2-offline-downloads` once pushed).
 - Milestone 3: UI Customization & Skins (Phase 2) — the glass-modern and bookshelf skin engine, retrofitted
   across every screen built in Milestones 1–2.
-- Worth considering first: the cold-start-while-offline gap found during Phase 6 verification (see above) —
-  a Phase 3 follow-up, not scoped to any single phase yet.
-- Also worth a look next time on-device: confirm a real PDF item exists somewhere in evan's library to close
-  out Phase 8.3's verification gap; verify Phase 9's cellular controls against a real cellular-only
+- Still worth a look next time on-device: confirm a real PDF item exists somewhere in evan's library to
+  close out Phase 8.3's verification gap; verify Phase 9's cellular controls against a real cellular-only
   connection (needs airplane mode + manually re-enabled mobile data).
 - Whenever real app-icon artwork exists: revisit Phase 9.9, including whether `epub_view`'s `image` ^3.x
   pin still blocks `flutter_launcher_icons`/`flutter_native_splash`.
@@ -139,4 +155,4 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ---
 
-*Last updated: 2026-07-31 (Phase 9 built and verified — Milestone 2 complete)*
+*Last updated: 2026-08-01 (Phase 6's remaining deferred items closed out — Milestone 2 fully complete; Milestone 3 started)*
