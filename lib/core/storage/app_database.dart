@@ -81,6 +81,22 @@ class PendingProgressSyncs extends Table {
   Set<Column> get primaryKey => {syncKey};
 }
 
+/// PLAN.md Phase 6.8: on-device audio files imported directly (never from
+/// the server) — a genuinely separate feature from downloading server
+/// items. No server item id, no progress-sync endpoint to call; progress is
+/// tracked purely locally via [progressCurrentTime].
+class LocalMediaItems extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get localPath => text()();
+  RealColumn get durationSeconds => real().nullable()();
+  RealColumn get progressCurrentTime => real().nullable()();
+  DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     KeyValueEntries,
@@ -88,6 +104,7 @@ class PendingProgressSyncs extends Table {
     DownloadedTracks,
     LogEntries,
     PendingProgressSyncs,
+    LocalMediaItems,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -95,18 +112,27 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
     onUpgrade: (m, from, to) async {
-      // Dev-time only: schema is still churning pre-release, so a schema
-      // bump just rebuilds tables rather than carrying a real migration.
-      for (final table in allTables) {
-        await m.deleteTable(table.actualTableName);
+      if (from < 5) {
+        // Dev-time only: schema was still churning pre-release, so earlier
+        // bumps just rebuilt tables rather than carrying a real migration.
+        // That's no longer free now that a real logged-in session (Phase 3)
+        // gets discarded by it too — from here on, additive changes get a
+        // real (if minimal) migration instead.
+        for (final table in allTables) {
+          await m.deleteTable(table.actualTableName);
+        }
+        await m.createAll();
+        return;
       }
-      await m.createAll();
+      if (from < 6) {
+        await m.createTable(localMediaItems);
+      }
     },
   );
 
