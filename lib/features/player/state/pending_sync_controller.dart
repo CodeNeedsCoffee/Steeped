@@ -20,12 +20,13 @@ final pendingSyncCountProvider = StreamProvider<int>((ref) {
   return ref.watch(pendingSyncRepositoryProvider).watchPendingCount();
 });
 
-/// PLAN.md Phase 6.7: flushes the durable pending-sync queue on app start
-/// and whenever connectivity is regained. Must be watched once near app
-/// root (see [HomeShellScreen], same pattern as `DownloadController`) to
-/// activate the connectivity listener.
+/// PLAN.md Phase 6.7: flushes the durable pending-sync queue on app start,
+/// whenever connectivity is regained, and on a periodic timer. Must be
+/// watched once near app root (see [HomeShellScreen], same pattern as
+/// `DownloadController`) to activate the connectivity listener.
 class PendingSyncController extends Notifier<void> {
   StreamSubscription<List<ConnectivityResult>>? _sub;
+  Timer? _periodicTimer;
 
   @override
   void build() {
@@ -37,7 +38,26 @@ class PendingSyncController extends Notifier<void> {
             flushPending();
           }
         });
-    ref.onDispose(() => _sub?.cancel());
+    // Bug found 2026-08-02 (reported by evan as "weird errors" in the
+    // Logs screen): `onConnectivityChanged` only fires when the network
+    // *type* changes (e.g. wifi -> cellular) — it never fires for a DNS
+    // hiccup or a slow/unresponsive server while the same network stays
+    // up the whole time, which is exactly what "receive timeout" and
+    // intermittent "Failed host lookup" log entries mean. A queued sync
+    // that failed for one of those reasons had no trigger to ever retry
+    // it again short of the next full app restart — confirmed live: a
+    // sync stuck since 10:59am that morning only cleared once the app was
+    // force-stopped and relaunched, despite the network being fine the
+    // whole time in between. This timer is the fix: retry periodically
+    // regardless of whether connectivity ever "changed".
+    _periodicTimer = Timer.periodic(
+      const Duration(minutes: 3),
+      (_) => flushPending(),
+    );
+    ref.onDispose(() {
+      _sub?.cancel();
+      _periodicTimer?.cancel();
+    });
     // Also try immediately: connectivity may already have been restored
     // while the app was closed, so don't wait for the next change event.
     flushPending();
