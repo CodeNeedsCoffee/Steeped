@@ -86,7 +86,26 @@ class HomeShellScreen extends ConsumerWidget {
       ),
       body: librariesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Failed to load libraries: $error')),
+        // A "Retry" action here is a defensive safety net, not just for
+        // the 2026-08-02 dioProvider race fixed above: `librariesProvider`
+        // is a plain FutureProvider that caches whatever it first resolves
+        // to, success or failure, and nothing else re-triggers it — any
+        // transient failure (a real network blip, not just that race)
+        // would otherwise leave a user stuck here until a full app
+        // restart, with no way to just try again.
+        error: (error, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Failed to load libraries: $error'),
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                onPressed: () => ref.invalidate(librariesProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
         data: (libraries) {
           if (libraries.isEmpty) {
             return const Center(child: Text('No libraries on this server.'));
