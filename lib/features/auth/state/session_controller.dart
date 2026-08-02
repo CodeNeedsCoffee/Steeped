@@ -4,7 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/log_repository.dart';
-import '../../../core/network/dio_client.dart';
 import '../../../core/storage/session_storage.dart';
 import '../../../models/server_status.dart';
 import '../data/auth_repository.dart';
@@ -53,7 +52,6 @@ class SessionController extends Notifier<SessionState> {
           refreshToken: refreshToken,
         );
         await _storage.save(serverUrl: serverUrl, user: result.user);
-        ref.read(dioProvider).options.baseUrl = serverUrl;
         state = SessionAuthenticated(serverUrl: serverUrl, user: result.user);
       } on DioException catch (e) {
         // PLAN.md Phase 6.6 gap: a cold start with no network previously
@@ -87,7 +85,6 @@ class SessionController extends Notifier<SessionState> {
             );
         final cachedUser = await _storage.readCachedUser();
         if (cachedUser?.effectiveToken != null) {
-          ref.read(dioProvider).options.baseUrl = serverUrl;
           state = SessionAuthenticated(
             serverUrl: serverUrl,
             user: cachedUser!,
@@ -103,7 +100,6 @@ class SessionController extends Notifier<SessionState> {
     // the cached session until a 401 actually occurs.
     final cachedUser = await _storage.readCachedUser();
     if (cachedUser?.effectiveToken != null) {
-      ref.read(dioProvider).options.baseUrl = serverUrl;
       state = SessionAuthenticated(serverUrl: serverUrl, user: cachedUser!);
     } else {
       state = const SessionUnauthenticated();
@@ -130,7 +126,6 @@ class SessionController extends Notifier<SessionState> {
       password: password,
     );
     await _storage.save(serverUrl: serverUrl, user: result.user);
-    ref.read(dioProvider).options.baseUrl = serverUrl;
     state = SessionAuthenticated(serverUrl: serverUrl, user: result.user);
   }
 
