@@ -100,6 +100,16 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        // A down-chevron rather than a back arrow: this screen slides up
+        // from the mini-player (see the '/now-playing' route's
+        // CustomTransitionPage in app_router.dart), so closing it should
+        // read as "collapse back down," not "go back."
+        leading: IconButton(
+          icon: const Icon(Icons.keyboard_arrow_down),
+          iconSize: 32,
+          tooltip: 'Close',
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
