@@ -7,6 +7,7 @@ import '../../core/theme/app_skin_style.dart';
 import '../../core/theme/app_theme.dart';
 import '../../widgets/cover_image.dart';
 import '../../widgets/glass_surface.dart';
+import '../../widgets/playback_loading_badge.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../settings/state/settings_providers.dart';
@@ -43,6 +44,13 @@ class MiniPlayer extends ConsumerWidget {
 
     final session = ref.watch(sessionControllerProvider);
     final isPlaying = ref.watch(isPlayingProvider).valueOrNull ?? false;
+    // PLAN.md Phase 5.14 reuse: the mini-player's own play/pause button sits
+    // outside that phase's original sweep (which only covered rows that
+    // *start* a load elsewhere) — but resuming/switching items from the
+    // collapsed bar goes through the same [playbackLoadingIdProvider], so it
+    // gets the identical spinner treatment instead of looking unresponsive
+    // during the fetch-then-buffer gap.
+    final isLoading = ref.watch(playbackLoadingIdProvider) == item.downloadId;
     final controller = ref.read(playbackControllerProvider.notifier);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -99,11 +107,15 @@ class MiniPlayer extends ConsumerWidget {
               tooltip: 'Back 30 seconds',
               onPressed: controller.jumpBackward,
             ),
-            IconButton(
-              icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-              iconSize: 36,
-              onPressed: () =>
-                  isPlaying ? controller.pause() : controller.resume(),
+            PlaybackLoadingBadge(
+              isLoading: isLoading,
+              child: IconButton(
+                icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                iconSize: 36,
+                onPressed: isLoading
+                    ? null
+                    : () => isPlaying ? controller.pause() : controller.resume(),
+              ),
             ),
             IconButton(
               icon: const Icon(Icons.forward_30),

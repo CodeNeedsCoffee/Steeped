@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -83,7 +84,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/now-playing',
-        builder: (context, state) => const NowPlayingScreen(),
+        // Slides up from the bottom over whatever's underneath (matching
+        // the mini-player's own "expand" chevron) rather than the default
+        // platform push transition — and, since Flutter reverses a page
+        // transition automatically on pop, closing it (via the AppBar's
+        // down-chevron, see NowPlayingScreen) slides back down to match.
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const NowPlayingScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 1),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              ),
+              child: child,
+            );
+          },
+        ),
       ),
       GoRoute(
         path: '/library/:libraryId/recent-episodes',
