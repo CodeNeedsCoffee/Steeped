@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.steeped.steeped"
+    namespace = "com.codeneedscoffee.steeped"
     // permission_handler_android requires compileSdk 37+; Flutter's bundled
     // default (flutter.compileSdkVersion) hasn't caught up yet, so pin it
     // explicitly. targetSdk raised to match (AGP recommends keeping them in
@@ -20,7 +20,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.steeped.steeped"
+        applicationId = "com.codeneedscoffee.steeped"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
