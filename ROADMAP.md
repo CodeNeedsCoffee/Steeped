@@ -161,6 +161,13 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   a genuine auth failure. Verified live: reproduced the permanent-stuck bug on the old build via a wifi
   toggle, confirmed the fixed build recovers automatically. See `PLAN.md` Phase 3.6 for full detail.
 
+- **Bug fix (2026-08-02, reported by evan: one comic failed to load while another worked)**: a comic
+  ("The Apothecary Diaries: Volume 01") whose reading progress had ever been written by another client threw
+  a type-cast crash on its item detail screen, because that client wrote the CBZ page-index `ebookLocation`
+  as a raw JSON number instead of a string. Fixed by coercing instead of casting in `MediaProgress.fromJson`,
+  plus the same defensive fix for two other server fields with the identical numeric-`ino` risk. Verified
+  live: the comic now opens and reads correctly. See `PLAN.md` Phase 8 for full detail.
+
 - **Milestone 4 (Phase 10 — Car Integration) started 2026-08-01**, on the same `milestone-3-ui-skins` branch
   (picked up out of strict milestone order, at evan's request to "continue onto the next phase"). Built the
   shared car content-tree foundation (10.1–10.3) and the Android Auto side of it (10.4, 10.6): a real
@@ -187,6 +194,39 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   - Milestone 3 Phase 2: 2.5 (shared component library), brightness variants, deeper accessibility audit.
   - Milestone 4 Phase 10: an actual DHU visual pass (needs desktop screenshot/input tooling — `xdotool`
     install needs a sudo password), or move on to CarPlay groundwork once on the Mac.
+- **Mini-player polish, logged 2026-08-02 (evan) — all four items now built and verified live 2026-08-02.**
+  See `PLAN.md` Phase 5.14–5.17.
+- **5.14 built**: every Play-triggering row/button (item detail, downloads, local media, podcast episodes,
+  recent episodes) now shows a small spinner and disables itself while loading, instead of looking
+  unresponsive during the fetch-then-buffer gap before audio starts, and only navigates to Now Playing if the
+  load actually succeeded. Caught a real bug along the way: `just_audio`'s `play()` doesn't resolve until
+  playback stops, so the pre-existing `await _handler.play()` would have left the new indicator stuck on for
+  the whole listening session — fixed by not awaiting it. Verified live on the Pixel 8 Pro against a real
+  streaming book. See `PLAN.md` Phase 5.14.
+- **5.15/5.16/5.17 built together** (they're all the same `MiniPlayer` widget): the mini-player is now a
+  floating, elevated card (margin, rounded corners, real shadow) instead of a flat edge-to-edge bar, with an
+  expand chevron and its own rewind-30/forward-30 buttons alongside play/pause. Made skin-aware for free by
+  reusing the existing Phase 2.2 `GlassSurface` widget — Glass Modern gets a genuinely frosted/blurred card,
+  Bookshelf gets an opaque one. Verified live in both skins on the Pixel 8 Pro, including confirming the jump
+  buttons work from the collapsed bar without triggering the bar's own expand-tap. **Follow-up tweaks same
+  day (evan's feedback after seeing it live)**: chevron moved from centered-above to left of the cover as a
+  real `IconButton` matching play/pause's size/style (36px), and the rewind/play/forward icons sized up
+  generally — both re-verified live. See `PLAN.md` Phase 5.17 for full detail.
+- **Chapters/Tracks toggle on Now Playing, built 2026-08-02, requested by evan**: a `SegmentedButton` lets
+  you switch between a book's chapter list and its raw underlying audio-file tracks, only shown when the two
+  would actually differ. Required adding the real per-track filename (`title`) to the `AudioTrack` model,
+  which wasn't being parsed before. Verified live against a real 2-file book — the Tracks tab showed the
+  actual filenames, seeking to a track worked and updated the highlighted row. **Follow-up (2026-08-03)**:
+  gated behind a new Settings → Playback "Show Tracks tab" toggle, off by default — with it off, Now Playing
+  behaves exactly as it did before this feature existed. See `PLAN.md` Phase 5.5 for full detail.
+- **Chapter/Book time display, built 2026-08-03, requested by evan**: Now Playing's time row can show
+  chapter-relative time, book-relative time, or both at once — mirroring the reference app's behavior, with
+  "at least one must stay on" enforced by `SegmentedButton` itself rather than hand-rolled validation.
+  Defaults to book-only (identical to the screen's look before this existed). Changeable both from Settings
+  → Playback and a new quick-access sheet on Now Playing (shared `TimeDisplayModeSelector` widget, same reuse
+  pattern as the ereader settings panel). Verified live against a real book with chapters (Dune) — all three
+  modes, plus independently confirmed the chapter-relative math is correct and that the last remaining option
+  genuinely can't be turned off. See `PLAN.md` Phase 5.5 for full detail.
 - Still worth a look next time on-device: confirm a real PDF item exists somewhere in evan's library to
   close out Phase 8.3's verification gap; verify Phase 9's cellular controls against a real cellular-only
   connection (needs airplane mode + manually re-enabled mobile data).
