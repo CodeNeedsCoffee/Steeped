@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:just_audio/just_audio.dart' show PlayerException;
 
 import '../../../core/audio/audio_handler_provider.dart';
 import '../../../core/audio/steeped_audio_handler.dart';
@@ -81,6 +82,13 @@ class PlaybackController extends Notifier<void> {
   Timer? _sleepCountdown;
   StreamSubscription<PlaybackState>? _playbackStateSub;
   bool _wasPlaying = false;
+
+  /// Debugging note (2026-08-03): tracks whether the periodic sync tick
+  /// below is seeing real position progress. Reset every time
+  /// [_startSyncTimer] (re)starts, so a fresh play always starts from a
+  /// clean slate.
+  double? _lastSyncedPosition;
+  int _staleSyncTicks = 0;
 
   @override
   void build() {
@@ -181,6 +189,7 @@ class PlaybackController extends Notifier<void> {
         startPosition: item.progress?.currentTime ?? 0,
       );
       _handler.onItemFinished = () => _onFinished(item);
+      _handler.onPlayerError = (e) => _onPlayerError(item, e);
       // Not awaited: `AudioPlayer.play()`'s Future only completes once
       // playback pauses/stops/completes (see just_audio's doc comment) — the
       // `player.playing` flag it sets flips synchronously, well before that,
@@ -190,6 +199,13 @@ class PlaybackController extends Notifier<void> {
       // indicator tied to it) pending for the entire playback session.
       unawaited(_handler.play());
       _startSyncTimer(item);
+    } catch (e) {
+      unawaited(
+        ref
+            .read(logRepositoryProvider)
+            .log('error', 'playback', 'Failed to start playback for $itemId: $e'),
+      );
+      rethrow;
     } finally {
       if (ref.read(playbackLoadingIdProvider) == itemId) {
         ref.read(playbackLoadingIdProvider.notifier).state = null;
@@ -258,6 +274,7 @@ class PlaybackController extends Notifier<void> {
         startPosition: item.progress?.currentTime ?? 0,
       );
       _handler.onItemFinished = () => _onFinished(item);
+      _handler.onPlayerError = (e) => _onPlayerError(item, e);
       // Not awaited: `AudioPlayer.play()`'s Future only completes once
       // playback pauses/stops/completes (see just_audio's doc comment) — the
       // `player.playing` flag it sets flips synchronously, well before that,
@@ -267,6 +284,17 @@ class PlaybackController extends Notifier<void> {
       // indicator tied to it) pending for the entire playback session.
       unawaited(_handler.play());
       _startSyncTimer(item);
+    } catch (e) {
+      unawaited(
+        ref
+            .read(logRepositoryProvider)
+            .log(
+              'error',
+              'playback',
+              'Failed to start playback for $downloadId: $e',
+            ),
+      );
+      rethrow;
     } finally {
       if (ref.read(playbackLoadingIdProvider) == downloadId) {
         ref.read(playbackLoadingIdProvider.notifier).state = null;
@@ -293,6 +321,7 @@ class PlaybackController extends Notifier<void> {
         startPosition: item.progress?.currentTime ?? 0,
       );
       _handler.onItemFinished = () => _onFinished(item);
+      _handler.onPlayerError = (e) => _onPlayerError(item, e);
       // Not awaited: `AudioPlayer.play()`'s Future only completes once
       // playback pauses/stops/completes (see just_audio's doc comment) — the
       // `player.playing` flag it sets flips synchronously, well before that,
@@ -302,6 +331,13 @@ class PlaybackController extends Notifier<void> {
       // indicator tied to it) pending for the entire playback session.
       unawaited(_handler.play());
       _startSyncTimer(item);
+    } catch (e) {
+      unawaited(
+        ref
+            .read(logRepositoryProvider)
+            .log('error', 'playback', 'Failed to start playback for $id: $e'),
+      );
+      rethrow;
     } finally {
       if (ref.read(playbackLoadingIdProvider) == id) {
         ref.read(playbackLoadingIdProvider.notifier).state = null;
@@ -326,9 +362,63 @@ class PlaybackController extends Notifier<void> {
 
   void _startSyncTimer(LibraryItemDetail item) {
     _syncTimer?.cancel();
+    _lastSyncedPosition = null;
+    _staleSyncTicks = 0;
     _syncTimer = Timer.periodic(
       const Duration(seconds: 15),
-      (_) => _sync(item),
+      (_) => _periodicSync(item),
+    );
+  }
+
+  /// Debugging note (2026-08-03, investigating a "stuck playing" report):
+  /// `playbackState.playing` never auto-flips to false on a `just_audio`
+  /// player error (see [SteepedAudioHandler]'s `errorStream` note) — so if
+  /// the underlying stream stalls (e.g. a stale/expired token after a long
+  /// idle period, or a dropped connection) with no error surfaced at all,
+  /// this timer would otherwise keep ticking and re-syncing the same frozen
+  /// position forever with zero visible signal. This wraps the ordinary
+  /// [_sync] call with a watchdog: only the periodic (still-marked-playing)
+  /// tick feeds the counter — the one-off sync triggered by a genuine pause
+  /// in [_onPlaybackStateChanged] does not, so a deliberate pause is never
+  /// mistaken for a stall.
+  Future<void> _periodicSync(LibraryItemDetail item) async {
+    final position = _handler.globalPositionSeconds;
+    if (_lastSyncedPosition != null &&
+        (position - _lastSyncedPosition!).abs() < 0.5) {
+      _staleSyncTicks++;
+      if (_staleSyncTicks == 2) {
+        unawaited(
+          ref
+              .read(logRepositoryProvider)
+              .log(
+                'warning',
+                'playback',
+                'Position frozen at ${position.toStringAsFixed(1)}s for '
+                    '${item.id} across 2 sync ticks (~30s) while '
+                    'playing=true — possible stuck stream (stale token or '
+                    'dropped connection).',
+              ),
+        );
+      }
+    } else {
+      _staleSyncTicks = 0;
+    }
+    _lastSyncedPosition = position;
+    await _sync(item);
+  }
+
+  /// Debugging note (2026-08-03): logs a `just_audio` player error (see
+  /// [SteepedAudioHandler.onPlayerError]) so a silent stream failure shows
+  /// up in Settings → Logs instead of leaving no trace at all.
+  void _onPlayerError(LibraryItemDetail item, PlayerException e) {
+    unawaited(
+      ref
+          .read(logRepositoryProvider)
+          .log(
+            'error',
+            'playback',
+            'Player error for ${item.id} (code ${e.code}): ${e.message}',
+          ),
     );
   }
 

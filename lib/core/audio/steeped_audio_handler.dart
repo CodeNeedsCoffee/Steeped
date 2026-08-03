@@ -27,6 +27,17 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
         onItemFinished?.call();
       }
     });
+    // Debugging note (2026-08-03, investigating a "stuck playing" report):
+    // just_audio delivers playback-time errors (dropped connection, a
+    // rejected/expired stream token) via this dedicated `errorStream`, NOT
+    // as a Dart Stream error on `playbackEventStream` (that pattern was
+    // removed in just_audio 0.10.0 — see its changelog) — so a plain
+    // `.listen(_broadcastState)` above never sees them. `_player.playing`
+    // also never auto-flips to false on such an error; it only changes via
+    // explicit play()/pause() calls. Without this subscription, an error
+    // here is completely invisible: `_broadcastState` keeps re-emitting
+    // whatever `playing`/`processingState` were before the error, forever.
+    _player.errorStream.listen((e) => onPlayerError?.call(e));
   }
 
   final AudioPlayer _player = AudioPlayer();
@@ -35,6 +46,13 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
   /// Fired when the loaded item finishes playing entirely — used by
   /// [PlaybackController] to mark-finished / do a final progress sync.
   void Function()? onItemFinished;
+
+  /// Fired on a `just_audio` [PlayerException] during playback (see the
+  /// constructor's `errorStream` subscription above). [PlaybackController]
+  /// wires this to the log repository so a silent stream failure is at
+  /// least visible in Settings → Logs instead of leaving `playing: true`
+  /// broadcasting forever with a frozen position.
+  void Function(PlayerException)? onPlayerError;
 
   /// PLAN.md Phase 10.1/10.4: set once from `main.dart` after a
   /// [ProviderContainer] exists — this handler is constructed before
