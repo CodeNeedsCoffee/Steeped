@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/network/cover_image_url.dart';
+import '../../core/theme/app_skin_style.dart';
+import '../../core/theme/app_theme.dart';
 import '../../widgets/cover_image.dart';
+import '../../widgets/glass_surface.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../settings/state/settings_providers.dart';
@@ -12,6 +15,13 @@ import 'state/playback_controller.dart';
 /// PLAN.md Phase 5.2: persistent bottom bar. Drop this in as a Scaffold's
 /// `bottomNavigationBar` on any authenticated screen — it collapses to
 /// nothing when no item is loaded.
+///
+/// PLAN.md Phase 5.15/5.16/5.17: a floating, elevated card rather than a
+/// flat edge-to-edge bar — skin-aware (frosted via [GlassSurface] on Glass
+/// Modern, opaque on Bookshelf, matching how every other surface already
+/// diverges per skin), with an expand chevron next to the cover and its own
+/// 30s jump controls (all sized up per evan's follow-up feedback) so the two
+/// most common actions don't require opening Now Playing first.
 class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
 
@@ -33,6 +43,12 @@ class MiniPlayer extends ConsumerWidget {
 
     final session = ref.watch(sessionControllerProvider);
     final isPlaying = ref.watch(isPlayingProvider).valueOrNull ?? false;
+    final controller = ref.read(playbackControllerProvider.notifier);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final radii = theme.extension<AppRadii>() ?? const AppRadii();
+    final isFrosted =
+        theme.extension<AppSkinStyle>()?.useFrostedSurfaces ?? false;
     final (serverUrl, token) = switch (session) {
       SessionAuthenticated(:final serverUrl, :final user) => (
         serverUrl,
@@ -41,48 +57,79 @@ class MiniPlayer extends ConsumerWidget {
       _ => (null, null),
     };
 
+    final content = InkWell(
+      onTap: () => context.push('/now-playing'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.keyboard_arrow_up),
+              iconSize: 36,
+              tooltip: 'Expand',
+              onPressed: () => context.push('/now-playing'),
+            ),
+            if (serverUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(radii.sm),
+                child: CoverImage(
+                  url: coverImageUrl(
+                    serverUrl: serverUrl,
+                    itemId: item.id,
+                    token: token,
+                    updatedAt: item.updatedAt,
+                  ),
+                  width: 40,
+                  height: 40,
+                ),
+              ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.replay_30),
+              iconSize: 28,
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Back 30 seconds',
+              onPressed: controller.jumpBackward,
+            ),
+            IconButton(
+              icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+              iconSize: 36,
+              onPressed: () =>
+                  isPlaying ? controller.pause() : controller.resume(),
+            ),
+            IconButton(
+              icon: const Icon(Icons.forward_30),
+              iconSize: 28,
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Forward 30 seconds',
+              onPressed: controller.jumpForward,
+            ),
+          ],
+        ),
+      ),
+    );
+
     return SafeArea(
       top: false,
-      child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        child: InkWell(
-          onTap: () => context.push('/now-playing'),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                if (serverUrl != null)
-                  CoverImage(
-                    url: coverImageUrl(
-                      serverUrl: serverUrl,
-                      itemId: item.id,
-                      token: token,
-                      updatedAt: item.updatedAt,
-                    ),
-                    width: 40,
-                    height: 40,
-                  ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                  onPressed: () {
-                    final controller = ref.read(
-                      playbackControllerProvider.notifier,
-                    );
-                    isPlaying ? controller.pause() : controller.resume();
-                  },
-                ),
-              ],
-            ),
-          ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: Material(
+          color: Colors.transparent,
+          elevation: 8,
+          shadowColor: Colors.black.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(radii.lg),
+          clipBehavior: Clip.antiAlias,
+          child: isFrosted
+              ? GlassSurface(child: content)
+              : Container(color: scheme.surfaceContainerHigh, child: content),
         ),
       ),
     );
