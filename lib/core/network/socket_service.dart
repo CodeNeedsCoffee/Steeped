@@ -105,8 +105,26 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
       );
       unawaited(_retryAfterAuthFailure(serverUrl));
     });
-    socket.onDisconnect((_) => state = SocketConnectionStatus.disconnected);
-    socket.onConnectError((_) => state = SocketConnectionStatus.disconnected);
+    socket.onDisconnect((_) {
+      state = SocketConnectionStatus.disconnected;
+      // Debugging note (2026-08-03): only `auth_failed` was logged before —
+      // an ordinary disconnect (wifi handoff, doze, server restart) gave no
+      // trace at all, making it hard to correlate a socket drop with a
+      // playback stall investigated around the same time.
+      unawaited(
+        _ref
+            .read(logRepositoryProvider)
+            .log('warning', 'socket', 'Socket disconnected'),
+      );
+    });
+    socket.onConnectError((error) {
+      state = SocketConnectionStatus.disconnected;
+      unawaited(
+        _ref
+            .read(logRepositoryProvider)
+            .log('warning', 'socket', 'Socket connect error: $error'),
+      );
+    });
 
     socket.connect();
     _socket = socket;
@@ -129,7 +147,18 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
   /// legacy-token server, which has no refresh endpoint at all) can't spin
   /// forever.
   Future<void> _retryAfterAuthFailure(String serverUrl) async {
-    if (_authRetryCount >= 3) return;
+    if (_authRetryCount >= 3) {
+      unawaited(
+        _ref
+            .read(logRepositoryProvider)
+            .log(
+              'error',
+              'socket',
+              'Socket auth retry exhausted after 3 attempts — giving up',
+            ),
+      );
+      return;
+    }
     _authRetryCount++;
     _disconnect();
 
