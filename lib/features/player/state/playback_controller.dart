@@ -31,6 +31,15 @@ final currentPlaybackItemProvider = StateProvider<LibraryItemDetail?>(
   (ref) => null,
 );
 
+/// PLAN.md Phase 5.14: the id of whatever [PlaybackController.playItem] /
+/// [PlaybackController.playEpisode] / [PlaybackController.playLocalMedia] is
+/// currently fetching/loading, or null. Keyed the same way as
+/// [LibraryItemDetail.downloadId] (plain item id, or `id::episodeId` for a
+/// podcast episode) so a Play button anywhere can show its own loading state
+/// instead of appearing to do nothing during the network-fetch-then-buffer
+/// gap before audio actually starts.
+final playbackLoadingIdProvider = StateProvider<String?>((ref) => null);
+
 final playbackPositionProvider = StreamProvider<double>((ref) {
   return ref.watch(audioHandlerProvider).globalPositionStream;
 });
@@ -127,51 +136,65 @@ class PlaybackController extends Notifier<void> {
   /// playback genuinely work with zero connectivity: [downloadRepo]
   /// rebuilds the whole playable item from local rows, no network call.
   Future<void> playItem(String itemId) async {
-    final downloadRepo = ref.read(downloadRepositoryProvider);
-    final LibraryItemDetail item;
-    final List<Uri> sourceUris;
+    ref.read(playbackLoadingIdProvider.notifier).state = itemId;
+    try {
+      final downloadRepo = ref.read(downloadRepositoryProvider);
+      final LibraryItemDetail item;
+      final List<Uri> sourceUris;
 
-    if (await downloadRepo.isDownloaded(itemId)) {
-      final offlineItem = await downloadRepo.buildOfflineItemDetail(itemId);
-      final localTracks = await downloadRepo.localTracksFor(itemId);
-      if (offlineItem == null ||
-          localTracks.isEmpty ||
-          localTracks.any((t) => t.localPath == null)) {
-        return;
-      }
-      item = offlineItem;
-      sourceUris = localTracks.map((t) => Uri.file(t.localPath!)).toList();
-    } else {
-      final session = ref.read(sessionControllerProvider);
-      if (session is! SessionAuthenticated) return;
-      if (await _blockedByCellularSetting()) return;
-      final fetched = await ref
-          .read(libraryRepositoryProvider)
-          .fetchItemDetail(itemId);
-      if (fetched.isPodcast || fetched.tracks.isEmpty) return;
-      item = fetched;
-      sourceUris = fetched.tracks
-          .map(
-            (t) => Uri.parse(
-              audioStreamUrl(
-                serverUrl: session.serverUrl,
-                relativeContentUrl: t.contentUrl,
-                token: session.user.effectiveToken,
+      if (await downloadRepo.isDownloaded(itemId)) {
+        final offlineItem = await downloadRepo.buildOfflineItemDetail(itemId);
+        final localTracks = await downloadRepo.localTracksFor(itemId);
+        if (offlineItem == null ||
+            localTracks.isEmpty ||
+            localTracks.any((t) => t.localPath == null)) {
+          return;
+        }
+        item = offlineItem;
+        sourceUris = localTracks.map((t) => Uri.file(t.localPath!)).toList();
+      } else {
+        final session = ref.read(sessionControllerProvider);
+        if (session is! SessionAuthenticated) return;
+        if (await _blockedByCellularSetting()) return;
+        final fetched = await ref
+            .read(libraryRepositoryProvider)
+            .fetchItemDetail(itemId);
+        if (fetched.isPodcast || fetched.tracks.isEmpty) return;
+        item = fetched;
+        sourceUris = fetched.tracks
+            .map(
+              (t) => Uri.parse(
+                audioStreamUrl(
+                  serverUrl: session.serverUrl,
+                  relativeContentUrl: t.contentUrl,
+                  token: session.user.effectiveToken,
+                ),
               ),
-            ),
-          )
-          .toList();
-    }
+            )
+            .toList();
+      }
 
-    ref.read(currentPlaybackItemProvider.notifier).state = item;
-    await _handler.loadItem(
-      item: item,
-      sourceUris: sourceUris,
-      startPosition: item.progress?.currentTime ?? 0,
-    );
-    _handler.onItemFinished = () => _onFinished(item);
-    await _handler.play();
-    _startSyncTimer(item);
+      ref.read(currentPlaybackItemProvider.notifier).state = item;
+      await _handler.loadItem(
+        item: item,
+        sourceUris: sourceUris,
+        startPosition: item.progress?.currentTime ?? 0,
+      );
+      _handler.onItemFinished = () => _onFinished(item);
+      // Not awaited: `AudioPlayer.play()`'s Future only completes once
+      // playback pauses/stops/completes (see just_audio's doc comment) — the
+      // `player.playing` flag it sets flips synchronously, well before that,
+      // which is what `playbackState`'s listener above and
+      // [playbackLoadingIdProvider]'s consumers actually care about.
+      // Awaiting it here would keep this whole method (and the loading
+      // indicator tied to it) pending for the entire playback session.
+      unawaited(_handler.play());
+      _startSyncTimer(item);
+    } finally {
+      if (ref.read(playbackLoadingIdProvider) == itemId) {
+        ref.read(playbackLoadingIdProvider.notifier).state = null;
+      }
+    }
   }
 
   /// PLAN.md Phase 7.5: play a single podcast episode. A downloaded copy is
@@ -185,77 +208,105 @@ class PlaybackController extends Notifier<void> {
     PodcastEpisode episode,
   ) async {
     final downloadId = '${podcast.id}::${episode.id}';
-    final downloadRepo = ref.read(downloadRepositoryProvider);
-    if (await downloadRepo.isDownloaded(downloadId)) {
-      await playItem(downloadId);
-      return;
+    ref.read(playbackLoadingIdProvider.notifier).state = downloadId;
+    try {
+      final downloadRepo = ref.read(downloadRepositoryProvider);
+      if (await downloadRepo.isDownloaded(downloadId)) {
+        await playItem(downloadId);
+        return;
+      }
+
+      final session = ref.read(sessionControllerProvider);
+      if (session is! SessionAuthenticated) return;
+      if (await _blockedByCellularSetting()) return;
+      final track = episode.audioTrack;
+      if (track == null) return;
+
+      final item = LibraryItemDetail(
+        id: podcast.id,
+        mediaType: 'podcast',
+        coverPath: podcast.coverPath,
+        updatedAt: podcast.updatedAt,
+        title: episode.title,
+        subtitle: podcast.title,
+        authors: podcast.authors,
+        narrators: const [],
+        series: const [],
+        genres: const [],
+        description: episode.description,
+        publishedYear: null,
+        duration: episode.duration ?? track.duration,
+        chapters: const [],
+        hasEbook: false,
+        progress: episode.progress,
+        tracks: [track],
+        episodeId: episode.id,
+      );
+
+      final sourceUri = Uri.parse(
+        audioStreamUrl(
+          serverUrl: session.serverUrl,
+          relativeContentUrl: track.contentUrl,
+          token: session.user.effectiveToken,
+        ),
+      );
+
+      ref.read(currentPlaybackItemProvider.notifier).state = item;
+      await _handler.loadItem(
+        item: item,
+        sourceUris: [sourceUri],
+        startPosition: item.progress?.currentTime ?? 0,
+      );
+      _handler.onItemFinished = () => _onFinished(item);
+      // Not awaited: `AudioPlayer.play()`'s Future only completes once
+      // playback pauses/stops/completes (see just_audio's doc comment) — the
+      // `player.playing` flag it sets flips synchronously, well before that,
+      // which is what `playbackState`'s listener above and
+      // [playbackLoadingIdProvider]'s consumers actually care about.
+      // Awaiting it here would keep this whole method (and the loading
+      // indicator tied to it) pending for the entire playback session.
+      unawaited(_handler.play());
+      _startSyncTimer(item);
+    } finally {
+      if (ref.read(playbackLoadingIdProvider) == downloadId) {
+        ref.read(playbackLoadingIdProvider.notifier).state = null;
+      }
     }
-
-    final session = ref.read(sessionControllerProvider);
-    if (session is! SessionAuthenticated) return;
-    if (await _blockedByCellularSetting()) return;
-    final track = episode.audioTrack;
-    if (track == null) return;
-
-    final item = LibraryItemDetail(
-      id: podcast.id,
-      mediaType: 'podcast',
-      coverPath: podcast.coverPath,
-      updatedAt: podcast.updatedAt,
-      title: episode.title,
-      subtitle: podcast.title,
-      authors: podcast.authors,
-      narrators: const [],
-      series: const [],
-      genres: const [],
-      description: episode.description,
-      publishedYear: null,
-      duration: episode.duration ?? track.duration,
-      chapters: const [],
-      hasEbook: false,
-      progress: episode.progress,
-      tracks: [track],
-      episodeId: episode.id,
-    );
-
-    final sourceUri = Uri.parse(
-      audioStreamUrl(
-        serverUrl: session.serverUrl,
-        relativeContentUrl: track.contentUrl,
-        token: session.user.effectiveToken,
-      ),
-    );
-
-    ref.read(currentPlaybackItemProvider.notifier).state = item;
-    await _handler.loadItem(
-      item: item,
-      sourceUris: [sourceUri],
-      startPosition: item.progress?.currentTime ?? 0,
-    );
-    _handler.onItemFinished = () => _onFinished(item);
-    await _handler.play();
-    _startSyncTimer(item);
   }
 
   /// PLAN.md Phase 6.8: play an on-device file that never came from the
   /// server. No network involved at all — not even a cellular check, since
   /// there's nothing to fetch.
   Future<void> playLocalMedia(String id) async {
-    final item = await ref
-        .read(localMediaRepositoryProvider)
-        .buildPlayableItem(id);
-    if (item == null || item.tracks.isEmpty) return;
-    final sourceUri = Uri.file(item.tracks.first.contentUrl);
+    ref.read(playbackLoadingIdProvider.notifier).state = id;
+    try {
+      final item = await ref
+          .read(localMediaRepositoryProvider)
+          .buildPlayableItem(id);
+      if (item == null || item.tracks.isEmpty) return;
+      final sourceUri = Uri.file(item.tracks.first.contentUrl);
 
-    ref.read(currentPlaybackItemProvider.notifier).state = item;
-    await _handler.loadItem(
-      item: item,
-      sourceUris: [sourceUri],
-      startPosition: item.progress?.currentTime ?? 0,
-    );
-    _handler.onItemFinished = () => _onFinished(item);
-    await _handler.play();
-    _startSyncTimer(item);
+      ref.read(currentPlaybackItemProvider.notifier).state = item;
+      await _handler.loadItem(
+        item: item,
+        sourceUris: [sourceUri],
+        startPosition: item.progress?.currentTime ?? 0,
+      );
+      _handler.onItemFinished = () => _onFinished(item);
+      // Not awaited: `AudioPlayer.play()`'s Future only completes once
+      // playback pauses/stops/completes (see just_audio's doc comment) — the
+      // `player.playing` flag it sets flips synchronously, well before that,
+      // which is what `playbackState`'s listener above and
+      // [playbackLoadingIdProvider]'s consumers actually care about.
+      // Awaiting it here would keep this whole method (and the loading
+      // indicator tied to it) pending for the entire playback session.
+      unawaited(_handler.play());
+      _startSyncTimer(item);
+    } finally {
+      if (ref.read(playbackLoadingIdProvider) == id) {
+        ref.read(playbackLoadingIdProvider.notifier).state = null;
+      }
+    }
   }
 
   /// PLAN.md Phase 9.3 (Data/cellular controls). Only gates *streaming* —

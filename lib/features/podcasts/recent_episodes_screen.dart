@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/network/cover_image_url.dart';
 import '../../models/recent_episode.dart';
 import '../../widgets/cover_image.dart';
+import '../../widgets/playback_loading_badge.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../downloads/state/download_controller.dart';
@@ -92,16 +93,22 @@ class _RecentEpisodeTile extends ConsumerWidget {
             .format(DateTime.fromMillisecondsSinceEpoch(episode.publishedAt!)),
     ].join(' · ');
 
+    final isLoading = ref.watch(playbackLoadingIdProvider) == downloadId;
+
     return ListTile(
-      leading: CoverImage(
-        url: coverImageUrl(
-          serverUrl: serverUrl,
-          itemId: entry.podcastItemId,
-          token: token,
-          updatedAt: entry.podcastUpdatedAt,
+      enabled: !isLoading,
+      leading: PlaybackLoadingBadge(
+        isLoading: isLoading,
+        child: CoverImage(
+          url: coverImageUrl(
+            serverUrl: serverUrl,
+            itemId: entry.podcastItemId,
+            token: token,
+            updatedAt: entry.podcastUpdatedAt,
+          ),
+          width: 48,
+          height: 48,
         ),
-        width: 48,
-        height: 48,
       ),
       title: Text(episode.title, maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -121,12 +128,18 @@ class _RecentEpisodeTile extends ConsumerWidget {
                     token: token,
                   ),
       ),
-      onTap: () async {
-        await ref
-            .read(playbackControllerProvider.notifier)
-            .playEpisode(entry.podcastItem, episode);
-        if (context.mounted) context.push('/now-playing');
-      },
+      onTap: isLoading
+          ? null
+          : () async {
+              await ref
+                  .read(playbackControllerProvider.notifier)
+                  .playEpisode(entry.podcastItem, episode);
+              if (context.mounted &&
+                  ref.read(currentPlaybackItemProvider)?.downloadId ==
+                      downloadId) {
+                context.push('/now-playing');
+              }
+            },
     );
   }
 }
