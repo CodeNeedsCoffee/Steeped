@@ -1,7 +1,10 @@
-# Steeped
+# Steeped: Modern Audiobooks
 
 A Flutter client for a self-hosted [Audiobookshelf](https://www.audiobookshelf.org/) server — built for
 Android and iOS, with a custom "glass/modern" design and swappable skins.
+
+App Store listing name: **Steeped: Modern Audiobooks**. Referred to as just "Steeped" throughout the rest
+of this doc, the codebase, and package identifiers — only the public-facing store listing uses the full name.
 
 **Steeped is an independent, unofficial project.** It is not affiliated with, endorsed by, or maintained by
 the Audiobookshelf team. It's a third-party client that talks to your own Audiobookshelf server over its

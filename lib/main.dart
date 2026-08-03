@@ -18,7 +18,7 @@ Future<void> main() async {
   final audioHandler = await AudioService.init(
     builder: SteepedAudioHandler.new,
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.steeped.steeped.audio',
+      androidNotificationChannelId: 'com.codeneedscoffee.steeped.audio',
       androidNotificationChannelName: 'Steeped Playback',
       androidNotificationOngoing: true,
       androidStopForegroundOnPause: true,

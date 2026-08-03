@@ -1,4 +1,4 @@
-# Steeped — Roadmap
+# Steeped: Modern Audiobooks — Roadmap
 
 A quick-glance status tracker. For the full detailed checklist (sub-tasks, feature-parity ledger, testing
 cadence) see [`PLAN.md`](PLAN.md) — this file is just the "where are we" summary, meant to be hand-updated

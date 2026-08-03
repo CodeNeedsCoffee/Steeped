@@ -1,4 +1,4 @@
-# Steeped — Build Plan
+# Steeped: Modern Audiobooks — Build Plan
 
 A Flutter (single codebase, Android + iOS) client for a self-hosted **Audiobookshelf** server, aiming for
 **full feature parity** with the official [audiobookshelf-app](https://github.com/advplyr/audiobookshelf-app)
