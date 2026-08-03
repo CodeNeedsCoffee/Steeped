@@ -40,7 +40,7 @@ class PodcastEpisode {
       audioTrack = AudioTrack.fromJson(trackJson);
     } else {
       final audioFile = json['audioFile'] as Map<String, dynamic>?;
-      final ino = audioFile?['ino'] as String?;
+      final ino = audioFile?['ino']?.toString();
       if (ino != null && libraryItemId != null) {
         audioTrack = AudioTrack(
           index: json['index'] as int? ?? 1,
