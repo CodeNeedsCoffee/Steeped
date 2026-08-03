@@ -13,6 +13,9 @@ class AppSettings {
     this.lockPortrait = false,
     this.sleepTimerDefaultMinutes = 30,
     this.skinId = 'glassModern',
+    this.showTracksTab = false,
+    this.showChapterTime = false,
+    this.showBookTime = true,
   });
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
@@ -28,6 +31,12 @@ class AppSettings {
       sleepTimerDefaultMinutes:
           json['sleepTimerDefaultMinutes'] as int? ?? 30,
       skinId: json['skinId'] as String? ?? 'glassModern',
+      showTracksTab: json['showTracksTab'] as bool? ?? false,
+      // Default true/false respectively — matches the screen's original
+      // (pre-toggle) look of a single book-relative time row, so upgrading
+      // doesn't change anything for someone who's never touched this.
+      showChapterTime: json['showChapterTime'] as bool? ?? false,
+      showBookTime: json['showBookTime'] as bool? ?? true,
     );
   }
 
@@ -61,6 +70,22 @@ class AppSettings {
   /// `skinByName` rather than failing to decode the whole settings blob.
   final String skinId;
 
+  /// User Interface: shows the Chapters/Tracks toggle on Now Playing (a
+  /// multi-file book's raw audio-file list, separate from its chapter
+  /// markers). **Off by default** — most books are single-file anyway, so
+  /// the toggle would just be dead chrome for most listeners most of the
+  /// time; opt-in for the minority who want to see the raw track split.
+  final bool showTracksTab;
+
+  /// User Interface: whether Now Playing's time row shows chapter-relative
+  /// elapsed/remaining time, book-relative (whole-item) time, or both — at
+  /// least one is always true, enforced by [TimeDisplayModeSelector]'s
+  /// `SegmentedButton` (`emptySelectionAllowed: false`) rather than here,
+  /// since a plain data class has no good way to reject an invalid
+  /// combination on construction.
+  final bool showChapterTime;
+  final bool showBookTime;
+
   Map<String, dynamic> toJson() => {
     'jumpIntervalSeconds': jumpIntervalSeconds,
     'scaleElapsedTimeBySpeed': scaleElapsedTimeBySpeed,
@@ -71,6 +96,9 @@ class AppSettings {
     'lockPortrait': lockPortrait,
     'sleepTimerDefaultMinutes': sleepTimerDefaultMinutes,
     'skinId': skinId,
+    'showTracksTab': showTracksTab,
+    'showChapterTime': showChapterTime,
+    'showBookTime': showBookTime,
   };
 
   AppSettings copyWith({
@@ -83,6 +111,9 @@ class AppSettings {
     bool? lockPortrait,
     int? sleepTimerDefaultMinutes,
     String? skinId,
+    bool? showTracksTab,
+    bool? showChapterTime,
+    bool? showBookTime,
   }) {
     return AppSettings(
       jumpIntervalSeconds: jumpIntervalSeconds ?? this.jumpIntervalSeconds,
@@ -99,6 +130,9 @@ class AppSettings {
       sleepTimerDefaultMinutes:
           sleepTimerDefaultMinutes ?? this.sleepTimerDefaultMinutes,
       skinId: skinId ?? this.skinId,
+      showTracksTab: showTracksTab ?? this.showTracksTab,
+      showChapterTime: showChapterTime ?? this.showChapterTime,
+      showBookTime: showBookTime ?? this.showBookTime,
     );
   }
 }

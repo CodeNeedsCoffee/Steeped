@@ -10,6 +10,7 @@ import '../auth/state/session_state.dart';
 import '../settings/data/app_settings.dart';
 import '../settings/state/settings_providers.dart';
 import 'state/playback_controller.dart';
+import 'time_display_mode_selector.dart';
 
 /// PLAN.md Phase 5.2 (full-screen Now Playing), 5.5 (chapters + jump
 /// forward/back — interval now configurable, Phase 9.3), 5.6 (speed), 5.7
@@ -22,7 +23,11 @@ class NowPlayingScreen extends ConsumerStatefulWidget {
   ConsumerState<NowPlayingScreen> createState() => _NowPlayingScreenState();
 }
 
+enum _TrackListMode { chapters, tracks }
+
 class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
+  _TrackListMode _listMode = _TrackListMode.chapters;
+
   @override
   void dispose() {
     WakelockPlus.disable();
@@ -62,6 +67,36 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final currentChapterIndex = item.chapters.indexWhere(
       (c) => position >= c.start && position < c.end,
     );
+    final currentChapter = currentChapterIndex >= 0
+        ? item.chapters[currentChapterIndex]
+        : null;
+    // Chapter time only actually shows when there's a current chapter to be
+    // relative to — a book with no chapter metadata (or a position that
+    // hasn't matched one yet) always falls back to showing book time, so
+    // the row is never just blank even if "Chapter" is the only mode on.
+    final showChapterTime = settings.showChapterTime && currentChapter != null;
+    final showBookTime = settings.showBookTime || !showChapterTime;
+    final chapterElapsed = currentChapter == null
+        ? 0.0
+        : (position - currentChapter.start).clamp(
+            0.0,
+            currentChapter.end - currentChapter.start,
+          );
+    final chapterDuration = currentChapter == null
+        ? 0.0
+        : currentChapter.end - currentChapter.start;
+    final currentTrackIndex = item.tracks.indexWhere(
+      (t) => position >= t.startOffset && position < t.endOffset,
+    );
+    // A single-track book has nothing a "Tracks" view would add over
+    // "Chapters" (or vice versa if it has no chapter metadata) — only offer
+    // the toggle when both views would actually show something different.
+    // Also gated on the Settings → Playback "Show Tracks tab" toggle
+    // (off by default) so most books/listeners never see this at all.
+    final hasChapters = item.chapters.isNotEmpty;
+    final hasTracks = settings.showTracksTab && item.tracks.length > 1;
+    final showChapters =
+        hasChapters && (!hasTracks || _listMode == _TrackListMode.chapters);
 
     return Scaffold(
       appBar: AppBar(
@@ -77,6 +112,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 ? 'Sleep timer: ${_formatTime(sleepRemaining.inSeconds.toDouble())}'
                 : 'Sleep timer',
             onPressed: () => _showSleepTimerSheet(context, ref, settings),
+          ),
+          IconButton(
+            icon: const Icon(Icons.timer_outlined),
+            tooltip: 'Time display',
+            onPressed: () => _showTimeDisplaySheet(context),
           ),
           PopupMenuButton<bool>(
             onSelected: controller.markFinished,
@@ -128,11 +168,22 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 final speed = settings.scaleElapsedTimeBySpeed
                     ? (ref.watch(playbackSpeedProvider).valueOrNull ?? 1.0)
                     : 1.0;
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                return Column(
                   children: [
-                    Text(_formatTime(position / speed)),
-                    Text(_formatTime(duration / speed)),
+                    if (showChapterTime)
+                      _TimeRow(
+                        label: showBookTime ? 'Chapter' : null,
+                        elapsed: _formatTime(chapterElapsed / speed),
+                        total: _formatTime(chapterDuration / speed),
+                      ),
+                    if (showChapterTime && showBookTime)
+                      const SizedBox(height: 6),
+                    if (showBookTime)
+                      _TimeRow(
+                        label: showChapterTime ? 'Book' : null,
+                        elapsed: _formatTime(position / speed),
+                        total: _formatTime(duration / speed),
+                      ),
                   ],
                 );
               },
@@ -172,19 +223,55 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           ),
           const SizedBox(height: 12),
           Center(child: _SpeedSelector(onChanged: controller.setSpeed)),
-          if (item.chapters.isNotEmpty) ...[
+          if (hasChapters || hasTracks) ...[
             const SizedBox(height: 24),
-            Text('Chapters', style: Theme.of(context).textTheme.titleMedium),
+            if (hasChapters && hasTracks)
+              Center(
+                child: SegmentedButton<_TrackListMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: _TrackListMode.chapters,
+                      label: Text('Chapters'),
+                    ),
+                    ButtonSegment(
+                      value: _TrackListMode.tracks,
+                      label: Text('Tracks'),
+                    ),
+                  ],
+                  selected: {_listMode},
+                  onSelectionChanged: (s) =>
+                      setState(() => _listMode = s.first),
+                ),
+              )
+            else
+              Text(
+                showChapters ? 'Chapters' : 'Tracks',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             const SizedBox(height: 8),
-            ...item.chapters.asMap().entries.map((entry) {
-              return ListTile(
-                dense: true,
-                selected: entry.key == currentChapterIndex,
-                title: Text(entry.value.title),
-                trailing: Text(_formatTime(entry.value.start)),
-                onTap: () => controller.seekToGlobalPosition(entry.value.start),
-              );
-            }),
+            if (showChapters)
+              ...item.chapters.asMap().entries.map((entry) {
+                return ListTile(
+                  dense: true,
+                  selected: entry.key == currentChapterIndex,
+                  title: Text(entry.value.title),
+                  trailing: Text(_formatTime(entry.value.start)),
+                  onTap: () =>
+                      controller.seekToGlobalPosition(entry.value.start),
+                );
+              })
+            else
+              ...item.tracks.asMap().entries.map((entry) {
+                final track = entry.value;
+                return ListTile(
+                  dense: true,
+                  selected: entry.key == currentTrackIndex,
+                  title: Text(track.title ?? 'Track ${entry.key + 1}'),
+                  trailing: Text(_formatTime(track.startOffset)),
+                  onTap: () =>
+                      controller.seekToGlobalPosition(track.startOffset),
+                );
+              }),
           ],
         ],
       ),
@@ -199,6 +286,26 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final mm = m.toString().padLeft(h > 0 ? 2 : 1, '0');
     final ss = s.toString().padLeft(2, '0');
     return h > 0 ? '$h:$mm:$ss' : '$mm:$ss';
+  }
+
+  void _showTimeDisplaySheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => const SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Time Display'),
+              SizedBox(height: 12),
+              TimeDisplayModeSelector(),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showSleepTimerSheet(
@@ -245,6 +352,34 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// One elapsed/total pair, with an optional small caption above it (only
+/// used when both chapter and book time are showing at once — a single row
+/// stays unlabeled, matching how this looked before the toggle existed).
+class _TimeRow extends StatelessWidget {
+  const _TimeRow({required this.elapsed, required this.total, this.label});
+
+  final String elapsed;
+  final String total;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [Text(elapsed), Text(total)],
+    );
+    final label = this.label;
+    if (label == null) return row;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
+        row,
+      ],
     );
   }
 }

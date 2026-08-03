@@ -6,6 +6,7 @@ import '../../core/theme/skin_registry.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../ebook/ereader_settings_panel.dart';
+import '../player/time_display_mode_selector.dart';
 import 'data/app_settings.dart';
 import 'state/settings_providers.dart';
 
@@ -91,6 +92,30 @@ class SettingsScreen extends ConsumerWidget {
             value: settings.scaleElapsedTimeBySpeed,
             onChanged: (v) => controller.save(
               settings.copyWith(scaleElapsedTimeBySpeed: v),
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Show Tracks tab'),
+            subtitle: const Text(
+              'On Now Playing, add a toggle to switch between chapters and '
+              'a multi-file book\'s raw audio-file tracks',
+            ),
+            value: settings.showTracksTab,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(showTracksTab: v)),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Time display',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                TimeDisplayModeSelector(),
+              ],
             ),
           ),
 
