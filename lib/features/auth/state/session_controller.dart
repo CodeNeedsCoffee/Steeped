@@ -133,6 +133,32 @@ class SessionController extends Notifier<SessionState> {
     await _storage.clear();
     state = const SessionUnauthenticated();
   }
+
+  /// Bug found 2026-08-03 (reported by evan: streamed playback appeared to
+  /// start after a long idle period but the position never advanced).
+  /// [AuthInterceptor] (on a REST 401) and [SocketService] (on a socket
+  /// `auth_failed`) both reactively refresh an expired token and persist it
+  /// via `SessionStorage.saveRefreshedTokens` — but neither had any way to
+  /// update *this* in-memory state. Anything reading `session.user
+  /// .effectiveToken` directly (e.g. `PlaybackController` building a stream
+  /// URL) kept using the stale pre-refresh token until the next full app
+  /// restart, even though storage and every dio-routed call had already
+  /// moved on to the fresh one — confirmed live via the Logs screen: a
+  /// socket-triggered refresh at 18:00:40, then two identical `(0) Source
+  /// error` playback failures at 18:00:57/18:01:05 for the same stale
+  /// token. Call this right after any reactive refresh so the two never
+  /// diverge again.
+  void updateTokens({required String? accessToken, required String? refreshToken}) {
+    final current = state;
+    if (current is! SessionAuthenticated) return;
+    state = SessionAuthenticated(
+      serverUrl: current.serverUrl,
+      user: current.user.copyWith(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      ),
+    );
+  }
 }
 
 final sessionControllerProvider =

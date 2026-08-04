@@ -31,6 +31,11 @@ final dioProvider = Provider<Dio>((ref) {
         await ref.read(sessionStorageProvider).clear();
         ref.read(sessionExpiredSignalProvider.notifier).fire();
       },
+      onTokensRefreshed: ({required accessToken, required refreshToken}) {
+        ref
+            .read(sessionControllerProvider.notifier)
+            .updateTokens(accessToken: accessToken, refreshToken: refreshToken);
+      },
     ),
   );
   // Bug found 2026-08-02 (reported by evan: "Failed to load libraries" /

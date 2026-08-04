@@ -407,9 +407,19 @@ class PlaybackController extends Notifier<void> {
     await _sync(item);
   }
 
-  /// Debugging note (2026-08-03): logs a `just_audio` player error (see
+  /// Logs a `just_audio` player error (see
   /// [SteepedAudioHandler.onPlayerError]) so a silent stream failure shows
   /// up in Settings → Logs instead of leaving no trace at all.
+  ///
+  /// Bug fix 2026-08-03: `playing` never auto-flips to false on a
+  /// just_audio player error, so without an explicit pause here the
+  /// mini-player/Now Playing screen kept showing "playing" with a frozen
+  /// position forever — confirmed live via the Logs screen (a `(0) Source
+  /// error` from a stale post-refresh token, see SessionController
+  /// .updateTokens for the actual root cause). Pausing lets the existing
+  /// _onPlaybackStateChanged listener react exactly like any other pause
+  /// (cancels the sync timer, does a final sync), rather than duplicating
+  /// that logic here.
   void _onPlayerError(LibraryItemDetail item, PlayerException e) {
     unawaited(
       ref
@@ -420,6 +430,7 @@ class PlaybackController extends Notifier<void> {
             'Player error for ${item.id} (code ${e.code}): ${e.message}',
           ),
     );
+    unawaited(_handler.pause());
   }
 
   /// Updates the local downloaded-item progress cache (a no-op if this item

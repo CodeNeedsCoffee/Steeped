@@ -70,4 +70,21 @@ class AuthUser {
   bool get canUpdate => isActive && permissions.update;
   bool get canDownload => isActive && permissions.download;
   bool get canUpload => isActive && permissions.upload;
+
+  AuthUser copyWith({String? accessToken, String? refreshToken}) {
+    return AuthUser(
+      id: id,
+      username: username,
+      email: email,
+      type: type,
+      legacyToken: legacyToken,
+      isOldToken: isOldToken,
+      accessToken: accessToken ?? this.accessToken,
+      refreshToken: refreshToken ?? this.refreshToken,
+      isActive: isActive,
+      isLocked: isLocked,
+      permissions: permissions,
+      hasOpenIDLink: hasOpenIDLink,
+    );
+  }
 }

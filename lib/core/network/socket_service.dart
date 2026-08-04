@@ -173,6 +173,16 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
           accessToken: result.user.accessToken,
           refreshToken: result.user.refreshToken ?? refreshToken,
         );
+        // Bug fix 2026-08-03: without this, the in-memory session (and
+        // anything reading its token directly, like PlaybackController's
+        // stream URL builder) never saw this refresh — see
+        // SessionController.updateTokens for the full story.
+        _ref
+            .read(sessionControllerProvider.notifier)
+            .updateTokens(
+              accessToken: result.user.accessToken,
+              refreshToken: result.user.refreshToken ?? refreshToken,
+            );
       } catch (_) {
         // Refresh itself failed, or this is a legacy-token server with no
         // refresh endpoint — fall through and just retry with whatever's

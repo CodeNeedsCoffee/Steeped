@@ -12,10 +12,19 @@ class AuthInterceptor extends QueuedInterceptor {
   AuthInterceptor({
     required this.sessionStorage,
     required this.onSessionExpired,
+    required this.onTokensRefreshed,
   });
 
   final SessionStorage sessionStorage;
   final Future<void> Function() onSessionExpired;
+
+  /// Bug fix 2026-08-03: a refresh here previously only reached secure
+  /// storage — the in-memory session (and anything reading its token
+  /// directly, like PlaybackController's stream URL builder) never found
+  /// out, so it kept using the stale pre-refresh token until the next app
+  /// restart. See SessionController.updateTokens.
+  final void Function({required String? accessToken, required String? refreshToken})
+  onTokensRefreshed;
 
   static const _refreshPath = '/auth/refresh';
 
@@ -67,6 +76,10 @@ class AuthInterceptor extends QueuedInterceptor {
       }
 
       await sessionStorage.saveRefreshedTokens(
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken ?? refreshToken,
+      );
+      onTokensRefreshed(
         accessToken: newAccessToken,
         refreshToken: newRefreshToken ?? refreshToken,
       );
