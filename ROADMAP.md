@@ -227,6 +227,18 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   pattern as the ereader settings panel). Verified live against a real book with chapters (Dune) — all three
   modes, plus independently confirmed the chapter-relative math is correct and that the last remaining option
   genuinely can't be turned off. See `PLAN.md` Phase 5.5 for full detail.
+- **iOS Xcode smoke checkpoint partially cleared 2026-08-04**, on Emma's MacBook Pro — the iOS shell now
+  builds and launches on the Simulator, closing the last open item from Phase 1's original testing cadence
+  plan. Not a quick win: `ios/Podfile` turned out to have never existed in this repo at all (git history
+  confirmed it, not just missing locally), `background_downloader` needed a deployment-target bump from
+  13.0 to 14.0, `Debug.xcconfig`/`Release.xcconfig` were missing the CocoaPods include lines, a local
+  `xcode-select` misconfiguration broke a plugin's native-asset build hook, and a stale DerivedData cache
+  needed a full clean before everything lined up. All of that is machine/environment setup, not app code —
+  the only Steeped-side changes were the Podfile itself, the deployment-target bump, and the two xcconfig
+  includes. Remaining build warnings are entirely inside third-party plugin source (deprecated iOS APIs),
+  not Steeped's own code. **Deliberately not marking this "done"**: no full iOS functional walkthrough yet
+  (login/library/playback — only Android has been verified end-to-end), no real-device test, and — much
+  later — no App Store review approval yet either. See `PLAN.md`'s Phase 1 checkpoint note for full detail.
 - Still worth a look next time on-device: confirm a real PDF item exists somewhere in evan's library to
   close out Phase 8.3's verification gap; verify Phase 9's cellular controls against a real cellular-only
   connection (needs airplane mode + manually re-enabled mobile data).
@@ -241,4 +253,4 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ---
 
-*Last updated: 2026-08-01 (Milestone 2 fully complete; Milestone 3 skin engine + Milestone 4 Android Auto foundation both started; socket auth bug fixed)*
+*Last updated: 2026-08-04 (iOS Xcode smoke checkpoint partially cleared — builds and launches on Simulator, not yet functionally verified or App-Store-approved)*
