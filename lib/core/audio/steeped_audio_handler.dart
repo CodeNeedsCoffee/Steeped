@@ -24,6 +24,12 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
     _player.playbackEventStream.listen(_broadcastState);
     _player.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
+        // just_audio's `playing` flag only reflects explicit play()/pause()
+        // calls — it never auto-flips to false on natural completion, so
+        // without this the UI (Now Playing + mini-player, both driven by
+        // `isPlayingProvider`) would show the pause icon forever after a
+        // book finishes.
+        _player.pause();
         onItemFinished?.call();
       }
     });
