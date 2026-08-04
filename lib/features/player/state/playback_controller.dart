@@ -11,6 +11,7 @@ import '../../../core/network/audio_stream_url.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../models/audio_track.dart';
+import '../../../models/bookmark.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/podcast_episode.dart';
 import '../../auth/state/session_controller.dart';
@@ -20,12 +21,27 @@ import '../../library/state/library_providers.dart';
 import '../../localmedia/state/local_media_providers.dart';
 import '../../settings/data/app_settings.dart';
 import '../../settings/state/settings_providers.dart';
+import '../data/bookmark_repository.dart';
 import '../data/progress_repository.dart';
 import 'pending_sync_controller.dart';
 
 final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
   return ProgressRepository(ref.watch(dioProvider));
 });
+
+final bookmarkRepositoryProvider = Provider<BookmarkRepository>((ref) {
+  return BookmarkRepository(ref.watch(dioProvider));
+});
+
+/// PLAN.md Phase 5.8: bookmarks for one library item. Callers invalidate
+/// `bookmarksProvider(libraryItemId)` after a create/delete to refetch —
+/// cheap since the list is small and only fetched while the sheet is open.
+final bookmarksProvider = FutureProvider.autoDispose
+    .family<List<Bookmark>, String>((ref, libraryItemId) {
+      return ref
+          .watch(bookmarkRepositoryProvider)
+          .fetchBookmarks(libraryItemId);
+    });
 
 /// The item currently loaded into the player, or null if nothing is
 /// playing — drives whether the mini-player shows at all.
@@ -41,6 +57,14 @@ final currentPlaybackItemProvider = StateProvider<LibraryItemDetail?>(
 /// instead of appearing to do nothing during the network-fetch-then-buffer
 /// gap before audio actually starts.
 final playbackLoadingIdProvider = StateProvider<String?>((ref) => null);
+
+/// True while [PlaybackController._recoverFromPlayerError] is actively
+/// retrying a dropped stream (stale token, network blip, server restart —
+/// see that method's doc comment). Surfaced on Now Playing's play/pause
+/// button via the same [PlaybackLoadingBadge] the Phase 5.14 loading spinner
+/// uses, so an automatic reconnect shows visible feedback instead of
+/// silently retrying with the button just sitting there.
+final isReconnectingProvider = StateProvider<bool>((ref) => false);
 
 final playbackPositionProvider = StreamProvider<double>((ref) {
   return ref.watch(audioHandlerProvider).globalPositionStream;
@@ -469,10 +493,12 @@ class PlaybackController extends Notifier<void> {
 
     if (!canRetry) {
       _playerErrorRetryCount = 0;
+      ref.read(isReconnectingProvider.notifier).state = false;
       unawaited(_handler.pause());
       return;
     }
 
+    ref.read(isReconnectingProvider.notifier).state = true;
     _playerErrorRetryCount++;
     final attempt = _playerErrorRetryCount;
     unawaited(
@@ -501,6 +527,7 @@ class PlaybackController extends Notifier<void> {
       _handler.onPlayerError = (e) => _onPlayerError(item, e);
       unawaited(_handler.play());
       _startSyncTimer(item);
+      ref.read(isReconnectingProvider.notifier).state = false;
     } catch (e) {
       unawaited(
         ref
