@@ -10,6 +10,7 @@ import '../../../core/logging/log_repository.dart';
 import '../../../core/network/audio_stream_url.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../models/audio_track.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/podcast_episode.dart';
 import '../../auth/state/session_controller.dart';
@@ -90,6 +91,12 @@ class PlaybackController extends Notifier<void> {
   double? _lastSyncedPosition;
   int _staleSyncTicks = 0;
 
+  /// Bounds the auto-retry in [_recoverFromPlayerError] — reset on every
+  /// (re)start via [_startSyncTimer] so an unrelated later failure always
+  /// gets its own fresh attempts, not whatever was left over from a
+  /// previous, already-recovered-from error.
+  int _playerErrorRetryCount = 0;
+
   @override
   void build() {
     _playbackStateSub = _handler.playbackState.listen(_onPlaybackStateChanged);
@@ -169,17 +176,7 @@ class PlaybackController extends Notifier<void> {
             .fetchItemDetail(itemId);
         if (fetched.isPodcast || fetched.tracks.isEmpty) return;
         item = fetched;
-        sourceUris = fetched.tracks
-            .map(
-              (t) => Uri.parse(
-                audioStreamUrl(
-                  serverUrl: session.serverUrl,
-                  relativeContentUrl: t.contentUrl,
-                  token: session.user.effectiveToken,
-                ),
-              ),
-            )
-            .toList();
+        sourceUris = _streamSourceUris(fetched.tracks, session);
       }
 
       ref.read(currentPlaybackItemProvider.notifier).state = item;
@@ -259,18 +256,10 @@ class PlaybackController extends Notifier<void> {
         episodeId: episode.id,
       );
 
-      final sourceUri = Uri.parse(
-        audioStreamUrl(
-          serverUrl: session.serverUrl,
-          relativeContentUrl: track.contentUrl,
-          token: session.user.effectiveToken,
-        ),
-      );
-
       ref.read(currentPlaybackItemProvider.notifier).state = item;
       await _handler.loadItem(
         item: item,
-        sourceUris: [sourceUri],
+        sourceUris: _streamSourceUris([track], session),
         startPosition: item.progress?.currentTime ?? 0,
       );
       _handler.onItemFinished = () => _onFinished(item);
@@ -364,10 +353,33 @@ class PlaybackController extends Notifier<void> {
     _syncTimer?.cancel();
     _lastSyncedPosition = null;
     _staleSyncTicks = 0;
+    _playerErrorRetryCount = 0;
     _syncTimer = Timer.periodic(
       const Duration(seconds: 15),
       (_) => _periodicSync(item),
     );
+  }
+
+  /// Shared by [playItem]/[playEpisode]'s initial load and
+  /// [_recoverFromPlayerError]'s retry — always reads the session fresh
+  /// rather than closing over a token, so a retry after
+  /// [SessionController.updateTokens] has run picks up the corrected token
+  /// automatically instead of repeating the same stale one.
+  List<Uri> _streamSourceUris(
+    List<AudioTrack> tracks,
+    SessionAuthenticated session,
+  ) {
+    return tracks
+        .map(
+          (t) => Uri.parse(
+            audioStreamUrl(
+              serverUrl: session.serverUrl,
+              relativeContentUrl: t.contentUrl,
+              token: session.user.effectiveToken,
+            ),
+          ),
+        )
+        .toList();
   }
 
   /// Debugging note (2026-08-03, investigating a "stuck playing" report):
@@ -409,17 +421,8 @@ class PlaybackController extends Notifier<void> {
 
   /// Logs a `just_audio` player error (see
   /// [SteepedAudioHandler.onPlayerError]) so a silent stream failure shows
-  /// up in Settings → Logs instead of leaving no trace at all.
-  ///
-  /// Bug fix 2026-08-03: `playing` never auto-flips to false on a
-  /// just_audio player error, so without an explicit pause here the
-  /// mini-player/Now Playing screen kept showing "playing" with a frozen
-  /// position forever — confirmed live via the Logs screen (a `(0) Source
-  /// error` from a stale post-refresh token, see SessionController
-  /// .updateTokens for the actual root cause). Pausing lets the existing
-  /// _onPlaybackStateChanged listener react exactly like any other pause
-  /// (cancels the sync timer, does a final sync), rather than duplicating
-  /// that logic here.
+  /// up in Settings → Logs instead of leaving no trace at all, then attempts
+  /// automatic recovery — see [_recoverFromPlayerError].
   void _onPlayerError(LibraryItemDetail item, PlayerException e) {
     unawaited(
       ref
@@ -430,7 +433,82 @@ class PlaybackController extends Notifier<void> {
             'Player error for ${item.id} (code ${e.code}): ${e.message}',
           ),
     );
-    unawaited(_handler.pause());
+    unawaited(_recoverFromPlayerError(item));
+  }
+
+  /// Bug fix 2026-08-04 (evan: streamed playback froze *again* after another
+  /// idle period — the 2026-08-03 fix only added logging/pause, so the user
+  /// still had to notice and manually restart it, and since progress hadn't
+  /// actually advanced past the freeze point, reopening the app looked like
+  /// it had "reverted"). The 2026-08-03 SessionController.updateTokens fix
+  /// closes the *original* trigger (a stale in-memory token surviving a
+  /// reactive refresh), but a source error can still happen for other
+  /// transient reasons — a brief network blip, a server restart — so this
+  /// adds a bounded automatic retry that rebuilds the stream URL(s) with
+  /// whatever token is current *right now* and resumes from the last known
+  /// position, instead of just giving up on the first failure.
+  ///
+  /// Only applies to a genuine live stream: retrying a downloaded file or a
+  /// local-media import that failed to decode wouldn't fix anything (that's
+  /// not a token/network problem), so those still just pause immediately,
+  /// same as before this fix.
+  Future<void> _recoverFromPlayerError(LibraryItemDetail item) async {
+    final current = ref.read(currentPlaybackItemProvider);
+    final isStillCurrent =
+        current != null && current.downloadId == item.downloadId;
+    final session = ref.read(sessionControllerProvider);
+    final isDownloaded = await ref
+        .read(downloadRepositoryProvider)
+        .isDownloaded(item.downloadId);
+    final canRetry =
+        isStillCurrent &&
+        !item.isLocalOnly &&
+        !isDownloaded &&
+        session is SessionAuthenticated &&
+        _playerErrorRetryCount < 2;
+
+    if (!canRetry) {
+      _playerErrorRetryCount = 0;
+      unawaited(_handler.pause());
+      return;
+    }
+
+    _playerErrorRetryCount++;
+    final attempt = _playerErrorRetryCount;
+    unawaited(
+      ref
+          .read(logRepositoryProvider)
+          .log(
+            'warning',
+            'playback',
+            'Retrying playback for ${item.id} after player error '
+                '(attempt $attempt/2)',
+          ),
+    );
+    await Future.delayed(Duration(seconds: 2 * attempt));
+
+    try {
+      final resumePosition = _handler.globalPositionSeconds;
+      await _handler.loadItem(
+        item: item,
+        sourceUris: _streamSourceUris(
+          item.tracks,
+          session as SessionAuthenticated,
+        ),
+        startPosition: resumePosition,
+      );
+      _handler.onItemFinished = () => _onFinished(item);
+      _handler.onPlayerError = (e) => _onPlayerError(item, e);
+      unawaited(_handler.play());
+      _startSyncTimer(item);
+    } catch (e) {
+      unawaited(
+        ref
+            .read(logRepositoryProvider)
+            .log('error', 'playback', 'Retry failed for ${item.id}: $e'),
+      );
+      unawaited(_recoverFromPlayerError(item));
+    }
   }
 
   /// Updates the local downloaded-item progress cache (a no-op if this item
