@@ -207,7 +207,7 @@ class PlaybackController extends Notifier<void> {
       await _handler.loadItem(
         item: item,
         sourceUris: sourceUris,
-        startPosition: item.progress?.currentTime ?? 0,
+        startPosition: await _resolveStartPosition(item),
       );
       _handler.onItemFinished = () => _onFinished(item);
       _handler.onPlayerError = (e) => _onPlayerError(item, e);
@@ -284,7 +284,7 @@ class PlaybackController extends Notifier<void> {
       await _handler.loadItem(
         item: item,
         sourceUris: _streamSourceUris([track], session),
-        startPosition: item.progress?.currentTime ?? 0,
+        startPosition: await _resolveStartPosition(item),
       );
       _handler.onItemFinished = () => _onFinished(item);
       _handler.onPlayerError = (e) => _onPlayerError(item, e);
@@ -371,6 +371,27 @@ class PlaybackController extends Notifier<void> {
     ref.read(cellularBlockNoticeProvider.notifier).state =
         'Streaming over cellular is off in Settings → Data.';
     return true;
+  }
+
+  /// Bug fix 2026-08-05 (evan: streamed playback resumed ~15 minutes behind
+  /// after the app died mid-outage). `fetchItemDetail`'s `progress` only
+  /// reflects what the server has actually received — a periodic sync that
+  /// fails while offline is durably queued (see [PendingSyncRepository],
+  /// PLAN.md Phase 6.7) so it survives a restart, but nothing previously
+  /// consulted that queue when picking a *new* session's start position, so
+  /// unflushed local progress was silently discarded in favor of the
+  /// server's older number. Takes whichever position is later rather than
+  /// always preferring the local queue — another device may have advanced
+  /// the server's copy further than anything queued here ever recorded.
+  Future<double> _resolveStartPosition(LibraryItemDetail item) async {
+    final serverPosition = item.progress?.currentTime ?? 0;
+    final pending = await ref
+        .read(pendingSyncRepositoryProvider)
+        .find(item.id, item.episodeId);
+    if (pending == null || pending.currentTime <= serverPosition) {
+      return serverPosition;
+    }
+    return pending.currentTime;
   }
 
   void _startSyncTimer(LibraryItemDetail item) {
