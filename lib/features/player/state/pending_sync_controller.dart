@@ -27,6 +27,17 @@ final pendingSyncCountProvider = StreamProvider<int>((ref) {
 class PendingSyncController extends Notifier<void> {
   StreamSubscription<List<ConnectivityResult>>? _sub;
   Timer? _periodicTimer;
+  Timer? _connectivityDebounce;
+
+  /// Bug fix 2026-08-05 (evan: playback staggering). [flushPending] had no
+  /// re-entrancy guard, and Android emits a *burst* of connectivity events
+  /// during a single wifi/cellular handoff (interface down, then up, then
+  /// validated) — so one handoff kicked off several concurrent full passes
+  /// over the queue, each PATCHing the same rows, on top of whatever the
+  /// 3-minute timer and the app-start call were already doing. Every one of
+  /// those requests competes with the audio stream for the same server. One
+  /// flush at a time is all that was ever wanted.
+  bool _flushing = false;
 
   @override
   void build() {
@@ -35,7 +46,14 @@ class PendingSyncController extends Notifier<void> {
         .onConnectivityChanged
         .listen((results) {
           if (results.any((r) => r != ConnectivityResult.none)) {
-            flushPending();
+            // Collapse the burst: a handoff settles well inside 2s, and the
+            // queue is not so urgent that it can't wait for the network to
+            // stop moving underneath it.
+            _connectivityDebounce?.cancel();
+            _connectivityDebounce = Timer(
+              const Duration(seconds: 2),
+              flushPending,
+            );
           }
         });
     // Bug found 2026-08-02 (reported by evan as "weird errors" in the
@@ -57,6 +75,7 @@ class PendingSyncController extends Notifier<void> {
     ref.onDispose(() {
       _sub?.cancel();
       _periodicTimer?.cancel();
+      _connectivityDebounce?.cancel();
     });
     // Also try immediately: connectivity may already have been restored
     // while the app was closed, so don't wait for the next change event.
@@ -64,9 +83,32 @@ class PendingSyncController extends Notifier<void> {
   }
 
   Future<void> flushPending() async {
+    if (_flushing) return;
+    _flushing = true;
+    try {
+      await _flush();
+    } finally {
+      _flushing = false;
+    }
+  }
+
+  Future<void> _flush() async {
     final repo = ref.read(pendingSyncRepositoryProvider);
     final progressRepo = ref.read(progressRepositoryProvider);
+    // The item currently playing is owned by [PlaybackController]'s own 15s
+    // sync, which holds a strictly fresher position than anything sitting in
+    // this queue. Uploading the queued row would at best duplicate that work
+    // and at worst land *after* it, overwriting the live position with a
+    // stale one — PLAN.md Phase 6.7's queue is for progress with nothing else
+    // looking after it. The live sync clears its own row on success.
+    final playing = ref.read(currentPlaybackItemProvider);
+
     for (final row in await repo.pending()) {
+      if (playing != null &&
+          playing.id == row.libraryItemId &&
+          playing.episodeId == row.episodeId) {
+        continue;
+      }
       try {
         await progressRepo.updateProgress(
           libraryItemId: row.libraryItemId,

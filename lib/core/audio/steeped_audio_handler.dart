@@ -46,7 +46,52 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
     _player.errorStream.listen((e) => onPlayerError?.call(e));
   }
 
-  final AudioPlayer _player = AudioPlayer();
+  /// Bug fix 2026-08-05 (evan: audible "staggering" during streamed playback,
+  /// alongside a run of `receive timeout` / `Failed host lookup` progress-sync
+  /// errors in Settings → Logs). Those two symptoms share one cause: a
+  /// self-hosted server reached over WAN that intermittently goes slow or
+  /// briefly unresolvable. `just_audio`'s defaults are tuned for short media
+  /// on a good connection — 50s of buffer, and only 5s of re-buffer before
+  /// resuming after an underrun — so every slow patch drains the buffer and
+  /// resumes on a razor-thin margin, which is what "staggering" sounds like:
+  /// repeated short stalls rather than one long one.
+  ///
+  /// An audiobook is low-bitrate and strictly linear, which makes a deep
+  /// read-ahead almost free (2 minutes at 128kbps is under 2MB) and highly
+  /// effective — it turns a 90-second server hiccup into something the
+  /// listener never hears at all. [prioritizeTimeOverSizeThresholds] matters
+  /// here: without it ExoPlayer stops filling once its byte target is hit,
+  /// capping the read-ahead well below the durations below.
+  static const _loadConfiguration = AudioLoadConfiguration(
+    androidLoadControl: AndroidLoadControl(
+      minBufferDuration: Duration(minutes: 2),
+      maxBufferDuration: Duration(minutes: 5),
+      // Left at just_audio's default: this one governs how long a *user*
+      // waits after pressing play or seeking, so the Phase 5.14 loading
+      // indicator shouldn't start lingering because of this fix.
+      bufferForPlaybackDuration: Duration(milliseconds: 2500),
+      // Deliberately much higher than the 5s default. After an underrun has
+      // already happened the connection has proven itself unreliable, so
+      // resuming on 5s of audio just queues up the next stall — waiting for
+      // 15s trades one slightly longer pause for not stuttering repeatedly.
+      bufferForPlaybackAfterRebufferDuration: Duration(seconds: 15),
+      targetBufferBytes: 32 * 1024 * 1024,
+      prioritizeTimeOverSizeThresholds: true,
+      // Keeps recently-played audio around so the small backward jumps this
+      // app encourages (the Phase 9.3 configurable back-jump, and
+      // [PlaybackController]'s error recovery re-seek) usually resolve out of
+      // the existing buffer instead of forcing a fresh range request to the
+      // very server that was already struggling.
+      backBufferDuration: Duration(seconds: 60),
+    ),
+    darwinLoadControl: DarwinLoadControl(
+      preferredForwardBufferDuration: Duration(minutes: 5),
+    ),
+  );
+
+  final AudioPlayer _player = AudioPlayer(
+    audioLoadConfiguration: _loadConfiguration,
+  );
   List<AudioTrack> _tracks = const [];
 
   /// Fired when the loaded item finishes playing entirely — used by
