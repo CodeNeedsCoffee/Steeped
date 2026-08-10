@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/logging/log_repository.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/storage/session_storage.dart';
 import '../../../models/server_status.dart';
@@ -53,9 +55,46 @@ class SessionController extends Notifier<SessionState> {
         await _storage.save(serverUrl: serverUrl, user: result.user);
         ref.read(dioProvider).options.baseUrl = serverUrl;
         state = SessionAuthenticated(serverUrl: serverUrl, user: result.user);
-      } catch (_) {
-        await _storage.clear();
-        state = const SessionUnauthenticated();
+      } on DioException catch (e) {
+        // PLAN.md Phase 6.6 gap: a cold start with no network previously
+        // couldn't tell "the refresh token is actually invalid" (a real
+        // 401/403 response — the server rejected it) apart from "the
+        // request never reached the server at all" — and cleared the whole
+        // session on either. That locked a fully offline cold start out of
+        // downloaded content it should still be able to play, and forced a
+        // real re-login once connectivity came back for what was really
+        // just a network blip. Only a genuine rejection from the server
+        // should log the user out; anything else falls back to the cached
+        // session, same as the legacy-token path below.
+        if (e.type == DioExceptionType.badResponse) {
+          await ref
+              .read(logRepositoryProvider)
+              .log(
+                'error',
+                'session',
+                'Startup token refresh rejected by server: $e',
+              );
+          await _storage.clear();
+          state = const SessionUnauthenticated();
+          return;
+        }
+        await ref
+            .read(logRepositoryProvider)
+            .log(
+              'warning',
+              'session',
+              'Startup token refresh unreachable, using cached session: $e',
+            );
+        final cachedUser = await _storage.readCachedUser();
+        if (cachedUser?.effectiveToken != null) {
+          ref.read(dioProvider).options.baseUrl = serverUrl;
+          state = SessionAuthenticated(
+            serverUrl: serverUrl,
+            user: cachedUser!,
+          );
+        } else {
+          state = const SessionUnauthenticated();
+        }
       }
       return;
     }

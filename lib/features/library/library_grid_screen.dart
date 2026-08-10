@@ -63,6 +63,8 @@ class _LibraryGridScreenState extends ConsumerState<LibraryGridScreen> {
           ? const Center(child: CircularProgressIndicator())
           : state.error != null && state.items.isEmpty
           ? Center(child: Text('Failed to load: ${state.error}'))
+          : state.items.isEmpty
+          ? const Center(child: Text('This library is empty.'))
           : serverUrl == null
           ? const SizedBox.shrink()
           : GridView.builder(

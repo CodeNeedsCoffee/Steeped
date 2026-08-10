@@ -5,11 +5,22 @@ import '../../features/auth/connect_server_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/state/session_controller.dart';
 import '../../features/auth/state/session_state.dart';
+import '../../features/downloads/downloads_screen.dart';
+import '../../features/ebook/comic_reader_screen.dart';
+import '../../features/ebook/epub_reader_screen.dart';
+import '../../features/ebook/pdf_reader_screen.dart';
 import '../../features/library/home_shell_screen.dart';
 import '../../features/library/item_detail_screen.dart';
 import '../../features/library/library_grid_screen.dart';
+import '../../features/localmedia/local_media_screen.dart';
 import '../../features/player/now_playing_screen.dart';
+import '../../features/podcasts/recent_episodes_screen.dart';
+import '../../features/settings/account_screen.dart';
+import '../../features/settings/logs_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/stats/history_screen.dart';
+import '../../features/stats/stats_screen.dart';
+import '../../features/stats/year_in_review_screen.dart';
 import 'go_router_refresh_notifier.dart';
 import 'splash_screen.dart';
 
@@ -74,9 +85,55 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const NowPlayingScreen(),
       ),
       GoRoute(
+        path: '/library/:libraryId/recent-episodes',
+        builder: (context, state) => RecentEpisodesScreen(
+          libraryId: state.pathParameters['libraryId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/reader/epub/:itemId',
+        builder: (context, state) =>
+            EpubReaderScreen(itemId: state.pathParameters['itemId']!),
+      ),
+      GoRoute(
+        path: '/reader/pdf/:itemId',
+        builder: (context, state) =>
+            PdfReaderScreen(itemId: state.pathParameters['itemId']!),
+      ),
+      GoRoute(
+        path: '/reader/comic/:itemId',
+        builder: (context, state) =>
+            ComicReaderScreen(itemId: state.pathParameters['itemId']!),
+      ),
+      GoRoute(
+        path: '/downloads',
+        builder: (context, state) => const DownloadsScreen(),
+      ),
+      GoRoute(
+        path: '/local-media',
+        builder: (context, state) => const LocalMediaScreen(),
+      ),
+      GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
       ),
+      GoRoute(
+        path: '/account',
+        builder: (context, state) => const AccountScreen(),
+      ),
+      GoRoute(
+        path: '/stats',
+        builder: (context, state) => const StatsScreen(),
+      ),
+      GoRoute(
+        path: '/stats/year-in-review',
+        builder: (context, state) => const YearInReviewScreen(),
+      ),
+      GoRoute(
+        path: '/history',
+        builder: (context, state) => const HistoryScreen(),
+      ),
+      GoRoute(path: '/logs', builder: (context, state) => const LogsScreen()),
     ],
   );
 });

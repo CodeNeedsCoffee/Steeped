@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../../../models/library.dart';
@@ -50,10 +52,11 @@ class LibraryRepository {
     String libraryId, {
     required int page,
     int limit = 40,
+    String? filter,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/libraries/$libraryId/items',
-      queryParameters: {'page': page, 'limit': limit},
+      queryParameters: {'page': page, 'limit': limit, 'filter': ?filter},
     );
     final data = response.data ?? const {};
     final results = (data['results'] as List<dynamic>?) ?? const [];
@@ -62,6 +65,33 @@ class LibraryRepository {
       total: data['total'] as int? ?? 0,
       page: data['page'] as int? ?? page,
     );
+  }
+
+  /// PLAN.md Phase 6.2: every item in [seriesId] within [libraryId], for
+  /// "download series". The `filter` query param's `<group>.<base64(value)>`
+  /// shape is confirmed against `~/Code/audiobookshelf/server/utils/queries/
+  /// libraryFilters.js`'s `decode` — the same `/items` endpoint 4.4 already
+  /// uses, no separate series-browse endpoint (4.5) required. Loops pages
+  /// since a series filter isn't guaranteed to fit in one page.
+  Future<List<LibraryItem>> fetchItemsInSeries(
+    String libraryId,
+    String seriesId,
+  ) async {
+    final filter = 'series.${base64.encode(utf8.encode(seriesId))}';
+    final items = <LibraryItem>[];
+    var page = 0;
+    while (true) {
+      final result = await fetchLibraryItems(
+        libraryId,
+        page: page,
+        limit: 100,
+        filter: filter,
+      );
+      items.addAll(result.items);
+      if (items.length >= result.total || result.items.isEmpty) break;
+      page++;
+    }
+    return items;
   }
 
   Future<LibraryItemDetail> fetchItemDetail(String itemId) async {

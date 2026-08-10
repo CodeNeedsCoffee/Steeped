@@ -1,20 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../core/network/cover_image_url.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../settings/data/app_settings.dart';
+import '../settings/state/settings_providers.dart';
 import 'state/playback_controller.dart';
 
 /// PLAN.md Phase 5.2 (full-screen Now Playing), 5.5 (chapters + jump
-/// forward/back — fixed 30s interval, customizable interval is deferred to
-/// Settings/Phase 9), 5.6 (speed), 5.10 (mark finished/not finished).
-class NowPlayingScreen extends ConsumerWidget {
+/// forward/back — interval now configurable, Phase 9.3), 5.6 (speed), 5.7
+/// (sleep timer — basic manual-duration version), 5.10 (mark
+/// finished/not finished), 9.3 (keep-screen-awake, scale-elapsed-by-speed).
+class NowPlayingScreen extends ConsumerStatefulWidget {
   const NowPlayingScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NowPlayingScreen> createState() => _NowPlayingScreenState();
+}
+
+class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
+  @override
+  void dispose() {
+    WakelockPlus.disable();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings =
+        ref.watch(appSettingsProvider).valueOrNull ?? const AppSettings();
+    if (settings.keepScreenAwake) {
+      WakelockPlus.enable();
+    } else {
+      WakelockPlus.disable();
+    }
+
     final item = ref.watch(currentPlaybackItemProvider);
     if (item == null) {
       // Briefly true right after tapping Play, while playItem() is still
@@ -25,6 +49,7 @@ class NowPlayingScreen extends ConsumerWidget {
     final session = ref.watch(sessionControllerProvider);
     final position = ref.watch(playbackPositionProvider).valueOrNull ?? 0.0;
     final isPlaying = ref.watch(isPlayingProvider).valueOrNull ?? false;
+    final sleepRemaining = ref.watch(sleepTimerRemainingProvider);
     final controller = ref.read(playbackControllerProvider.notifier);
     final (serverUrl, token) = switch (session) {
       SessionAuthenticated(:final serverUrl, :final user) => (
@@ -42,6 +67,17 @@ class NowPlayingScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
+          IconButton(
+            icon: Icon(
+              sleepRemaining != null
+                  ? Icons.bedtime
+                  : Icons.bedtime_outlined,
+            ),
+            tooltip: sleepRemaining != null
+                ? 'Sleep timer: ${_formatTime(sleepRemaining.inSeconds.toDouble())}'
+                : 'Sleep timer',
+            onPressed: () => _showSleepTimerSheet(context, ref, settings),
+          ),
           PopupMenuButton<bool>(
             onSelected: controller.markFinished,
             itemBuilder: (context) => const [
@@ -87,12 +123,19 @@ class NowPlayingScreen extends ConsumerWidget {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(_formatTime(position)),
-                Text(_formatTime(duration)),
-              ],
+            child: Builder(
+              builder: (context) {
+                final speed = settings.scaleElapsedTimeBySpeed
+                    ? (ref.watch(playbackSpeedProvider).valueOrNull ?? 1.0)
+                    : 1.0;
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_formatTime(position / speed)),
+                    Text(_formatTime(duration / speed)),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 12),
@@ -112,7 +155,12 @@ class NowPlayingScreen extends ConsumerWidget {
                       ? Icons.pause_circle_filled
                       : Icons.play_circle_filled,
                 ),
-                onPressed: isPlaying ? controller.pause : controller.resume,
+                onPressed: () {
+                  if (settings.hapticFeedbackEnabled) {
+                    HapticFeedback.lightImpact();
+                  }
+                  isPlaying ? controller.pause() : controller.resume();
+                },
               ),
               const SizedBox(width: 16),
               IconButton(
@@ -151,6 +199,53 @@ class NowPlayingScreen extends ConsumerWidget {
     final mm = m.toString().padLeft(h > 0 ? 2 : 1, '0');
     final ss = s.toString().padLeft(2, '0');
     return h > 0 ? '$h:$mm:$ss' : '$mm:$ss';
+  }
+
+  void _showSleepTimerSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AppSettings settings,
+  ) {
+    final controller = ref.read(playbackControllerProvider.notifier);
+    final isActive = ref.read(sleepTimerRemainingProvider) != null;
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Sleep Timer'),
+            ),
+            for (final minutes in {
+              5,
+              15,
+              30,
+              45,
+              60,
+              settings.sleepTimerDefaultMinutes,
+            }.toList()..sort())
+              ListTile(
+                title: Text('$minutes minutes'),
+                onTap: () {
+                  controller.startSleepTimer(Duration(minutes: minutes));
+                  Navigator.pop(context);
+                },
+              ),
+            if (isActive)
+              ListTile(
+                leading: const Icon(Icons.cancel_outlined),
+                title: const Text('Cancel timer'),
+                onTap: () {
+                  controller.cancelSleepTimer();
+                  Navigator.pop(context);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

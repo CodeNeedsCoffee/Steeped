@@ -3,7 +3,6 @@ import 'package:just_audio/just_audio.dart';
 
 import '../../models/audio_track.dart';
 import '../../models/library_item_detail.dart';
-import '../network/audio_stream_url.dart';
 
 /// PLAN.md Phase 5.1/5.3/5.4/5.12. Wraps a single `just_audio` [AudioPlayer]
 /// with a gapless multi-source playlist (one child per [AudioTrack]) via
@@ -39,26 +38,17 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
   AudioPlayer get player => _player;
   List<AudioTrack> get tracks => _tracks;
 
+  /// [sourceUris] must be the same length/order as `item.tracks` — the
+  /// caller ([PlaybackController]) decides whether those point at remote
+  /// streaming URLs or downloaded local files (PLAN.md Phase 6.6); this
+  /// handler doesn't know or care which.
   Future<void> loadItem({
     required LibraryItemDetail item,
-    required String serverUrl,
-    required String? token,
+    required List<Uri> sourceUris,
     double startPosition = 0,
   }) async {
     _tracks = [...item.tracks]..sort((a, b) => a.index.compareTo(b.index));
-    final children = _tracks
-        .map(
-          (t) => AudioSource.uri(
-            Uri.parse(
-              audioStreamUrl(
-                serverUrl: serverUrl,
-                relativeContentUrl: t.contentUrl,
-                token: token,
-              ),
-            ),
-          ),
-        )
-        .toList();
+    final children = sourceUris.map(AudioSource.uri).toList();
 
     mediaItem.add(
       MediaItem(
