@@ -60,6 +60,7 @@ class _ItemDetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
+    final isLoadingPlay = ref.watch(playbackLoadingIdProvider) == item.id;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -121,15 +122,25 @@ class _ItemDetailBody extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             FilledButton.icon(
-              onPressed: item.tracks.isEmpty
+              onPressed: item.tracks.isEmpty || isLoadingPlay
                   ? null
-                  : () {
-                      ref
+                  : () async {
+                      await ref
                           .read(playbackControllerProvider.notifier)
                           .playItem(item.id);
-                      context.push('/now-playing');
+                      if (context.mounted &&
+                          ref.read(currentPlaybackItemProvider)?.id ==
+                              item.id) {
+                        context.push('/now-playing');
+                      }
                     },
-              icon: const Icon(Icons.play_arrow),
+              icon: isLoadingPlay
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.play_arrow),
               label: const Text('Play'),
             ),
             if (item.hasEbook) ...[

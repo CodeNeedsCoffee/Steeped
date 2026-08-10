@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../widgets/playback_loading_badge.dart';
 import '../player/mini_player.dart';
 import '../player/state/playback_controller.dart';
 import 'state/local_media_providers.dart';
@@ -66,8 +67,14 @@ class LocalMediaScreen extends ConsumerWidget {
                   ? '${(progress / duration * 100).clamp(0, 100).round()}% '
                         'played · ${_formatDuration(duration)}'
                   : _formatDuration(duration);
+              final isLoading =
+                  ref.watch(playbackLoadingIdProvider) == item.id;
               return ListTile(
-                leading: const Icon(Icons.music_note_outlined),
+                enabled: !isLoading,
+                leading: PlaybackLoadingBadge(
+                  isLoading: isLoading,
+                  child: const Icon(Icons.music_note_outlined),
+                ),
                 title: Text(item.title),
                 subtitle: subtitle == null ? null : Text(subtitle),
                 trailing: IconButton(
@@ -80,7 +87,10 @@ class LocalMediaScreen extends ConsumerWidget {
                   await ref
                       .read(playbackControllerProvider.notifier)
                       .playLocalMedia(item.id);
-                  if (context.mounted) context.push('/now-playing');
+                  if (context.mounted &&
+                      ref.read(currentPlaybackItemProvider)?.id == item.id) {
+                    context.push('/now-playing');
+                  }
                 },
               );
             },

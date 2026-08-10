@@ -8,6 +8,7 @@ import '../../models/library_item_detail.dart';
 import '../../models/media_progress.dart';
 import '../../models/podcast_episode.dart';
 import '../../widgets/cover_image.dart';
+import '../../widgets/playback_loading_badge.dart';
 import '../downloads/state/download_controller.dart';
 import '../player/state/playback_controller.dart';
 import 'state/podcast_providers.dart';
@@ -148,9 +149,16 @@ class _EpisodeTile extends ConsumerWidget {
         '${((episode.progress!.currentTime / episode.duration!) * 100).round()}% played',
     ].join(' · ');
 
+    final downloadId = '${podcast.id}::${episode.id}';
+    final isLoading = ref.watch(playbackLoadingIdProvider) == downloadId;
+
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: _StateIcon(episode: episode),
+      enabled: !isLoading,
+      leading: PlaybackLoadingBadge(
+        isLoading: isLoading,
+        child: _StateIcon(episode: episode),
+      ),
       title: Text(episode.title, maxLines: 2, overflow: TextOverflow.ellipsis),
       subtitle: subtitle.isEmpty ? null : Text(subtitle),
       trailing: _EpisodeDownloadButton(
@@ -159,13 +167,17 @@ class _EpisodeTile extends ConsumerWidget {
         serverUrl: serverUrl,
         token: token,
       ),
-      onTap: episode.audioTrack == null
+      onTap: episode.audioTrack == null || isLoading
           ? null
           : () async {
               await ref
                   .read(playbackControllerProvider.notifier)
                   .playEpisode(podcast, episode);
-              if (context.mounted) context.push('/now-playing');
+              if (context.mounted &&
+                  ref.read(currentPlaybackItemProvider)?.downloadId ==
+                      downloadId) {
+                context.push('/now-playing');
+              }
             },
     );
   }

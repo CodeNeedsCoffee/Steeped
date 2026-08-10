@@ -3,6 +3,20 @@ import 'ebook_file.dart';
 import 'media_progress.dart';
 import 'podcast_episode.dart';
 
+/// Bug fix (2026-08-02, reported by evan: one comic failed to load while
+/// another worked): Audiobookshelf metadata fields typed as strings
+/// (`series.sequence`, `publishedYear`) come back as a raw JSON number for
+/// items whose metadata was scraped/imported rather than typed in — a
+/// strict `as String?` cast throws `type 'int' is not a subtype of type
+/// 'String?'` for those items specifically. Confirmed live: "The Apothecary
+/// Diaries: Volume 01" reproduced this on evan's real server while "The
+/// Legend of Genji" (typed-in metadata) didn't.
+String? _asNullableString(dynamic value) {
+  if (value == null) return null;
+  if (value is String) return value;
+  return value.toString();
+}
+
 class AuthorRef {
   const AuthorRef({required this.id, required this.name});
 
@@ -21,7 +35,7 @@ class SeriesRef {
     return SeriesRef(
       id: json['id'] as String,
       name: json['name'] as String,
-      sequence: json['sequence'] as String?,
+      sequence: _asNullableString(json['sequence']),
     );
   }
 
@@ -162,7 +176,7 @@ class LibraryItemDetail {
       genres:
           (metadata['genres'] as List<dynamic>?)?.cast<String>() ?? const [],
       description: metadata['description'] as String?,
-      publishedYear: metadata['publishedYear'] as String?,
+      publishedYear: _asNullableString(metadata['publishedYear']),
       duration: (media['duration'] as num?)?.toDouble(),
       chapters:
           (media['chapters'] as List<dynamic>?)

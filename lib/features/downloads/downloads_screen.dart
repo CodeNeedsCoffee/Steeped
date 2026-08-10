@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/utils/format_bytes.dart';
+import '../../widgets/playback_loading_badge.dart';
 import '../player/mini_player.dart';
 import '../player/state/playback_controller.dart';
 import 'state/download_controller.dart';
@@ -93,20 +94,26 @@ class DownloadsScreen extends ConsumerWidget {
               final sizeAsync = ref.watch(
                 downloadItemSizeProvider(item.itemId),
               );
+              final isLoading =
+                  ref.watch(playbackLoadingIdProvider) == item.itemId;
               return ListTile(
-                leading: item.coverLocalPath != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Image.file(
-                          File(item.coverLocalPath!),
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stack) =>
-                              const Icon(Icons.menu_book_outlined),
-                        ),
-                      )
-                    : const Icon(Icons.menu_book_outlined),
+                enabled: !isLoading,
+                leading: PlaybackLoadingBadge(
+                  isLoading: isLoading,
+                  child: item.coverLocalPath != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.file(
+                            File(item.coverLocalPath!),
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stack) =>
+                                const Icon(Icons.menu_book_outlined),
+                          ),
+                        )
+                      : const Icon(Icons.menu_book_outlined),
+                ),
                 title: Text(item.title),
                 subtitle: isComplete
                     ? Text(
@@ -122,12 +129,16 @@ class DownloadsScreen extends ConsumerWidget {
                       .read(downloadControllerProvider.notifier)
                       .delete(item.itemId),
                 ),
-                onTap: isComplete
+                onTap: isComplete && !isLoading
                     ? () async {
                         await ref
                             .read(playbackControllerProvider.notifier)
                             .playItem(item.itemId);
-                        if (context.mounted) context.push('/now-playing');
+                        if (context.mounted &&
+                            ref.read(currentPlaybackItemProvider)?.downloadId ==
+                                item.itemId) {
+                          context.push('/now-playing');
+                        }
                       }
                     : null,
               );

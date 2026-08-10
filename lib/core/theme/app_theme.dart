@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens shared by every screen. This is deliberately minimal for
-/// now — a single default look, just enough for real screens to render
-/// consistently. The full skin engine (glass-modern + bookshelf skins,
-/// runtime switching) is built in Milestone 3 (PLAN.md Phase 2) against
-/// these same token slots.
+/// Design tokens shared by every skin (PLAN.md Phase 2.1) — every concrete
+/// [Skin] (see `glass_modern_skin.dart`/`bookshelf_skin.dart`) sets these
+/// with its own values rather than screens hardcoding spacing/radius.
 @immutable
 class AppSpacing extends ThemeExtension<AppSpacing> {
   const AppSpacing({
@@ -71,19 +69,3 @@ class AppRadii extends ThemeExtension<AppRadii> {
   }
 }
 
-/// The single default theme Steeped ships with until Milestone 3 adds
-/// selectable skins.
-ThemeData buildDefaultTheme() {
-  const seedColor = Color(0xFF6F4E37); // coffee brown, nods to the app's name
-  final colorScheme = ColorScheme.fromSeed(
-    seedColor: seedColor,
-    brightness: Brightness.dark,
-  );
-
-  return ThemeData(
-    useMaterial3: true,
-    colorScheme: colorScheme,
-    scaffoldBackgroundColor: colorScheme.surface,
-    extensions: const [AppSpacing(), AppRadii()],
-  );
-}

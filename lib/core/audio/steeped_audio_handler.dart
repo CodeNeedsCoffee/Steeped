@@ -3,6 +3,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../../models/audio_track.dart';
 import '../../models/library_item_detail.dart';
+import 'car_content_tree.dart';
 
 /// PLAN.md Phase 5.1/5.3/5.4/5.12. Wraps a single `just_audio` [AudioPlayer]
 /// with a gapless multi-source playlist (one child per [AudioTrack]) via
@@ -23,17 +24,108 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
     _player.playbackEventStream.listen(_broadcastState);
     _player.processingStateStream.listen((state) {
       if (state == ProcessingState.completed) {
+        // just_audio's `playing` flag only reflects explicit play()/pause()
+        // calls — it never auto-flips to false on natural completion, so
+        // without this the UI (Now Playing + mini-player, both driven by
+        // `isPlayingProvider`) would show the pause icon forever after a
+        // book finishes.
+        _player.pause();
         onItemFinished?.call();
       }
     });
+    // Debugging note (2026-08-03, investigating a "stuck playing" report):
+    // just_audio delivers playback-time errors (dropped connection, a
+    // rejected/expired stream token) via this dedicated `errorStream`, NOT
+    // as a Dart Stream error on `playbackEventStream` (that pattern was
+    // removed in just_audio 0.10.0 — see its changelog) — so a plain
+    // `.listen(_broadcastState)` above never sees them. `_player.playing`
+    // also never auto-flips to false on such an error; it only changes via
+    // explicit play()/pause() calls. Without this subscription, an error
+    // here is completely invisible: `_broadcastState` keeps re-emitting
+    // whatever `playing`/`processingState` were before the error, forever.
+    _player.errorStream.listen((e) => onPlayerError?.call(e));
   }
 
-  final AudioPlayer _player = AudioPlayer();
+  /// Bug fix 2026-08-05 (evan: audible "staggering" during streamed playback,
+  /// alongside a run of `receive timeout` / `Failed host lookup` progress-sync
+  /// errors in Settings → Logs). Those two symptoms share one cause: a
+  /// self-hosted server reached over WAN that intermittently goes slow or
+  /// briefly unresolvable. `just_audio`'s defaults are tuned for short media
+  /// on a good connection — 50s of buffer, and only 5s of re-buffer before
+  /// resuming after an underrun — so every slow patch drains the buffer and
+  /// resumes on a razor-thin margin, which is what "staggering" sounds like:
+  /// repeated short stalls rather than one long one.
+  ///
+  /// An audiobook is low-bitrate and strictly linear, which makes a deep
+  /// read-ahead almost free (2 minutes at 128kbps is under 2MB) and highly
+  /// effective — it turns a 90-second server hiccup into something the
+  /// listener never hears at all. [prioritizeTimeOverSizeThresholds] matters
+  /// here: without it ExoPlayer stops filling once its byte target is hit,
+  /// capping the read-ahead well below the durations below.
+  static const _loadConfiguration = AudioLoadConfiguration(
+    androidLoadControl: AndroidLoadControl(
+      minBufferDuration: Duration(minutes: 2),
+      maxBufferDuration: Duration(minutes: 5),
+      // Left at just_audio's default: this one governs how long a *user*
+      // waits after pressing play or seeking, so the Phase 5.14 loading
+      // indicator shouldn't start lingering because of this fix.
+      bufferForPlaybackDuration: Duration(milliseconds: 2500),
+      // Deliberately much higher than the 5s default. After an underrun has
+      // already happened the connection has proven itself unreliable, so
+      // resuming on 5s of audio just queues up the next stall — waiting for
+      // 15s trades one slightly longer pause for not stuttering repeatedly.
+      bufferForPlaybackAfterRebufferDuration: Duration(seconds: 15),
+      targetBufferBytes: 32 * 1024 * 1024,
+      prioritizeTimeOverSizeThresholds: true,
+      // Keeps recently-played audio around so the small backward jumps this
+      // app encourages (the Phase 9.3 configurable back-jump, and
+      // [PlaybackController]'s error recovery re-seek) usually resolve out of
+      // the existing buffer instead of forcing a fresh range request to the
+      // very server that was already struggling.
+      backBufferDuration: Duration(seconds: 60),
+    ),
+    darwinLoadControl: DarwinLoadControl(
+      preferredForwardBufferDuration: Duration(minutes: 5),
+    ),
+  );
+
+  final AudioPlayer _player = AudioPlayer(
+    audioLoadConfiguration: _loadConfiguration,
+  );
   List<AudioTrack> _tracks = const [];
 
   /// Fired when the loaded item finishes playing entirely — used by
   /// [PlaybackController] to mark-finished / do a final progress sync.
   void Function()? onItemFinished;
+
+  /// Fired on a `just_audio` [PlayerException] during playback (see the
+  /// constructor's `errorStream` subscription above). [PlaybackController]
+  /// wires this to the log repository so a silent stream failure is at
+  /// least visible in Settings → Logs instead of leaving `playing: true`
+  /// broadcasting forever with a frozen position.
+  void Function(PlayerException)? onPlayerError;
+
+  /// PLAN.md Phase 10.1/10.4: set once from `main.dart` after a
+  /// [ProviderContainer] exists — this handler is constructed before
+  /// `runApp`/`ProviderScope`, so it can't reach Riverpod providers on its
+  /// own at construction time.
+  CarContentTree? contentTree;
+
+  @override
+  Future<List<MediaItem>> getChildren(
+    String parentMediaId, [
+    Map<String, dynamic>? options,
+  ]) async {
+    return contentTree?.getChildren(parentMediaId) ?? const [];
+  }
+
+  @override
+  Future<void> playFromMediaId(
+    String mediaId, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    await contentTree?.play(mediaId);
+  }
 
   AudioPlayer get player => _player;
   List<AudioTrack> get tracks => _tracks;

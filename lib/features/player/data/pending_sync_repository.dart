@@ -46,6 +46,16 @@ class PendingSyncRepository {
     return _db.select(_db.pendingProgressSyncs).get();
   }
 
+  /// The still-unflushed sync (if any) for one item/episode — lets a caller
+  /// compare a freshly-fetched server position against whatever more recent
+  /// progress is durably queued locally but hasn't round-tripped yet.
+  Future<PendingProgressSync?> find(String libraryItemId, String? episodeId) {
+    return (_db.select(_db.pendingProgressSyncs)..where(
+          (t) => t.syncKey.equals(_keyFor(libraryItemId, episodeId)),
+        ))
+        .getSingleOrNull();
+  }
+
   Stream<int> watchPendingCount() {
     return _db
         .select(_db.pendingProgressSyncs)

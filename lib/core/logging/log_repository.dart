@@ -13,25 +13,40 @@ class LogRepository {
 
   static const _maxEntries = 500;
 
+  /// Trimming used to read the *entire* table back into Dart just to call
+  /// `.length` on it, then issue one DELETE per excess row. At the 500-entry
+  /// cap that's 500 rows materialised and shipped across the database isolate
+  /// boundary on every single log write — including the ones written from a
+  /// failing 15s progress sync, which is exactly when the device has the
+  /// least to spare (bug fix 2026-08-05, evan: playback staggering). A
+  /// `COUNT(*)` plus one bounded DELETE does the same job.
+  ///
+  /// Trims by `id` rather than `timestamp`: it's the autoincrement insertion
+  /// order, so unlike `timestamp` it can't tie between two entries written in
+  /// the same instant and leave the table one over the cap forever.
   Future<void> log(String level, String tag, String message) async {
     await _db
         .into(_db.logEntries)
         .insert(
           LogEntriesCompanion.insert(level: level, tag: tag, message: message),
         );
-    final count = await _db.select(_db.logEntries).get().then((l) => l.length);
-    if (count > _maxEntries) {
-      final oldest =
-          await (_db.select(_db.logEntries)
-                ..orderBy([(t) => OrderingTerm.asc(t.timestamp)])
-                ..limit(count - _maxEntries))
-              .get();
-      for (final row in oldest) {
-        await (_db.delete(
-          _db.logEntries,
-        )..where((t) => t.id.equals(row.id))).go();
-      }
-    }
+
+    final total = countAll();
+    final countRow = await (_db.selectOnly(_db.logEntries)
+          ..addColumns([total]))
+        .getSingle();
+    if ((countRow.read(total) ?? 0) <= _maxEntries) return;
+
+    // The oldest entry worth keeping; everything before it goes in one go.
+    final oldestKept =
+        await (_db.select(_db.logEntries)
+              ..orderBy([(t) => OrderingTerm.desc(t.id)])
+              ..limit(1, offset: _maxEntries - 1))
+            .getSingleOrNull();
+    if (oldestKept == null) return;
+    await (_db.delete(
+      _db.logEntries,
+    )..where((t) => t.id.isSmallerThanValue(oldestKept.id))).go();
   }
 
   Stream<List<LogEntry>> watchLogs() {

@@ -21,7 +21,11 @@ class MediaProgress {
       progress: (json['progress'] as num?)?.toDouble() ?? 0,
       currentTime: (json['currentTime'] as num?)?.toDouble() ?? 0,
       isFinished: json['isFinished'] as bool? ?? false,
-      ebookLocation: json['ebookLocation'] as String?,
+      // A CBZ/CBR location is just a page index — some clients (the
+      // official app included, confirmed against evan's real server
+      // 2026-08-02) write it as a raw JSON number rather than a string like
+      // an EPUB CFI, which a bare `as String?` cast throws on.
+      ebookLocation: json['ebookLocation']?.toString(),
       ebookProgress: (json['ebookProgress'] as num?)?.toDouble(),
     );
   }
