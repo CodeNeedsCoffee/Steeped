@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
-import 'core/theme/app_theme.dart';
+import 'core/theme/skin_registry.dart';
 import 'features/settings/data/app_settings.dart';
 import 'features/settings/state/settings_providers.dart';
 import 'l10n/gen/app_localizations.dart';
@@ -22,10 +22,14 @@ class SteepedApp extends ConsumerWidget {
           ? [DeviceOrientation.portraitUp]
           : DeviceOrientation.values,
     );
+    // PLAN.md Phase 2.4: the active skin, persisted alongside the rest of
+    // AppSettings — same "just needs to be read here" pattern lockPortrait
+    // already uses above.
+    final skin = skinByName(settings.skinId);
     return MaterialApp.router(
       title: 'Steeped',
       debugShowCheckedModeBanner: false,
-      theme: buildDefaultTheme(),
+      theme: skin.buildTheme(),
       routerConfig: router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

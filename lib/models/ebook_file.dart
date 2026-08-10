@@ -20,8 +20,12 @@ class EbookFile {
 
   factory EbookFile.fromJson(Map<String, dynamic> json) {
     final metadata = (json['metadata'] as Map<String, dynamic>?) ?? const {};
+    // `ino` mirrors Node's `fs.Stats.ino`, a raw integer at the OS level —
+    // the server usually serializes it as a string but has been observed
+    // (2026-08-02, evan's real library) sending it as a JSON number for some
+    // items, which a bare `as String?` cast throws on.
     return EbookFile(
-      ino: json['ino'] as String? ?? '',
+      ino: json['ino']?.toString() ?? '',
       filename: metadata['filename'] as String? ?? '',
       format: (json['ebookFormat'] as String? ?? '').toLowerCase(),
       size: (metadata['size'] as num?)?.toInt() ?? 0,

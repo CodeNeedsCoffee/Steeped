@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/skin_registry.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../ebook/ereader_settings_panel.dart';
+import '../player/time_display_mode_selector.dart';
 import 'data/app_settings.dart';
 import 'state/settings_providers.dart';
 
@@ -13,11 +15,11 @@ import 'state/settings_providers.dart';
 /// toggle here is wired to real behavior (see PLAN.md Phase 9 for exactly
 /// where each one is consumed) — no dead switches.
 ///
-/// Not included: **Android Auto** (Milestone 4, nothing to configure yet)
-/// and **Appearance/skin** (the slot stays reserved for Milestone 3's skin
-/// engine per Phase 1.8/2's decision — a single default theme exists today,
-/// so a light/dark/bookshelf-view toggle here would have nothing real to
-/// switch between).
+/// **Appearance** (PLAN.md Phase 2.6) fills the slot this screen's Phase
+/// 9.3 note originally left reserved — a real skin switcher now exists,
+/// see `AppearanceScreen`.
+///
+/// Not included: **Android Auto** (Milestone 4, nothing to configure yet).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -40,6 +42,13 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Account'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/account'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('Appearance'),
+            subtitle: Text(skinByName(settings.skinId).displayName),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/appearance'),
           ),
           ListTile(
             leading: const Icon(Icons.bar_chart_outlined),
@@ -83,6 +92,30 @@ class SettingsScreen extends ConsumerWidget {
             value: settings.scaleElapsedTimeBySpeed,
             onChanged: (v) => controller.save(
               settings.copyWith(scaleElapsedTimeBySpeed: v),
+            ),
+          ),
+          SwitchListTile(
+            title: const Text('Show Tracks tab'),
+            subtitle: const Text(
+              'On Now Playing, add a toggle to switch between chapters and '
+              'a multi-file book\'s raw audio-file tracks',
+            ),
+            value: settings.showTracksTab,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(showTracksTab: v)),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Time display',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                TimeDisplayModeSelector(),
+              ],
             ),
           ),
 
