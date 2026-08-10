@@ -49,6 +49,24 @@ dependencies:
   socket_io_client: ^3.1.6
   cached_network_image: ^3.4.1
   permission_handler: ^13.0.0
+  background_downloader: ^9.5.7
+  path_provider: ^2.1.6
+  epub_view: ^3.2.0
+  # Direct dep (not just epub_view's transitive one): needed to supply a
+  # safe custom chapterBuilder that works around a real crash in epub_view
+  # 3.2.0's default image-tag handler — see epub_reader_screen.dart.
+  flutter_html: ^3.0.0
+  pdfx: ^2.9.2
+  archive: ^3.6.1
+  wakelock_plus: ^1.7.0
+  # Phase 6.8 (Local Media import). Chose this over `file_picker`: every
+  # file_picker version compatible with our `wakelock_plus` constraint is a
+  # pre-release (>=12.0.0-beta.1) because file_picker's Windows plugin pulls
+  # a `win32` version wakelock_plus conflicts with — irrelevant to this
+  # Android/iOS-only app, but pub's resolver still enforces it. Android+iOS
+  # only, `copyFileToCacheDir` gives a real usable file path with no SAF
+  # tree-URI path-resolution headaches, no new transitive deps.
+  flutter_file_dialog: ^3.3.2
 
 dev_dependencies:
   flutter_test:
@@ -62,8 +80,13 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.15.1
   drift_dev: ^2.34.5
-  flutter_launcher_icons: ^0.14.4
-  flutter_native_splash: ^2.4.8
+  # flutter_launcher_icons/flutter_native_splash removed here (Phase 8):
+  # every version compatible with drift_dev's cli_util also wants image
+  # ^4.x, which conflicts with epub_view/epubx's image ^3.x (Phase 8's EPUB
+  # reader). Both were unused anyway (Phase 1.7 — deferred to Phase 9, no
+  # real icon exists yet). At Phase 9, either re-check for compatible
+  # versions or run them via `dart pub global activate` instead of a
+  # project dependency, so their own resolver doesn't collide with ours.
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

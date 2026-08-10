@@ -6,6 +6,7 @@ import '../../core/network/cover_image_url.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../settings/state/settings_providers.dart';
 import 'state/playback_controller.dart';
 
 /// PLAN.md Phase 5.2: persistent bottom bar. Drop this in as a Scaffold's
@@ -16,6 +17,17 @@ class MiniPlayer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Centralized here (PLAN.md Phase 9.3) rather than at every play/download
+    // call site, since MiniPlayer is already mounted on nearly every
+    // authenticated screen.
+    ref.listen(cellularBlockNoticeProvider, (previous, next) {
+      if (next == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next)));
+      Future.microtask(
+        () => ref.read(cellularBlockNoticeProvider.notifier).state = null,
+      );
+    });
+
     final item = ref.watch(currentPlaybackItemProvider);
     if (item == null) return const SizedBox.shrink();
 

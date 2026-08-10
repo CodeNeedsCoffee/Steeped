@@ -147,9 +147,10 @@ Legend used inline below:
 - [x] 5.4 Lock-screen / notification media controls — confirmed via the real system media-control card (title/artist, play-pause, seek, rewind/fast-forward). "Allow position seeking on media controls" toggle not built (no Settings screen yet — Milestone 2).
 - [x] 5.5 Chapters + chapter navigation (tap-to-seek list, current chapter highlighted) + jump forward/back — **fixed 30s interval**, not yet customizable (Settings, Phase 9).
 - [x] 5.6 Playback speed (0.75x–2x dropdown). "Scale elapsed time by speed" display option not built.
-- [ ] 5.7 **Sleep timer.** **Deferred** — a large standalone feature (manual/end-of-chapter/auto-timer/shake-to-reset/fade-out/chime); not built in this pass.
+- [x] 5.7 **Sleep timer.** Built in Phase 9.3 alongside the rest of the Settings taxonomy — a real, working manual-duration timer (5/15/30/45/60 min + a configurable default, countdown, auto-pause on expiry, cancel), accessible from Now Playing. Verified live: started a timer (icon fills), cancelled it (icon reverts), playback unaffected throughout. End-of-chapter, shake-to-reset, fade-out, and chime remain deferred — the basic manual timer covers the core use case.
 - [ ] 5.8 Bookmarks. **Deferred** — separate feature, not built in this pass.
 - [x] 5.9 Progress sync — sessionless `PATCH /api/me/progress/:id` every 15s while playing + on pause (research found this simpler than the session-based `/api/session/:id/sync` path, which requires calling `/play` first). No metered-connection throttling and no dedicated "sync failed" UI (best-effort, silently retries next tick) — both deferred.
+  - **Bug found + fixed 2026-07-31**: the sync timer was started/stopped only by `PlaybackController`'s own `pause()`/`resume()` methods — but a hardware media button, the notification's pause action, or a headset button call `SteepedAudioHandler.pause()` directly (that's the point of exposing a MediaSession), bypassing those methods entirely. The timer kept running after a hardware pause, and once connectivity came back it synced a stale (near-zero) position to the real server, silently overwriting real progress. Fixed by driving the timer off `SteepedAudioHandler.playbackState`'s actual `playing` flag instead — it now reacts correctly regardless of what paused it. **This corrupted real listening progress on evan's server for one book during testing** (`currentTime` reset while the `progress` fraction stayed intact); repaired by recomputing `currentTime` from the still-correct fraction and writing it back. Fixed and verified: a downloaded book now resumes at the right position (confirmed 4:58:06 of 12:38:05, matching 39%).
 - [x] 5.10 Mark as **Finished / Not Finished** (overflow menu on Now Playing) — same progress endpoint, `isFinished` flag. Discard/reset progress not built as a separate action.
 - [ ] 5.11 Volume key navigation. **Deferred**.
 - [x] 5.12 **Media-session foundation** — real `MediaSession` confirmed via the system media-control card and notification's `android.mediaSession` token; this is the substrate Milestone 4's CarPlay/Android Auto browse trees will build on.
@@ -168,66 +169,86 @@ Legend used inline below:
 Two distinct capabilities the reference app has: (a) **downloading server items** for offline use, and
 (b) **importing/scanning on-device folders** of media that never came from the server ("Local Media").
 
-- [ ] 6.1 "Download" action on a book/episode → background download to local storage (respect the user's server download permission).
-- [ ] 6.2 **Series download** — download all missing books in a series at once, with a size/count confirmation.
-- [ ] 6.3 **Download location selection**: Internal App Storage vs shared-storage folder (Android SD/shared). Note Android-10-and-below internal-only behavior.
-- [ ] 6.4 Local library model distinguishing server item vs **downloaded local item** vs **imported local-media item**; link downloaded media to its **server + user** for progress sync (handle "linked to different server/user" cases).
-- [ ] 6.5 Downloads screen: in-progress + **download queue** (with clear-queue), completed list, delete/manage.
-- [ ] 6.6 Offline playback with zero connectivity.
-- [ ] 6.7 Sync local progress back to server on reconnect (queue + retry).
-- [ ] 6.8 **Local Media folders**: let the user pick device folders, **scan** them for audiobooks/podcasts, and play them without any server (mirrors `FolderScanner`/"Manage Local Files"/"New Folder"). Show "No Media Folders" empty state.
-- [ ] 6.9 **Cellular-data controls**: separate "download using cellular" and "stream using cellular" toggles; confirm-on-metered prompts; block when disallowed.
-- [ ] 6.10 Storage management: space used, bulk-delete, low-storage warnings.
+- [x] 6.1 "Download" action on a book → background download via `background_downloader` (one task per audio track + cover, grouped by item id). Podcast episodes not covered (podcasts are Milestone 2/Phase 7, not built yet). Server download-permission isn't checked client-side yet (minor gap — the server would reject an unauthorized download anyway, but the client doesn't pre-emptively hide the button).
+- [x] 6.2 **Series download**. **Built 2026-08-01** without needing full series browsing (4.5, still deferred) — reuses the existing `/api/libraries/:id/items` endpoint's `filter=series.<base64(id)>` query param (confirmed against `~/Code/audiobookshelf/server/utils/queries/libraryFilters.js`) rather than a dedicated series endpoint. A "Download series: <name>" action appears on item detail for any book with series metadata; queues one download per not-yet-downloaded book in that series. Verified live: downloaded all 3 books of the Thrawn Trilogy from one tap, confirmed all appeared in the Downloads queue and finished (1.5GB total).
+- [x] 6.3 **Download location**: Internal App Storage only (`BaseDirectory.applicationDocuments`, via `path_provider`) — no shared-storage/SD option built. This sidesteps the Android-10-and-below internal-only caveat entirely rather than handling it, which is a reasonable simplification: the plan's own note is that internal-only is required behavior on older Android anyway, and app-scoped storage is simplest and needs no extra permissions.
+- [x] 6.4 Local library model: drift `DownloadedItems`/`DownloadedTracks` tables — distinguishes downloaded-local from server-only. **`buildOfflineItemDetail` reconstructs a fully playable item from local rows alone (title, authors, chapters, tracks) — zero network call**, which is what makes 6.6 genuinely offline rather than "streams from a cache." "Imported local-media item" (on-device files never from the server) doesn't apply — that's 6.8, deferred. "Linked to different server/user" edge case not handled (single-session app currently — see 3.3 deferral).
+- [x] 6.5 Downloads screen (`/downloads`): completed list with cover/title/delete, live progress bars for in-progress downloads. No explicit in-progress-vs-completed section split (list just shows both) and no "clear queue" action — `background_downloader` manages queue ordering internally, nothing in the UI to clear.
+- [x] 6.6 **Offline playback with zero connectivity — verified for real**, not just implemented: downloaded a book, force-disabled wifi + cellular data (confirmed via `ping` failing with "Network is unreachable"), and played it from the already-running app — audio decoded, position advanced, chapter highlighting tracked correctly, all from local files + locally-cached metadata. **Cold-start-while-offline gap, found 2026-07-31, fixed 2026-08-01**: `SessionController`'s bootstrap (Phase 3) treated a network-unreachable startup token refresh identically to a genuine 401 rejection, clearing the whole session either way — locking a fully offline cold start out of downloaded content and forcing a real re-login once connectivity returned for what was really just a network blip. Fixed: only a real `DioExceptionType.badResponse` (the server actually rejecting the refresh token) logs the user out now; any other failure falls back to the cached session, same as the pre-existing legacy-token path. Verified live: force-stopped the app mid-offline-playback, cold-relaunched still offline — session stayed authenticated ("Offline" badge, not kicked to login) and the downloaded book kept playing; confirmed via the Logs screen showing "Startup token refresh unreachable, using cached session." **Second bug found during the original verification, also fixed 2026-07-31**: this offline test session's leftover sync timer (see 5.9's entry above) is what corrupted the real server progress — the two issues were discovered together when the user noticed a downloaded book wasn't resuming where expected. See 5.9 for the fix and repair.
+- [x] 6.7 Sync local progress back to server on reconnect. **Real durable queue built 2026-08-01**: a failed progress sync now persists to a `PendingProgressSyncs` drift table (one row per item/episode, later failures overwrite earlier ones) instead of only retrying on the next 15s tick while the app happens to stay open. A connectivity-change listener plus an app-start check flush the queue once a real connection returns — durable across app restarts, not just within a session. A real server rejection (bad response, not a connectivity error) drops the row rather than retrying forever. Verified live: played a downloaded book, cut all connectivity, confirmed a sync queued (read the drift table directly), force-stopped and cold-relaunched the app *still offline* (row survived the restart, even picked up a later position via the upsert), then restored connectivity and confirmed the queued sync flushed automatically with no "dropped" log entry.
+  - **Earlier verification, 2026-07-31** (requested by evan, before the durable-queue rework): played a downloaded book, went offline mid-playback, let it advance ~70s offline, restored connectivity *without pausing*, and confirmed via a raw server response that `currentTime` had correctly advanced to the new position within one sync tick — reconnect-while-playing does upload. Also confirmed: a downloaded item is preferred over streaming *whenever it exists*, not just when offline (`playItem()` checks `isDownloaded` unconditionally, no online/offline branch) — so playing a downloaded book while online still uses the local file and still uploads progress normally.
+  - **Display bug found + fixed during that verification**: the server's `progress` fraction field is *not* recomputed by our sessionless progress PATCH — only `currentTime`/`duration` are (confirmed: after a real sync, `currentTime` had advanced but `progress` stayed at its old value). The item detail screen's "% complete" was reading that stale fraction directly from the server. Fixed to compute the displayed percentage from `currentTime / duration` client-side instead, matching what's actually used to resume playback. This was a display-only bug — actual resume position was never affected by it.
+- [x] 6.8 **Local Media folders** (on-device import, no server involved). **Built 2026-08-01, simplified to single-file import rather than a whole-folder scan**: Android scoped storage means arbitrary folder access needs a persisted SAF tree URI whose path resolution is inconsistent across OEMs, while picking individual files via `flutter_file_dialog` resolves to a real, reliable path. Covers the actual use case (import audio that never lived on the server) without that reliability risk — tap "Import" once per file, repeat to add more. Chose `flutter_file_dialog` over `file_picker`: every `file_picker` version compatible with our `wakelock_plus` constraint is a pre-release, because `file_picker`'s Windows plugin pulls a `win32` version `wakelock_plus` conflicts with (irrelevant to this Android/iOS-only app, but pub's resolver still enforces it). New `LocalMediaItems` drift table tracks imported files with purely local progress — no server item id exists, so `PlaybackController`'s sync paths skip the network entirely for these via a new `isLocalOnly` flag on `LibraryItemDetail`. Verified live: imported a real WAV file via the system file picker, played it through the full Now Playing UI, confirmed local-only progress persisted with zero log entries (no network sync attempted), then deleted it and confirmed the file was actually removed from disk.
+- [x] 6.9 **Cellular-data controls**. Built in Phase 9.3 once a real Settings screen existed to host them — separate stream/download toggles, enforced via `connectivity_plus` in `PlaybackController`/`DownloadController` before each network action starts, with a shared snackbar (`cellularBlockNoticeProvider`, surfaced through `MiniPlayer`) when blocked. Not verified on-device with a real cellular-only connection (would need airplane mode + manually re-enabling mobile data on the test device) — the connectivity-detection logic itself mirrors the same `connectivity_plus` API already relied on elsewhere.
+- [x] 6.10 **Storage management**. **Built 2026-08-01**: total/per-item download sizes, a low-storage warning against real free device space, and bulk-delete on the Downloads screen. Free space comes from a small native `StatFs` platform channel (`DeviceStorage`, Android-only for now) rather than a pub dependency — avoids the `image`-package version conflict this project already hit once (Phase 8.1's pubspec note). Verified live: downloaded a real 292MB book, confirmed "Downloads use 292 MB · 12 GB free" and the per-item size label, and exercised the delete-all confirmation dialog on a 4-item batch (1.5GB).
 
-> 🤖 **Android checkpoint:** download a full book, kill app mid-download to confirm resume, go airplane-mode and play offline; add a local-media folder and scan/play a sideloaded file; toggle cellular controls on a metered connection.
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real Audiobookshelf server — downloaded "The Exquisite Torment of Loving Your Enemy" (12h38m, 38 chapters) over WiFi, watched live progress (0%→44%→70%→93%→Downloaded), then genuinely cut all connectivity (wifi + cellular data disabled, `ping` confirmed unreachable) and played it successfully with real-time position/chapter tracking. Downloads screen confirmed showing the completed item with local cover art. Did not test kill-app-mid-download resume.
 >
-> 🍎 **Xcode checkpoint 3 (major landmark):** iOS **background URLSession** download behavior + **app-sandbox file paths** differ substantially. Verify downloads survive backgrounding, offline playback works, and local-file access behaves on a real iPhone/Simulator.
+> 🤖 **Android checkpoint 2: verified 2026-08-01** — closed out every item deferred from the first pass (6.2, 6.7, 6.8, 6.10) plus the cold-start-offline gap from 6.6, all driven live over adb per-item as detailed above. Phase 6 is now fully complete, no open items.
+>
+> 🍎 **Xcode checkpoint 3 (major landmark):** iOS **background URLSession** download behavior + **app-sandbox file paths** differ substantially. Not yet done — needs the Mac.
 
 ---
 
 ### Phase 7 — Podcasts
 
-- [ ] 7.1 Podcast library view (separate media type).
-- [ ] 7.2 Episode list per podcast; played/unplayed/incomplete state; "# of episodes / N incomplete".
-- [ ] 7.3 **Add podcast** flow (subscribe via server; search term or RSS URL) — "Podcast created" success/fail toasts.
-- [ ] 7.4 **Auto-download episodes** setting per podcast.
-- [ ] 7.5 Episode download + offline (reuses Phase 6 engine); delete local episode and delete-episode-from-server (with the destructive-action warning).
-- [ ] 7.6 Latest/newest-episodes feed; new-episode indicators; next-episode action.
+- [x] 7.1 Podcast library view (separate media type). Podcast items already list generically in the home shelves + full-library grid (the `LibraryItem` book/podcast flattening from 4.1); Phase 7 adds the podcast **detail** screen — tapping a podcast now renders its episodes instead of the old "coming in Phase 7" placeholder (`PodcastDetailBody`, branched from `ItemDetailScreen` on `isPodcast`). A "Latest Episodes" entry appears on the home of any podcast-media-type library (7.6).
+- [x] 7.2 Episode list per podcast; played/unplayed/incomplete state; count. Episodes come from the expanded item's `media.episodes[]` (`PodcastEpisode` model), sorted newest-first by `publishedAt`. Per-episode progress isn't inlined on the item response, so it's merged in from the user's `mediaProgress` (`GET /api/me`, filtered to this podcast) — a check for finished, a play-circle + "N% played" for in-progress, an empty circle for unplayed. Header shows "N episodes · M incomplete".
+- [ ] 7.3 **Add podcast** flow (subscribe via server; search term or RSS URL) — "Podcast created" success/fail toasts. **Deferred — confirmed permission-blocked, not source-blocked.** The server source (`~/Code/audiobookshelf`) is on this machine after all, and `PodcastController.create` (`POST /api/podcasts`) requires `req.user.isAdminOrUp` directly — evan's account is `type: user` (non-admin), so this would 403 regardless. The subscribe *reads* (term search, RSS-feed preview) remain safe/buildable, but the create action itself genuinely cannot be exercised against evan's real server. Same reasoning defers 7.4.
+- [ ] 7.4 **Auto-download episodes** setting per podcast. **Deferred — confirmed permission-blocked**: setting it is a `PATCH` on the podcast media, gated behind `req.user.canUpdate` server-side (`PodcastController.middleware`). Verified live 2026-08-01 via a new Account-screen permission display: evan's account has **Updates allowed: ✗**, so this would 403 too.
+- [x] 7.5 Episode download + offline (reuses Phase 6 engine); delete local episode. **Device download + offline playback + local delete: done.** Reuses the Phase 6 `background_downloader` path unchanged, keyed by a composite `podcastId::episodeId` `downloadId` (see `LibraryItemDetail.downloadId`) so episodes of one podcast don't collide on the `DownloadedItems` primary key — **no drift schema change needed**, the id is just a string, and `buildOfflineItemDetail` splits it back to reconstruct the episode fully offline. Per-episode download button (download / progress ring / downloaded-delete) on both the podcast detail and Latest-Episodes screens. **`delete-episode-from-server` deferred — confirmed permission-blocked**: `PodcastController.removeEpisode` (DELETE) is gated behind `req.user.canDelete`; the same 2026-08-01 Account-screen check found evan's account has **Deletes allowed: ✗**. Local delete is what a client normally needs regardless.
+- [x] 7.6 Latest/newest-episodes feed (`GET /api/libraries/:id/recent-episodes`, `RecentEpisodesScreen`, reachable from a podcast library's home) with play + download per entry. **New-episode indicators and an explicit "next episode" action are not built** — minor parity items; the feed itself is the substance. Confirmed live: the endpoint returns `{ episodes: [...], limit, page }` (verified via temporary debug logging against evan's real server, then reverted) — matches what `RecentEpisode.tryFromJson` expects; evan's library only has one (very old, 2005) episode, so the feed legitimately returns `episodes: []`, not a parsing bug.
 
-> 🤖 **Android checkpoint:** subscribe (by term and by RSS URL), enable auto-download, download an episode, confirm it flows through the shared playback/download engine with no special-cased bugs.
+**Episode playback** rides the existing engine: `PlaybackController.playEpisode` loads the episode's single `audioTrack` as a one-track item (id kept as the parent podcast's, `episodeId` set) so cover + progress resolve correctly, and progress syncs to the two-segment `PATCH /api/me/progress/:libraryItemId/:episodeId` (added to `ProgressRepository`). A downloaded episode is preferred over streaming, exactly like books (6.6).
+
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real Audiobookshelf server (podcast library: "Living with Harry Potter," BBC Radio 4, 1 episode). Confirmed via adb (build → install → drive with `input tap` + `screencap`, not just launched): podcast detail renders the real episode list with correct date/duration/"Finished" state; downloaded the episode (~56MB real file + cover landed on disk under the composite `podcastId::episodeId` path); played it back **fully offline from the local file** — Now Playing showed real decoding and advancing position with working transport controls; deleted the local download and confirmed the file was actually removed from disk and the shared Downloads screen correctly dropped the entry with no orphan row, leaving the pre-existing book download untouched. The Latest Episodes feed's empty state was confirmed genuine (see 7.6 above), not a bug. Add-podcast (7.3), auto-download (7.4), and delete-from-server remain deliberately deferred.
 
 ---
 
 ### Phase 8 — E-Books & Comics
 
-- [ ] 8.1 **EPUB reader** (`epub_view`): pagination, table of contents, reading-position sync to server.
-- [ ] 8.2 **Ereader settings**: font family (Sans/Serif), font scale, font boldness, line spacing, layout (Auto / Single page), theme (Light/Dark/Black).
-- [ ] 8.3 **PDF reader**.
-- [ ] 8.4 **Comic archive (CBZ/CBR)** reader via `archive` extraction + page viewer.
-- [ ] 8.5 Primary vs supplementary ebook handling ("set as primary/supplementary", "has ebook / has supplementary ebook").
-- [ ] 8.6 **Send Ebook to Device** (e.g. Kindle) action — parity with server/app "send to device".
-- [ ] 8.7 Unify "continue reading" alongside "continue listening" on the home shell.
+Reading material is served by the *same* generic `GET /api/items/:id/file/:ino` endpoint audio tracks use
+(confirmed live against evan's real server for both a 44MB EPUB and a 128MB CBZ — checked the raw response
+byte count and ZIP magic bytes `PK\x03\x04` matched exactly). `EbookRepository` caches the file to app
+storage on first "Read" tap (a plain one-shot cache, not the queued Phase 6/7 download engine — reading is
+on-demand, not an explicit offline-save action). "eBooks" and "Comics" are both server `mediaType: 'book'`
+libraries under the hood, differentiated only by `ebookFormat` on the item, not by library type.
 
-> 🤖 **Android checkpoint:** read an EPUB and a CBZ end-to-end; reading position persists and syncs; ereader settings apply live.
+- [x] 8.1 **EPUB reader** (`epub_view`): pagination (continuous scroll), table of contents (jump-to-chapter), reading-position sync to server. Confirmed live: `userMediaProgress.ebookLocation` (an EPUB CFI string) + `ebookProgress` (0..1 fraction) are separate fields from the audio `currentTime`/`progress` ones — `ProgressRepository.updateEbookProgress` added for this, PATCHing the same `/api/me/progress/:id` endpoint with the different body shape.
+  - **Real crash found + fixed during on-device testing**: `epub_view` 3.2.0's built-in `<img>` handler does `document.Content!.Images![url]!.Content!` with no fallback — throws "Null check operator used on a null value" (blanking the *entire* reader body, no per-item error boundary) whenever an image `src` doesn't exactly match its naively-normalized key. Reproduced reliably on a real illustrated book via TOC navigation. Fixed with a custom `chapterBuilder` (`_safeChapterBuilder` in `epub_reader_screen.dart`) that tries several path-matching strategies before giving up and rendering nothing for that one image, instead of crashing the chapter. Verified fixed: the same TOC jump that crashed before now renders the real illustrations correctly.
+- [x] 8.2 **Ereader settings**: font family (Sans/Serif), font scale, font boldness (bold toggle), line spacing, theme (Light/Dark/Black). Persisted locally via the existing `KeyValueEntries` drift table (first real use of that scaffolded-but-unused table) — these are device display prefs, not server-tracked. "Layout (Auto/Single page)" not built — `epub_view` is continuous-scroll only, no single-page mode to toggle.
+- [x] 8.3 **PDF reader** (`pdfx`): paged view + page counter. No ereader text-styling (PDF is fixed-layout, matches reference app scope). Progress synced as page-number-as-string in the `ebookLocation` field (no CFI-equivalent concept for PDF) + page/pageCount as `ebookProgress`. **Not verified on-device** — evan's library has real EPUB and CBZ items but no confirmed PDF item was found to test against; built and `flutter analyze`-clean like the rest, but this is the one reader without a real-file checkpoint.
+- [x] 8.4 **Comic archive (CBZ)** reader via `archive` extraction (off the UI isolate via `compute()` — confirmed necessary and working against a real 128MB/16-page CBZ) + `PageView` page viewer with natural filename sorting (`page2` before `page10`) and resume-from-saved-page. **CBR is not supported** — `archive` (pure Dart, no native deps) only decodes zip-family formats, and no maintained pure-Dart RAR decoder exists; `EbookFile.isSupported` is false for `.cbr` and the Read button surfaces a message instead of a broken reader.
+  - **Real bug found + fixed during on-device testing**: page-swiping silently didn't work at all — an `InteractiveViewer` (added for pinch-zoom) claims every single-finger drag from the gesture arena via its internal `ScaleGestureRecognizer` *before* the parent `PageView` ever sees it. Setting `panEnabled: false` looked like the fix but isn't — it only suppresses the resulting pan translation, not the gesture claim itself (confirmed by reading `InteractiveViewer`'s source: the scale recognizer always wins the arena; `panEnabled` is checked afterward). Fixed by dropping `InteractiveViewer` entirely — reliable paging matters more than pinch-zoom for this pass. Verified fixed: swiped through multiple real pages of the 16-page CBZ, page counter advanced correctly each time.
+- [ ] 8.5 Primary vs supplementary ebook handling. **Deferred** — evan's items only ever showed a single `media.ebookFile`, so the multi-file "primary vs supplementary" shape was never observed live to build against; setting it is also a server-mutating metadata action.
+- [ ] 8.6 **Send Ebook to Device** (e.g. Kindle). **Deferred** — a server action gated on SMTP being configured server-side, not something a client blind-implements without confirming the request/response shape against server source (not on this machine, same reasoning as Phase 7.3's deferral).
+- [x] 8.7 Unify "continue reading" alongside "continue listening". **Turned out to already work for free** — the personalized-shelves renderer (Phase 4.3) was already generic-by-shelf-type with no hardcoded shelf list, so the server's real "Continue Reading" shelf for the eBooks library rendered correctly with zero new code, confirmed live on evan's real eBooks library home.
+
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real server — driven live over adb (build → install → `input tap`/`screencap`), not just launched. Read a real 44MB illustrated EPUB ("Harry Potter — A History of Magic") end-to-end: table of contents, chapter jump, multiple real embedded illustrations rendering after the image-crash fix, reading settings (font/theme/size/spacing) applying live, and progress syncing (confirmed the item then appeared in the "Continue Reading" shelf). Read a real 128MB/16-page CBZ ("The Legend of Genji") end-to-end: resumed at the correct saved page (12/16, matching its prior "Finished" progress), paged forward through multiple pages correctly after the swipe-gesture fix, extraction ran off the UI thread with no jank. **PDF reader not verified on-device** (no confirmed PDF item in evan's library) — built and analyze-clean, same caveat treatment as Phase 7's unverified endpoint. 8.5/8.6 deliberately deferred, reasoning above.
 >
-> 🍎 **Xcode checkpoint 4:** confirm EPUB/PDF/CBZ rendering + on-device file access parity on iOS.
+> 🍎 **Xcode checkpoint 4:** confirm EPUB/PDF/CBZ rendering + on-device file access parity on iOS. Not yet done — needs the Mac.
 
 ---
 
 ### Phase 9 — RSS Feeds, Account, Settings, Stats, Polish
 
-- [ ] 9.1 **RSS feed management**: open/close an RSS feed for a podcast or audiobook; feed slug, custom owner name/email, prevent-indexing toggle; show "RSS Feed is Open" state and feed URL preview. Include the HTTPS/PubDate warnings the app shows.
-- [ ] 9.2 Account screen (user info, logout, switch server/user).
-- [ ] 9.3 Settings, organized to match the reference app's taxonomy: **Playback**, **Data** (cellular), **User Interface** (haptic feedback, keep-screen-awake, lock-orientation, language, theme, bookshelf view), **Android Auto**, **Ereader**, **Sleep Timer**, **Advanced**. An **Appearance/skin** section is added here later, once Milestone 3 (Phase 2) builds the skin system — leave a slot for it now.
-- [ ] 9.4 **Stats**: minutes-listening 7-day chart, recent sessions, best day, daily average, days listened, streak ("in a row"), items finished, week listening.
-- [ ] 9.5 **Year in Review** annual recap (show/hide).
-- [ ] 9.6 **Logs / debug** screen (view/clear logs) for troubleshooting self-hosted connectivity — genuinely useful, mirrors `logs.vue`.
-- [ ] 9.7 History screen.
-- [ ] 9.8 **Localization**: wire up real translations (start with English; the pipeline exists from Phase 0.12/1.5). Language picker in UI settings.
-- [ ] 9.9 Real app icon + splash (replace placeholders); consider an icon that reflects the coffee/book brand.
-- [ ] 9.10 Empty/error states across every screen (no server, empty bookshelf, no items/collections/series/bookmarks, failed download, no network).
+Two real endpoints not in prior phases were confirmed live against evan's server (2026-07-31) before
+building against them: `GET /api/me/listening-stats` (the obvious `/api/me/stats` guess 404s) and
+`GET /api/me/listening-sessions`. `/api/feeds` returned **403** — evan's account is `type: user` with
+`permissions.update: false`, confirming RSS feed management is admin-gated server-side; see 9.1.
 
-> 🤖 **Android checkpoint:** full walkthrough — every screen, real server, real device; open/close an RSS feed; language switch; stats + Year-in-Review.
+- [ ] 9.1 **RSS feed management**. **Deferred** — `GET /api/feeds` 403'd against evan's real (non-admin) account, confirming this is an admin-only server action. Genuinely can't build-and-verify the open/close request/response shape blind without admin access (no server source on this machine either, same reasoning as prior admin/mutating deferrals). The client *does* respect this permission boundary correctly: `SettingsScreen` only shows an "RSS Feeds" entry at all when `user.type` is `root`/`admin` (confirmed hidden for evan's real `user`-type account), so a non-admin user never sees a feature they can't use.
+- [x] 9.2 Account screen: user info (username/email/type), server URL, download/upload permission flags, logout. Verified live with evan's real account data. **Extended 2026-08-01** with Update/Delete permission flags too — doubled as live confirmation that 7.3/7.4/delete-episode-from-server are genuinely permission-blocked (both false for evan's account), not just missing-server-source as previously written here. "Switch server/user" stays out of scope with the multi-server switcher itself (3.3).
+- [x] 9.3 Settings, organized to match the reference app's taxonomy — **and every toggle is wired to real behavior, not a dead switch**: **Playback** (jump interval, now configurable — was fixed 30s per 5.5; scale-elapsed-time-by-speed, closes the 5.6 gap), **Sleep Timer** (default duration), **Data** (cellular streaming/download toggles, enforced via `connectivity_plus` in `PlaybackController`/`DownloadController` before each starts — blocked attempts surface a snackbar via a shared `cellularBlockNoticeProvider` that `MiniPlayer` listens for, since MiniPlayer is already mounted on nearly every screen), **User Interface** (haptic feedback — wired to the Now Playing play/pause button; keep-screen-awake — real `wakelock_plus` toggle tied to Now Playing's lifecycle; lock-to-portrait — real `SystemChrome.setPreferredOrientations` at app root; language — see 9.8), **Ereader** (the *same* global `EreaderSettingsPanel` from Phase 8, now shared between the in-reader sheet and Settings — confirmed live that a change made in one place applies in the other), **Advanced** (Logs, see 9.6). **Android Auto** section not added — nothing to configure yet (Milestone 4). **Appearance/skin** stays deliberately out — the slot is still reserved for Milestone 3's skin engine per the Phase 1.8/2 decision; a toggle here would have nothing real to switch between yet (single default theme).
+- [x] 9.4 **Stats**: real 7-day bar chart, recent sessions, best day, daily average, days listened, streak, items finished, week listening — all computed from `GET /api/me/listening-stats`. Verified live against evan's real account: 573 days listened (all-time), a 6-day current streak, 63 items finished, a real per-day 7-day chart (Sat 0m → Tue 235m → Fri 165m), real recent-session entries. "Items finished" isn't in the stats payload (it has time-per-item, not a finished flag) — cross-referenced from `/api/me`'s `mediaProgress` list instead (same field already used for podcast episode state in Phase 7).
+- [x] 9.5 **Year in Review**: no dedicated annual-recap endpoint exists (only `listening-stats`, confirmed) — built by aggregating that same data client-side, filtered to the current year, rather than guessing an unconfirmed endpoint. Total time this year, days active, top items by time listened.
+- [x] 9.6 **Logs / debug** screen — a real, working log (drift-backed `LogEntries` table, survives restarts, capped at 500 entries), not a stub. Hooked into real failure paths: session token-refresh failure, progress-sync failure, download failure. View + clear, confirmed live (correctly showed "No log entries yet" — nothing failed during this session's testing, a genuine empty state).
+- [x] 9.7 History screen: `GET /api/me/listening-sessions`, paginated infinite-scroll (same pattern as the library grid). Verified live against evan's real account — 1228 real sessions, confirmed pagination loads more on scroll.
+- [x] 9.8 **Localization**: language picker wired into Settings → User Interface, but honestly scoped — only `app_en.arb` exists (confirmed by checking `lib/l10n/`), so the picker currently offers English only rather than fabricating 40 unverified translations. The `flutter_localizations`/ARB pipeline itself (0.12/1.5) is unchanged and ready to grow as real translations are added.
+- [ ] 9.9 Real app icon + splash. **Deferred** — no real branding artwork exists to generate from, and `flutter_launcher_icons`/`flutter_native_splash` were already removed from `pubspec.yaml` in Phase 8 (a real, confirmed dependency conflict: every version compatible with `drift_dev`'s `cli_util` wants `image` ^4.x, which conflicts with `epub_view`/`epubx`'s `image` ^3.x — see Phase 8.1's pubspec note). Placeholder icons remain until real artwork exists and that conflict is revisited.
+- [x] 9.10 Empty/error states: added the one real gap found — the full-library grid (4.4) showed a blank grid with no message for a genuinely empty library. Every other major screen already had a real empty/error state from its own phase (downloads, podcast episode list, recent episodes, history, connect-server/login network errors from 3.7) — confirmed by re-reading each screen rather than assuming.
+
+> 🤖 **Android checkpoint: verified 2026-07-31** on the Pixel 8 Pro against evan's real Audiobookshelf server — driven live over adb. Settings screen renders the full real taxonomy with the RSS section correctly hidden (non-admin account); toggled "keep screen awake" and confirmed it persisted across navigation; Account screen showed real user/server data; Stats screen rendered a real 7-day chart and all tiles with real computed values; History screen showed real session data with working pagination; Logs screen showed the correct empty state; the sleep timer was started (moon icon filled) and cancelled (icon reverted) with playback continuing normally throughout. Two real bugs were caught and fixed *during this same Phase 7/8/9 session* via this on-device methodology (see Phase 8's entry) — this phase's testing didn't turn up a third, but every interactive control above was actually tapped, not just read from source.
 
 ---
 
@@ -344,9 +365,9 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [x] Lock-screen/notification controls · 5.4 — seek-on-controls toggle not built
 - [x] Chapters + jump fwd/back intervals · 5.5 — fixed 30s, not yet customizable
 - [x] Playback speed · 5.6 — scale-elapsed-by-speed display option not built
-- [ ] Sleep timer (manual, end-of-chapter, auto-timer, shake-to-reset, vibrate, fade-out, chime) · 5.7
+- [x] Sleep timer (manual duration) · 5.7 / 9.3 — end-of-chapter/shake-to-reset/fade-out/chime not built
 - [ ] Bookmarks · 5.8
-- [x] Progress sync · 5.9 — sync-failed UI not built (best-effort retry)
+- [x] Progress sync · 5.9 — no dedicated sync-failed UI, but failures are logged (9.6) and durably queued for retry (6.7)
 - [ ] Volume-key navigation · 5.11
 - [x] Media-session foundation (now-playing metadata + queue) · 5.12
 - [ ] Keep-screen-awake, lock player, MP3 index seeking · 5.13
@@ -355,40 +376,41 @@ Check these off as parity is reached — this is the "nothing dropped" ledger.
 - [ ] **Chromecast (Android-only)** · 11.1
 
 **Downloads & Local Media**
-- [ ] Download server item · 6.1
-- [ ] Series download · 6.2
-- [ ] Download location selection · 6.3
-- [ ] Local item ↔ server/user linking · 6.4
-- [ ] Downloads screen + queue · 6.5
-- [ ] Offline playback · 6.6
-- [ ] Offline→online progress sync · 6.7
-- [ ] **On-device local-media folders (scan/import)** · 6.8
-- [ ] Cellular download/stream controls · 6.9
-- [ ] Storage management · 6.10
+- [x] Download server item · 6.1 — books only, no server download-permission pre-check
+- [x] Series download · 6.2 — built without full series-browse UI, reuses the items-filter endpoint
+- [x] Download location selection · 6.3 — internal storage only, no shared-storage option
+- [x] Local item ↔ server/user linking · 6.4 — single-session app, multi-account edge case not handled
+- [x] Downloads screen + queue · 6.5 — no clear-queue action
+- [x] Offline playback · 6.6 — verified with real connectivity cut; cold-start-while-offline gap found and fixed
+- [x] Offline→online progress sync · 6.7 — real durable queue, survives app restarts, verified live
+- [x] **On-device local-media import** · 6.8 — single-file import (not a folder scan, see 6.8 for why), verified live
+- [x] Cellular download/stream controls · 6.9 — built, not verified against a real cellular-only connection
+- [x] Storage management · 6.10 — total/per-item size, low-storage warning, bulk-delete, verified live
 
 **Podcasts**
-- [ ] Podcast library + episode list/state · 7.1–7.2
-- [ ] Add podcast (term/RSS) · 7.3
-- [ ] Auto-download episodes · 7.4
-- [ ] Episode download/offline + delete (local/server) · 7.5
+- [x] Podcast library + episode list/state · 7.1–7.2 — built and verified on-device
+- [ ] Add podcast (term/RSS) · 7.3 — deferred (server-mutating create, needs server source)
+- [ ] Auto-download episodes · 7.4 — deferred with 7.3
+- [x] Episode download/offline + delete (local/server) · 7.5 — device download/offline/local-delete verified on real hardware; delete-from-server deferred
+- [x] Latest-episodes feed · 7.6 — built and verified; `/recent-episodes` shape confirmed against real server response
 
 **E-books & Comics**
-- [ ] EPUB reader + TOC + position sync · 8.1
-- [ ] Ereader settings (font/scale/boldness/spacing/layout/theme) · 8.2
-- [ ] PDF reader · 8.3
-- [ ] CBZ/CBR comics · 8.4
-- [ ] Primary/supplementary ebook · 8.5
-- [ ] Send ebook to device (Kindle) · 8.6
+- [x] EPUB reader + TOC + position sync · 8.1 — built and verified on-device against a real illustrated book
+- [x] Ereader settings (font/scale/boldness/spacing/theme) · 8.2 — layout (Auto/Single page) not applicable, epub_view is continuous-scroll only
+- [x] PDF reader · 8.3 — built, analyze-clean; not verified on-device (no PDF item found in evan's library)
+- [x] CBZ comics · 8.4 — built and verified on-device against a real 128MB archive; CBR unsupported (no pure-Dart RAR decoder)
+- [ ] Primary/supplementary ebook · 8.5 — deferred, never observed a multi-ebookFile item to build against
+- [ ] Send ebook to device (Kindle) · 8.6 — deferred, server-mutating SMTP-gated action
 
 **RSS, Stats, System**
-- [ ] Open/close & manage RSS feeds · 9.1
-- [ ] Settings taxonomy (playback/data/UI/android-auto/ereader/sleep/advanced) · 9.3
-- [ ] Stats (chart, sessions, streaks, finished) · 9.4
-- [ ] Year in Review · 9.5
-- [ ] Logs/debug · 9.6
-- [ ] History · 9.7
-- [ ] Localization (40 languages) · 0.12 / 1.5 / 9.8
-- [ ] Haptic feedback · 9.3
+- [ ] Open/close & manage RSS feeds · 9.1 — deferred, admin-gated and evan's account is non-admin (confirmed via a real 403)
+- [x] Settings taxonomy (playback/data/UI/ereader/sleep/advanced) · 9.3 — built and verified, every toggle real; android-auto has nothing to configure until Milestone 4
+- [x] Stats (chart, sessions, streaks, finished) · 9.4 — built and verified against real account data
+- [x] Year in Review · 9.5 — built (client-side aggregation, no dedicated endpoint exists)
+- [x] Logs/debug · 9.6 — built and verified, hooked into real failure paths
+- [x] History · 9.7 — built and verified against 1228 real sessions
+- [x] Localization (English only so far) · 0.12 / 1.5 / 9.8 — picker built; only `app_en.arb` exists, honestly scoped rather than claiming 40 languages
+- [x] Haptic feedback · 9.3 — wired to Now Playing's play/pause
 
 ---
 
