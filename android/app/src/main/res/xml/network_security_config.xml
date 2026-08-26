@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Steeped connects to user-supplied, self-hosted Audiobookshelf servers,
+     many of which run plain HTTP on a LAN or VPN rather than behind TLS.
+     Mirrors iOS's NSAllowsArbitraryLoads exception (ios/Runner/Info.plist)
+     so Android doesn't silently refuse those same servers. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>
