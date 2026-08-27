@@ -265,12 +265,15 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               Expanded(
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: _SpeedSelector(onChanged: controller.setSpeed),
+                  child: _SpeedSelector(
+                    currentSpeed: ref.watch(playbackSpeedProvider).valueOrNull ?? 1.0,
+                    onChanged: controller.setSpeed,
+                  ),
                 ),
               ),
               IconButton(
                 iconSize: 36,
-                icon: const Icon(Icons.replay_30),
+                icon: const Icon(Icons.fast_rewind),
                 onPressed: controller.jumpBackward,
               ),
               const SizedBox(width: 16),
@@ -296,7 +299,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               const SizedBox(width: 16),
               IconButton(
                 iconSize: 36,
-                icon: const Icon(Icons.forward_30),
+                icon: const Icon(Icons.fast_forward),
                 onPressed: controller.jumpForward,
               ),
               Expanded(
@@ -664,29 +667,27 @@ class _ProgressSection extends StatelessWidget {
   }
 }
 
-class _SpeedSelector extends StatefulWidget {
-  const _SpeedSelector({required this.onChanged});
+/// Driven entirely by [currentSpeed] (the live `playbackSpeedProvider`, via
+/// the caller) rather than its own local state -- it used to default to a
+/// hardcoded 1.0 on every build, which never reflected a speed persisted
+/// from a previous session (or changed elsewhere, e.g. a future remote/car
+/// control) until the user picked a new value from this exact dropdown.
+class _SpeedSelector extends StatelessWidget {
+  const _SpeedSelector({required this.currentSpeed, required this.onChanged});
 
+  final double currentSpeed;
   final ValueChanged<double> onChanged;
-
-  @override
-  State<_SpeedSelector> createState() => _SpeedSelectorState();
-}
-
-class _SpeedSelectorState extends State<_SpeedSelector> {
-  double _speed = 1.0;
 
   @override
   Widget build(BuildContext context) {
     return DropdownButton<double>(
-      value: _speed,
+      value: currentSpeed,
       items: const [0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
           .map((s) => DropdownMenuItem(value: s, child: Text('${s}x')))
           .toList(),
       onChanged: (value) {
         if (value == null) return;
-        setState(() => _speed = value);
-        widget.onChanged(value);
+        onChanged(value);
       },
     );
   }

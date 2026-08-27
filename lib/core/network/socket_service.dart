@@ -40,6 +40,7 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
   socket_io.Socket? _socket;
   String? _connectedServerUrl;
   int _authRetryCount = 0;
+  bool _isDisposed = false;
 
   /// Bug found 2026-08-01 (reported by evan: "auth fails randomly"): the
   /// access token is a short-lived JWT (see `AuthUser.accessToken`'s doc
@@ -85,14 +86,17 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
     );
 
     socket.onConnect((_) {
+      if (_isDisposed) return;
       state = SocketConnectionStatus.connected;
       unawaited(_emitFreshAuth(socket));
     });
     socket.on('init', (_) {
+      if (_isDisposed) return;
       _authRetryCount = 0;
       state = SocketConnectionStatus.authenticated;
     });
     socket.on('auth_failed', (_) {
+      if (_isDisposed) return;
       state = SocketConnectionStatus.authFailed;
       unawaited(
         _ref
@@ -106,6 +110,12 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
       unawaited(_retryAfterAuthFailure(serverUrl));
     });
     socket.onDisconnect((_) {
+      // `dispose()` -> `_disconnect()` -> `socket.dispose()` triggers this
+      // same `onclose` event synchronously, as part of the *provider's own*
+      // disposal — by then `_ref` may already belong to a torn-down
+      // ProviderContainer, and reading from it throws "container already
+      // disposed" (found via integration_test/app_test.dart teardown).
+      if (_isDisposed) return;
       state = SocketConnectionStatus.disconnected;
       // Debugging note (2026-08-03): only `auth_failed` was logged before —
       // an ordinary disconnect (wifi handoff, doze, server restart) gave no
@@ -118,6 +128,7 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
       );
     });
     socket.onConnectError((error) {
+      if (_isDisposed) return;
       state = SocketConnectionStatus.disconnected;
       unawaited(
         _ref
@@ -204,6 +215,7 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _disconnect();
     super.dispose();
   }

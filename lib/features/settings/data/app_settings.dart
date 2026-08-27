@@ -5,6 +5,7 @@
 class AppSettings {
   const AppSettings({
     this.jumpIntervalSeconds = 30,
+    this.playbackSpeed = 1.0,
     this.scaleElapsedTimeBySpeed = false,
     this.allowCellularStreaming = true,
     this.allowCellularDownloads = true,
@@ -21,6 +22,7 @@ class AppSettings {
   factory AppSettings.fromJson(Map<String, dynamic> json) {
     return AppSettings(
       jumpIntervalSeconds: json['jumpIntervalSeconds'] as int? ?? 30,
+      playbackSpeed: (json['playbackSpeed'] as num?)?.toDouble() ?? 1.0,
       scaleElapsedTimeBySpeed:
           json['scaleElapsedTimeBySpeed'] as bool? ?? false,
       allowCellularStreaming: json['allowCellularStreaming'] as bool? ?? true,
@@ -42,6 +44,10 @@ class AppSettings {
 
   /// Playback: jump-forward/back interval, applied in [PlaybackController].
   final int jumpIntervalSeconds;
+
+  /// Playback: last speed the user picked, re-applied to every newly
+  /// loaded item so it survives closing and reopening the app.
+  final double playbackSpeed;
 
   /// Playback: displays elapsed/remaining time scaled by the current
   /// playback speed on Now Playing — closes the gap noted in PLAN.md 5.6.
@@ -88,6 +94,7 @@ class AppSettings {
 
   Map<String, dynamic> toJson() => {
     'jumpIntervalSeconds': jumpIntervalSeconds,
+    'playbackSpeed': playbackSpeed,
     'scaleElapsedTimeBySpeed': scaleElapsedTimeBySpeed,
     'allowCellularStreaming': allowCellularStreaming,
     'allowCellularDownloads': allowCellularDownloads,
@@ -103,6 +110,7 @@ class AppSettings {
 
   AppSettings copyWith({
     int? jumpIntervalSeconds,
+    double? playbackSpeed,
     bool? scaleElapsedTimeBySpeed,
     bool? allowCellularStreaming,
     bool? allowCellularDownloads,
@@ -117,6 +125,7 @@ class AppSettings {
   }) {
     return AppSettings(
       jumpIntervalSeconds: jumpIntervalSeconds ?? this.jumpIntervalSeconds,
+      playbackSpeed: playbackSpeed ?? this.playbackSpeed,
       scaleElapsedTimeBySpeed:
           scaleElapsedTimeBySpeed ?? this.scaleElapsedTimeBySpeed,
       allowCellularStreaming:

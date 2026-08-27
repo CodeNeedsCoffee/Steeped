@@ -167,6 +167,13 @@ class PlaybackController extends Notifier<void> {
   @override
   void build() {
     _playbackStateSub = _handler.playbackState.listen(_onPlaybackStateChanged);
+    // Keeps the lock-screen/notification/car skip buttons, and the speed a
+    // freshly loaded item starts at (SteepedAudioHandler can't watch
+    // Riverpod providers itself), in sync with settings.
+    ref.listen(appSettingsProvider, (_, next) {
+      _handler.jumpIntervalSeconds = next.valueOrNull?.jumpIntervalSeconds ?? 30;
+      _handler.playbackSpeed = next.valueOrNull?.playbackSpeed ?? 1.0;
+    }, fireImmediately: true);
     ref.onDispose(() {
       _syncTimer?.cancel();
       _sleepCountdown?.cancel();
@@ -909,7 +916,19 @@ class PlaybackController extends Notifier<void> {
   Future<void> seekToGlobalPosition(double seconds) =>
       _handler.seekToGlobalPosition(seconds);
 
-  Future<void> setSpeed(double speed) => _handler.setSpeed(speed);
+  /// Persists the choice to `AppSettings` so it survives closing and
+  /// reopening the app -- `_handler`'s own `playbackSpeed` field then gets
+  /// kept in sync by the `ref.listen(appSettingsProvider, ...)` in [build],
+  /// the same round-trip `jumpIntervalSeconds` already uses.
+  Future<void> setSpeed(double speed) async {
+    await _handler.setSpeed(speed);
+    final current = ref.read(appSettingsProvider).valueOrNull;
+    if (current != null) {
+      await ref
+          .read(appSettingsProvider.notifier)
+          .save(current.copyWith(playbackSpeed: speed));
+    }
+  }
 
   Future<void> markFinished(bool finished) async {
     final item = ref.read(currentPlaybackItemProvider);
