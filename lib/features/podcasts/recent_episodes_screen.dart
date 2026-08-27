@@ -56,6 +56,7 @@ class RecentEpisodesScreen extends ConsumerWidget {
                       entry: episodes[index],
                       serverUrl: serverUrl,
                       token: token,
+                      libraryId: libraryId,
                     ),
                   ),
                 );
@@ -71,11 +72,13 @@ class _RecentEpisodeTile extends ConsumerWidget {
     required this.entry,
     required this.serverUrl,
     required this.token,
+    required this.libraryId,
   });
 
   final RecentEpisode entry;
   final String serverUrl;
   final String? token;
+  final String libraryId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -122,7 +125,7 @@ class _RecentEpisodeTile extends ConsumerWidget {
             : () => ref
                   .read(downloadControllerProvider.notifier)
                   .downloadEpisode(
-                    podcast: entry.podcastItem,
+                    podcast: entry.podcastItem(libraryId: libraryId),
                     episode: episode,
                     serverUrl: serverUrl,
                     token: token,
@@ -133,7 +136,7 @@ class _RecentEpisodeTile extends ConsumerWidget {
           : () async {
               await ref
                   .read(playbackControllerProvider.notifier)
-                  .playEpisode(entry.podcastItem, episode);
+                  .playEpisode(entry.podcastItem(libraryId: libraryId), episode);
               if (context.mounted &&
                   ref.read(currentPlaybackItemProvider)?.downloadId ==
                       downloadId) {

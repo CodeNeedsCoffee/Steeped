@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/network/cover_image_url.dart';
 import '../../core/network/socket_service.dart';
+import '../../core/storage/app_database.dart';
 import '../../models/library.dart';
 import '../../models/library_item.dart';
 import '../../models/library_series.dart';
@@ -11,10 +12,13 @@ import '../../models/personalized_shelf.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../downloads/downloads_screen.dart';
 import '../downloads/state/download_controller.dart';
 import '../../widgets/glass_surface.dart';
+import '../../widgets/playback_loading_badge.dart';
 import '../player/mini_player.dart';
 import '../player/state/pending_sync_controller.dart';
+import '../player/state/playback_controller.dart';
 import 'library_grid_screen.dart';
 import 'state/library_providers.dart';
 
@@ -56,32 +60,42 @@ class HomeShellScreen extends ConsumerWidget {
       // transient failure (a real network blip, not just that race)
       // would otherwise leave a user stuck here until a full app
       // restart, with no way to just try again.
-      // A no-connectivity startup (see [DownloadsScreen]/[playItem]'s
-      // isDownloaded branch, both already fully offline-capable) used to
-      // dead-end here with nothing but Retry -- downloaded books were
-      // unreachable even though playing them needs no network at all.
-      // "View Downloads" routes around `librariesProvider` entirely, since
-      // `/downloads` and its playback path depend only on local storage.
-      error: (error, _) => Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Failed to load libraries: $error'),
-              const SizedBox(height: 12),
-              FilledButton.tonal(
-                onPressed: () => ref.invalidate(librariesProvider),
-                child: const Text('Retry'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => context.push('/downloads'),
-                child: const Text('View Downloads'),
-              ),
-            ],
-          ),
-        ),
-      ),
+      // A no-connectivity cold start used to dead-end here, even though
+      // downloaded books need no network to play at all. Falling back to the
+      // cached library list rebuilds the real shell (picker, Offline badge,
+      // mini-player) with the Home tab served from local downloads instead.
+      // Only reachable on a cold start: `librariesProvider` caches its first
+      // result, so a mid-session drop keeps whatever already loaded.
+      error: (error, _) {
+        final cachedAsync = ref.watch(cachedLibrariesProvider);
+        return cachedAsync.when(
+          loading: () =>
+              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (_, _) => _NoLibrariesFallback(error: error),
+          data: (cachedLibraries) {
+            // Never fetched successfully on this device, so there's no
+            // library id or media type to build tabs from.
+            if (cachedLibraries.isEmpty) {
+              return _NoLibrariesFallback(error: error);
+            }
+            final libraryId =
+                ref.watch(selectedLibraryIdProvider) ?? cachedLibraries.first.id;
+            final selected = cachedLibraries.firstWhere(
+              (l) => l.id == libraryId,
+              orElse: () => cachedLibraries.first,
+            );
+            return _HomeShellTabs(
+              key: ValueKey(libraryId),
+              libraries: cachedLibraries,
+              libraryId: libraryId,
+              isPodcast: selected.isPodcastLibrary,
+              serverUrl: session.serverUrl,
+              token: session.user.effectiveToken,
+              isOffline: true,
+            );
+          },
+        );
+      },
       data: (libraries) {
         if (libraries.isEmpty) {
           return const Scaffold(
@@ -107,6 +121,39 @@ class HomeShellScreen extends ConsumerWidget {
   }
 }
 
+/// Shown only when libraries can't be fetched *and* nothing was ever cached
+/// (so there's no library to build a shell around). `/downloads` still works
+/// with no connectivity at all, so it stays reachable from here.
+class _NoLibrariesFallback extends ConsumerWidget {
+  const _NoLibrariesFallback({required this.error});
+
+  final Object error;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Failed to load libraries: $error'),
+            const SizedBox(height: 12),
+            FilledButton.tonal(
+              onPressed: () => ref.invalidate(librariesProvider),
+              child: const Text('Retry'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () => context.push('/downloads'),
+              child: const Text('View Downloads'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Owns the [DefaultTabController] for `[Home | Series | Library]` (or just
 /// `[Home | Library]` for podcast libraries) — keyed by `libraryId` in the
 /// parent so switching libraries (which can change `isPodcast` and
@@ -120,6 +167,7 @@ class _HomeShellTabs extends ConsumerWidget {
     required this.isPodcast,
     required this.serverUrl,
     required this.token,
+    this.isOffline = false,
   });
 
   final List<Library> libraries;
@@ -127,6 +175,10 @@ class _HomeShellTabs extends ConsumerWidget {
   final bool isPodcast;
   final String serverUrl;
   final String? token;
+
+  /// Built from cached libraries after a failed cold-start fetch: the shell
+  /// is identical, but tabs needing live browsing data degrade instead.
+  final bool isOffline;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -180,9 +232,20 @@ class _HomeShellTabs extends ConsumerWidget {
         ),
         body: TabBarView(
           children: [
-            _HomeTab(libraryId: libraryId, isPodcast: isPodcast, serverUrl: serverUrl, token: token),
-            if (!isPodcast) _SeriesTab(libraryId: libraryId),
-            LibraryItemsGrid(libraryId: libraryId, topPadding: topInset),
+            _HomeTab(
+              libraryId: libraryId,
+              isPodcast: isPodcast,
+              serverUrl: serverUrl,
+              token: token,
+              isOffline: isOffline,
+            ),
+            if (!isPodcast)
+              isOffline
+                  ? const _OfflineTabPlaceholder(label: 'Series')
+                  : _SeriesTab(libraryId: libraryId),
+            isOffline
+                ? const _OfflineTabPlaceholder(label: 'Library')
+                : LibraryItemsGrid(libraryId: libraryId, topPadding: topInset),
           ],
         ),
         bottomNavigationBar: const MiniPlayer(),
@@ -225,15 +288,18 @@ class _HomeTab extends ConsumerWidget {
     required this.isPodcast,
     required this.serverUrl,
     required this.token,
+    this.isOffline = false,
   });
 
   final String libraryId;
   final bool isPodcast;
   final String serverUrl;
   final String? token;
+  final bool isOffline;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (isOffline) return _OfflineHomeTab(libraryId: libraryId);
     final shelvesAsync = ref.watch(personalizedShelvesProvider(libraryId));
 
     // Scaffold.extendBodyBehindAppBar above already redefines
@@ -631,6 +697,139 @@ class _LabelCard extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Text(text, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis),
+    );
+  }
+}
+
+/// The Home tab when the app started with no connectivity: the server's
+/// personalized shelves are unreachable, so downloaded content stands in for
+/// "Continue Listening" — the one shelf that still works entirely offline.
+class _OfflineHomeTab extends ConsumerWidget {
+  const _OfflineHomeTab({required this.libraryId});
+
+  final String libraryId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final downloads = ref.watch(offlineContinueListeningProvider(libraryId));
+    final topInset = MediaQuery.paddingOf(context).top + 16;
+
+    return RefreshIndicator(
+      // Doubles as "try to get back online" — without it the only way out of
+      // the offline shell would be restarting the app, since
+      // `librariesProvider` caches its failure for the process lifetime.
+      onRefresh: () async {
+        ref.invalidate(librariesProvider);
+        await ref.read(librariesProvider.future).catchError((_) => <Library>[]);
+      },
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(0, topInset, 0, 16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.cloud_off, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "Can't reach the server. Showing downloaded content.",
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => ref.invalidate(librariesProvider),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Text(
+              'Continue Listening',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          if (downloads.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: Text('No downloaded content yet.')),
+            )
+          else
+            ...downloads.map((item) => _OfflineDownloadTile(item: item)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A downloaded item on the offline Home tab. Deliberately not built on
+/// [_ItemCard]/[_ItemCover] — those resolve covers through [CoverImage] over
+/// the network, while a downloaded cover is a local file, which is why
+/// [DownloadsScreen] renders it with [DownloadedItemCover] instead.
+class _OfflineDownloadTile extends ConsumerWidget {
+  const _OfflineDownloadTile({required this.item});
+
+  final DownloadedItem item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(playbackLoadingIdProvider) == item.itemId;
+    return ListTile(
+      enabled: !isLoading,
+      leading: PlaybackLoadingBadge(
+        isLoading: isLoading,
+        child: DownloadedItemCover(coverLocalPath: item.coverLocalPath),
+      ),
+      title: Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: item.authorNames.isEmpty
+          ? null
+          : Text(
+              item.authorNames,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+      onTap: isLoading
+          ? null
+          : () async {
+              await ref
+                  .read(playbackControllerProvider.notifier)
+                  .playItem(item.itemId);
+              if (context.mounted &&
+                  ref.read(currentPlaybackItemProvider)?.downloadId ==
+                      item.itemId) {
+                context.push('/now-playing');
+              }
+            },
+    );
+  }
+}
+
+/// Series and Library browsing both need live server data this fallback
+/// deliberately doesn't cache, so offline they explain themselves rather
+/// than rendering an empty grid.
+class _OfflineTabPlaceholder extends ConsumerWidget {
+  const _OfflineTabPlaceholder({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cloud_off, size: 40),
+          const SizedBox(height: 12),
+          Text('$label browsing needs a connection.'),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: () => ref.invalidate(librariesProvider),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 }

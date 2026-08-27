@@ -100,19 +100,9 @@ class DownloadsScreen extends ConsumerWidget {
                 enabled: !isLoading,
                 leading: PlaybackLoadingBadge(
                   isLoading: isLoading,
-                  child: item.coverLocalPath != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.file(
-                            File(item.coverLocalPath!),
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stack) =>
-                                const Icon(Icons.menu_book_outlined),
-                          ),
-                        )
-                      : const Icon(Icons.menu_book_outlined),
+                  child: DownloadedItemCover(
+                    coverLocalPath: item.coverLocalPath,
+                  ),
                 ),
                 title: Text(item.title),
                 subtitle: isComplete
@@ -147,6 +137,33 @@ class DownloadsScreen extends ConsumerWidget {
         },
       ),
       bottomNavigationBar: const MiniPlayer(),
+    );
+  }
+}
+
+/// Cover art for a downloaded item — a local file, not a server URL, so it
+/// deliberately bypasses [CoverImage]/[CachedNetworkImage] (which would need
+/// a network round trip the offline paths can't make). Shared with the
+/// offline Home tab in [HomeShellScreen].
+class DownloadedItemCover extends StatelessWidget {
+  const DownloadedItemCover({required this.coverLocalPath, super.key});
+
+  final String? coverLocalPath;
+
+  @override
+  Widget build(BuildContext context) {
+    final path = coverLocalPath;
+    if (path == null) return const Icon(Icons.menu_book_outlined);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: Image.file(
+        File(path),
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stack) =>
+            const Icon(Icons.menu_book_outlined),
+      ),
     );
   }
 }

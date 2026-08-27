@@ -5,10 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/retry.dart';
+import '../../../core/storage/app_database.dart';
 import '../../../models/library.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/personalized_shelf.dart';
 import '../../../models/search_results.dart';
+import '../../downloads/state/download_controller.dart';
+import '../data/library_cache_repository.dart';
 import '../data/library_repository.dart';
 import 'library_items_state.dart';
 import 'library_series_state.dart';
@@ -17,11 +20,64 @@ final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
   return LibraryRepository(ref.watch(dioProvider));
 });
 
+final libraryCacheRepositoryProvider = Provider<LibraryCacheRepository>((ref) {
+  return LibraryCacheRepository(ref.watch(appDatabaseProvider));
+});
+
+/// The last successfully-fetched library list. Only consulted when
+/// [librariesProvider] fails — see [HomeShellScreen]'s offline fallback.
+final cachedLibrariesProvider = FutureProvider<List<Library>>((ref) {
+  return ref.watch(libraryCacheRepositoryProvider).load();
+});
+
 final librariesProvider = FutureProvider<List<Library>>((ref) async {
-  return withNetworkRetry(
+  final libraries = await withNetworkRetry(
     () => ref.watch(libraryRepositoryProvider).fetchLibraries(),
   );
+  // Not awaited: persisting the cache is a side effect for a *future* cold
+  // start, so making this fetch's consumers wait on a disk write would only
+  // delay the UI for no benefit here.
+  unawaited(ref.read(libraryCacheRepositoryProvider).save(libraries));
+  return libraries;
 });
+
+/// Stand-in for the server's "Continue Listening" shelf when the app starts
+/// with no connectivity: everything playable from local storage alone.
+///
+/// A null [DownloadedItem.libraryId] (a row written before that column
+/// existed) shows under every library — hiding a genuinely downloaded book
+/// because it lacks a tag would be worse than showing it in the wrong place.
+/// There's no local "last played" timestamp, so ordering approximates the
+/// server shelf as closely as local data allows: started items first, then
+/// unstarted, each newest-download-first.
+List<DownloadedItem> offlineContinueListeningItems(
+  List<DownloadedItem> downloads,
+  String libraryId,
+) {
+  final eligible = downloads
+      .where(
+        (d) =>
+            d.status == 'complete' &&
+            !d.progressIsFinished &&
+            (d.libraryId == null || d.libraryId == libraryId),
+      )
+      .toList();
+  eligible.sort((a, b) {
+    final aStarted = (a.progressCurrentTime ?? 0) > 0;
+    final bStarted = (b.progressCurrentTime ?? 0) > 0;
+    if (aStarted != bStarted) return aStarted ? -1 : 1;
+    return b.createdAt.compareTo(a.createdAt);
+  });
+  return eligible;
+}
+
+final offlineContinueListeningProvider =
+    Provider.family<List<DownloadedItem>, String>((ref, libraryId) {
+      return offlineContinueListeningItems(
+        ref.watch(downloadsListProvider).valueOrNull ?? const [],
+        libraryId,
+      );
+    });
 
 /// The library currently shown on the home shell / grid. Set once libraries
 /// load (defaults to the first one) or when the user switches via the

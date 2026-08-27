@@ -53,8 +53,12 @@ class RecentEpisode {
   final PodcastEpisode episode;
 
   /// The minimal parent-podcast item [PlaybackController.playEpisode] needs.
-  LibraryItemDetail get podcastItem => LibraryItemDetail(
+  /// [libraryId] can't be derived from the recent-episodes response, so the
+  /// caller (which knows it) supplies it — without it a download from this
+  /// screen records no library and can't be grouped offline.
+  LibraryItemDetail podcastItem({String? libraryId}) => LibraryItemDetail(
     id: podcastItemId,
+    libraryId: libraryId,
     mediaType: 'podcast',
     coverPath: null,
     updatedAt: podcastUpdatedAt,

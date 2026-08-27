@@ -35,6 +35,11 @@ class DownloadedItems extends Table {
   RealColumn get progressCurrentTime => real().nullable()();
   BoolColumn get progressIsFinished =>
       boolean().withDefault(const Constant(false))();
+  // Which library this item came from, so an offline cold start can still
+  // group downloads under the library picker. Nullable: rows written before
+  // this column existed have no value, and consumers treat null as "show
+  // under every library" rather than hiding a real downloaded book.
+  TextColumn get libraryId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {itemId};
@@ -112,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -132,6 +137,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 6) {
         await m.createTable(localMediaItems);
+      }
+      if (from < 7) {
+        await m.addColumn(downloadedItems, downloadedItems.libraryId);
       }
     },
   );
