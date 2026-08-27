@@ -61,10 +61,18 @@ class DownloadedTracks extends Table {
 /// without needing `adb logcat`.
 class LogEntries extends Table {
   IntColumn get id => integer().autoIncrement()();
+  /// Most recent occurrence — an entry repeated back-to-back updates this
+  /// rather than inserting again, so a persistently-failing operation stays
+  /// sorted by when it last happened.
   DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
   TextColumn get level => text()(); // info | warning | error
   TextColumn get tag => text()();
   TextColumn get message => text()();
+  /// How many times this identical entry has occurred in a row. A retry loop
+  /// (a socket reconnecting every 5s with no network) would otherwise emit
+  /// hundreds of byte-identical rows and evict every useful entry under the
+  /// size cap — collapsing them keeps the count visible without the flood.
+  IntColumn get repeatCount => integer().withDefault(const Constant(1))();
 }
 
 /// PLAN.md Phase 6.7: a real durable queue for progress syncs that failed
@@ -117,7 +125,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -140,6 +148,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 7) {
         await m.addColumn(downloadedItems, downloadedItems.libraryId);
+      }
+      if (from < 8) {
+        await m.addColumn(logEntries, logEntries.repeatCount);
       }
     },
   );

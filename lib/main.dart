@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +9,7 @@ import 'app.dart';
 import 'core/audio/audio_handler_provider.dart';
 import 'core/audio/car_content_tree.dart';
 import 'core/audio/steeped_audio_handler.dart';
+import 'core/logging/log_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +39,11 @@ Future<void> main() async {
     overrides: [audioHandlerProvider.overrideWithValue(audioHandler)],
   );
   audioHandler.contentTree = CarContentTree(container);
+
+  // Age out stale log entries once per launch. Not awaited: nothing in the
+  // startup path reads the log, so a disk delete shouldn't sit in front of
+  // the first frame.
+  unawaited(container.read(logRepositoryProvider).purgeOldEntries());
 
   runApp(
     UncontrolledProviderScope(
