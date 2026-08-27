@@ -285,6 +285,7 @@ class DownloadRepository {
       episodeId: episodeId,
       mediaType: episodeId == null ? 'book' : 'podcast',
       coverPath: null,
+      localCoverPath: row.coverLocalPath,
       updatedAt: 0,
       title: row.title,
       subtitle: null,
