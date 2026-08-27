@@ -5,7 +5,9 @@ import 'package:dio/dio.dart';
 import '../../../models/library.dart';
 import '../../../models/library_item.dart';
 import '../../../models/library_item_detail.dart';
+import '../../../models/library_series.dart';
 import '../../../models/personalized_shelf.dart';
+import '../../../models/search_results.dart';
 
 class LibraryItemsPage {
   const LibraryItemsPage({
@@ -15,6 +17,18 @@ class LibraryItemsPage {
   });
 
   final List<LibraryItem> items;
+  final int total;
+  final int page;
+}
+
+class LibrarySeriesPage {
+  const LibrarySeriesPage({
+    required this.series,
+    required this.total,
+    required this.page,
+  });
+
+  final List<LibrarySeries> series;
   final int total;
   final int page;
 }
@@ -100,5 +114,48 @@ class LibraryRepository {
       queryParameters: {'expanded': 1, 'include': 'progress'},
     );
     return LibraryItemDetail.fromJson(response.data ?? const {});
+  }
+
+  /// PLAN.md Phase 4.10: dedicated series-browse endpoint, confirmed live
+  /// against a real Audiobookshelf server (`GET /api/libraries/:id/series`)
+  /// — same paginated shape as [fetchLibraryItems], each series entry
+  /// already embedding full book objects (its cover source), so no
+  /// second request per series is needed.
+  Future<LibrarySeriesPage> fetchSeries(
+    String libraryId, {
+    required int page,
+    int limit = 40,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/libraries/$libraryId/series',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    final data = response.data ?? const {};
+    final results = (data['results'] as List<dynamic>?) ?? const [];
+    return LibrarySeriesPage(
+      series: results
+          .cast<Map<String, dynamic>>()
+          .map(LibrarySeries.fromJson)
+          .toList(),
+      total: data['total'] as int? ?? 0,
+      page: data['page'] as int? ?? page,
+    );
+  }
+
+  /// PLAN.md Phase 4.7 (partial: Books + Series only). Confirmed live that
+  /// the real endpoint groups results by category — `book`, `series`,
+  /// `authors`, `narrators`, `tags`, `genres` — each a separate array;
+  /// [SearchResults.fromJson] only reads the two used by this pass.
+  Future<SearchResults> search(
+    String libraryId,
+    String query, {
+    CancelToken? cancelToken,
+  }) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/api/libraries/$libraryId/search',
+      queryParameters: {'q': query},
+      cancelToken: cancelToken,
+    );
+    return SearchResults.fromJson(response.data ?? const {});
   }
 }

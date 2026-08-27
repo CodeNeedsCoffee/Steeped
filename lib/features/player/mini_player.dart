@@ -101,10 +101,10 @@ class MiniPlayer extends ConsumerWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.replay_30),
+              icon: const Icon(Icons.fast_rewind),
               iconSize: 28,
               visualDensity: VisualDensity.compact,
-              tooltip: 'Back 30 seconds',
+              tooltip: 'Rewind',
               onPressed: controller.jumpBackward,
             ),
             PlaybackLoadingBadge(
@@ -118,10 +118,10 @@ class MiniPlayer extends ConsumerWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.forward_30),
+              icon: const Icon(Icons.fast_forward),
               iconSize: 28,
               visualDensity: VisualDensity.compact,
-              tooltip: 'Forward 30 seconds',
+              tooltip: 'Fast forward',
               onPressed: controller.jumpForward,
             ),
           ],

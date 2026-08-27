@@ -33,6 +33,10 @@ const testPassword = 'demo';
 // server's catalog changed, check https://audiobooks.dev/audiobookshelf
 // directly and swap in a current title rather than assuming a real regression.
 const seededBookTitle = 'The Invisible Man';
+// Same "Audiobooks" library on audiobooks.dev -- a real multi-book series,
+// confirmed live via GET /api/libraries/:id/series.
+const seededSeriesName = 'Moral Letters';
+const seededSeriesBookTitle = 'Moral Letters, Vol. I';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -81,7 +85,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Log In'));
     await tester.pumpAndSettle(const Duration(seconds: 10));
 
-    // --- Library screen: a known real item must be visible somewhere. ---
+    // --- Home tab: a known real item must be visible somewhere. ---
     expect(
       find.text(seededBookTitle),
       findsOneWidget,
@@ -91,5 +95,34 @@ void main() {
           'an error Text widget) before assuming the library grid itself '
           'is broken.',
     );
+
+    // --- Series tab: PLAN.md 4.10/4.5 -- a real cover-bearing series card,
+    // not the old plain-text _LabelCard placeholder. ---
+    await tester.tap(find.text('Series'));
+    await tester.pumpAndSettle(const Duration(seconds: 10));
+    expect(
+      find.text(seededSeriesName),
+      findsWidgets,
+      reason:
+          'Expected the Series tab to list a real series by name. If this '
+          'fails, check for an error Text widget (grid failed to load) '
+          'before assuming the tab itself is missing.',
+    );
+
+    // --- Series detail: tapping the card should show its real books, ---
+    // --- fetched once as part of the series list, no second request. ---
+    await tester.tap(find.text(seededSeriesName).first);
+    await tester.pumpAndSettle(const Duration(seconds: 5));
+    expect(find.text(seededSeriesBookTitle), findsOneWidget);
+
+    // --- Search: PLAN.md 4.7 (partial: Books + Series). ---
+    await tester.pageBack();
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await tester.tap(find.byIcon(Icons.search));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Invisible');
+    await tester.pumpAndSettle(const Duration(seconds: 10));
+    expect(find.text('Books'), findsOneWidget);
+    expect(find.text(seededBookTitle), findsOneWidget);
   });
 }

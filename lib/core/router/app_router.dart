@@ -13,9 +13,12 @@ import '../../features/ebook/pdf_reader_screen.dart';
 import '../../features/library/home_shell_screen.dart';
 import '../../features/library/item_detail_screen.dart';
 import '../../features/library/library_grid_screen.dart';
+import '../../features/library/search_screen.dart';
+import '../../features/library/series_detail_screen.dart';
 import '../../features/localmedia/local_media_screen.dart';
 import '../../features/player/now_playing_screen.dart';
 import '../../features/podcasts/recent_episodes_screen.dart';
+import '../../models/library_series.dart';
 import '../../features/settings/account_screen.dart';
 import '../../features/settings/appearance_screen.dart';
 import '../../features/settings/logs_screen.dart';
@@ -81,6 +84,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/item/:itemId',
         builder: (context, state) =>
             ItemDetailScreen(itemId: state.pathParameters['itemId']!),
+      ),
+      GoRoute(
+        path: '/series/:seriesId',
+        builder: (context, state) =>
+            SeriesDetailScreen(series: state.extra as LibrarySeries),
+      ),
+      GoRoute(
+        path: '/search/:libraryId',
+        builder: (context, state) =>
+            SearchScreen(libraryId: state.pathParameters['libraryId']!),
       ),
       GoRoute(
         path: '/now-playing',

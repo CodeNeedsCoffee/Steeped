@@ -111,6 +111,20 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
   /// own at construction time.
   CarContentTree? contentTree;
 
+  /// PLAN.md Phase 9.3's configurable jump interval, kept in sync by
+  /// [PlaybackController] listening on `appSettingsProvider` -- without
+  /// this, [fastForward]/[rewind] (the lock-screen, notification, and car
+  /// skip buttons) always jumped a hardcoded 30s regardless of what the
+  /// user configured, while the in-app buttons already respected it. Same
+  /// "handler can't reach Riverpod on its own" reason as [contentTree].
+  int jumpIntervalSeconds = 30;
+
+  /// The last speed the user picked, persisted via `AppSettings` and kept
+  /// in sync by [PlaybackController] the same way as [jumpIntervalSeconds]
+  /// -- without this, every freshly loaded item started back at 1.0x
+  /// because a new `AudioPlayer`/session has no memory of a prior choice.
+  double playbackSpeed = 1.0;
+
   @override
   Future<List<MediaItem>> getChildren(
     String parentMediaId, [
@@ -147,13 +161,20 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
         id: item.id,
         title: item.title,
         artist: item.authorNames.isEmpty ? null : item.authorNames,
-        duration: item.duration == null
-            ? null
-            : Duration(milliseconds: (item.duration! * 1000).round()),
+        // Left null rather than the book's total duration -- the OS lock
+        // screen/notification only ever shows one elapsed/remaining pair,
+        // and `updatePosition` below (see `_broadcastState`) is
+        // track-relative (`_player.position`, not the global book
+        // position), so pairing it with the book's total duration produced
+        // a nonsensical "remaining" time (book total minus chapter
+        // elapsed). `_broadcastState` fills this in with the current
+        // track's real duration on the first playback event and keeps it
+        // in sync as tracks change.
       ),
     );
 
     await _player.setAudioSources(children);
+    await _player.setSpeed(playbackSpeed);
     if (startPosition > 0) {
       await seekToGlobalPosition(startPosition);
     }
@@ -211,13 +232,25 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> setSpeed(double speed) => _player.setSpeed(speed);
 
   @override
-  Future<void> fastForward() => jumpBy(30);
+  Future<void> fastForward() => jumpBy(jumpIntervalSeconds.toDouble());
 
   @override
-  Future<void> rewind() => jumpBy(-30);
+  Future<void> rewind() => jumpBy(-jumpIntervalSeconds.toDouble());
 
   void _broadcastState(PlaybackEvent event) {
     final playing = _player.playing;
+    // Keeps the lock-screen/notification duration matched to whichever
+    // track is currently playing (see the note in loadItem) -- tracks
+    // don't map 1:1 onto `BookChapter`s necessarily, but they're the same
+    // unit `updatePosition` below is already relative to, so this at least
+    // keeps position and duration internally consistent rather than mixing
+    // a track-relative position with the whole book's duration.
+    final currentItem = mediaItem.value;
+    if (currentItem != null &&
+        event.duration != null &&
+        currentItem.duration != event.duration) {
+      mediaItem.add(currentItem.copyWith(duration: event.duration));
+    }
     playbackState.add(
       playbackState.value.copyWith(
         controls: [

@@ -188,6 +188,19 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   Android-for-Cars content/quality guideline audit, and all of CarPlay (10.8–10.12, Mac-gated). See
   `PLAN.md` Phase 10 for full detail.
 
+- **Library browsing follow-ups landed 2026-08-26 (requested by evan)**: "Recent Series" home-shelf cards
+  now show real cover art (the series' first book's cover) instead of a plain text box — 4.5's series slice
+  is done, closing that specific gap while Authors/Collections/Playlists stay deferred. Added a dedicated
+  Series tab and series-detail screen, backed by a real `GET /api/libraries/:id/series` endpoint (confirmed
+  live, not previously used anywhere in the app). Restructured the home screen into `[Home | Series |
+  Library]` top tabs (`TabBar`/`TabBarView`, no go_router shell-route rework) — "Browse Full Library" is
+  now the Library tab itself rather than a button; podcast libraries get `[Home | Library]` since series
+  don't apply. Also shipped 4.7's Books + Series search (a search icon on the home app bar, debounced
+  query, grouped results) — Authors/Narrators/Tags/Genres categories still deferred, no browse screens to
+  link into yet. Verified end-to-end against the public `audiobooks.dev` demo server via the Linux
+  integration-test harness (see `linux/README.md`) — connect → login → Series tab → series detail → search,
+  all real network calls, no mocks. See `PLAN.md` Phase 4 (4.5, 4.7, 4.10) for full detail.
+
 ## Next
 
 - Two parallel threads are open — Milestone 3 (skins) and Milestone 4 (car integration) — pick up either:
@@ -253,4 +266,4 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ---
 
-*Last updated: 2026-08-04 (iOS Xcode smoke checkpoint partially cleared — builds and launches on Simulator, not yet functionally verified or App-Store-approved)*
+*Last updated: 2026-08-26 (library browsing follow-ups — series covers, Home/Series/Library tabs, Books+Series search)*
