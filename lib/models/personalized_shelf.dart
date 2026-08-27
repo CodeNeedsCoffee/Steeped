@@ -1,4 +1,5 @@
 import 'library_item.dart';
+import 'library_series.dart';
 
 /// One row from `GET /api/libraries/:id/personalized` — e.g. Continue
 /// Listening, Recently Added, Recent Series, Newest Authors. Rendered
@@ -38,9 +39,7 @@ class PersonalizedShelf {
           ? entities.map(LibraryItem.fromJson).toList()
           : const [],
       seriesEntries: type == ShelfEntityType.series
-          ? entities
-                .map((e) => (e['name'] as String?) ?? 'Series')
-                .toList()
+          ? entities.map(LibrarySeries.fromJson).toList()
           : const [],
       authorEntries: type == ShelfEntityType.authors
           ? entities.map((e) => (e['name'] as String?) ?? 'Author').toList()
@@ -52,7 +51,7 @@ class PersonalizedShelf {
   final String label;
   final ShelfEntityType type;
   final List<LibraryItem> items;
-  final List<String> seriesEntries;
+  final List<LibrarySeries> seriesEntries;
   final List<String> authorEntries;
 
   bool get isEmpty =>
