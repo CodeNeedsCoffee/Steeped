@@ -152,6 +152,7 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
     required LibraryItemDetail item,
     required List<Uri> sourceUris,
     double startPosition = 0,
+    Uri? artUri,
   }) async {
     _tracks = [...item.tracks]..sort((a, b) => a.index.compareTo(b.index));
     final children = sourceUris.map(AudioSource.uri).toList();
@@ -161,6 +162,7 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
         id: item.id,
         title: item.title,
         artist: item.authorNames.isEmpty ? null : item.authorNames,
+        artUri: artUri,
         // Left null rather than the book's total duration -- the OS lock
         // screen/notification only ever shows one elapsed/remaining pair,
         // and `updatePosition` below (see `_broadcastState`) is

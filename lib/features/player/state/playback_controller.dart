@@ -11,6 +11,7 @@ import '../../../core/audio/steeped_audio_handler.dart';
 import '../../../core/logging/log_repository.dart';
 import '../../../core/network/audio_stream_url.dart';
 import '../../../core/network/connectivity_service.dart';
+import '../../../core/network/cover_image_url.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../models/audio_track.dart';
 import '../../../models/bookmark.dart';
@@ -231,6 +232,7 @@ class PlaybackController extends Notifier<void> {
       final downloadRepo = ref.read(downloadRepositoryProvider);
       final LibraryItemDetail item;
       final List<Uri> sourceUris;
+      SessionAuthenticated? session;
 
       if (await downloadRepo.isDownloaded(itemId)) {
         final offlineItem = await downloadRepo.buildOfflineItemDetail(itemId);
@@ -243,8 +245,9 @@ class PlaybackController extends Notifier<void> {
         item = offlineItem;
         sourceUris = localTracks.map((t) => Uri.file(t.localPath!)).toList();
       } else {
-        final session = ref.read(sessionControllerProvider);
-        if (session is! SessionAuthenticated) return;
+        final s = ref.read(sessionControllerProvider);
+        if (s is! SessionAuthenticated) return;
+        session = s;
         if (await _blockedByCellularSetting()) return;
         final fetched = await ref
             .read(libraryRepositoryProvider)
@@ -259,6 +262,7 @@ class PlaybackController extends Notifier<void> {
         item: item,
         sourceUris: sourceUris,
         startPosition: await _resolveStartPosition(item),
+        artUri: _artUriFor(item, session),
       );
       _handler.onItemFinished = () => _onFinished(item);
       _handler.onPlayerError = (e) => _onPlayerError(item, e);
@@ -337,6 +341,7 @@ class PlaybackController extends Notifier<void> {
         item: item,
         sourceUris: _streamSourceUris([track], session),
         startPosition: await _resolveStartPosition(item),
+        artUri: _artUriFor(item, session),
       );
       _handler.onItemFinished = () => _onFinished(item);
       _handler.onPlayerError = (e) => _onPlayerError(item, e);
@@ -474,6 +479,24 @@ class PlaybackController extends Notifier<void> {
   /// rather than closing over a token, so a retry after
   /// [SessionController.updateTokens] has run picks up the corrected token
   /// automatically instead of repeating the same stale one.
+  /// Lock screen/notification art (PLAN.md "album art" ask): a downloaded
+  /// item already has its cover on disk ([LibraryItemDetail.localCoverPath])
+  /// so no network fetch is needed there; a streamed item resolves the same
+  /// `/api/items/:id/cover` endpoint every other cover in the app uses.
+  Uri? _artUriFor(LibraryItemDetail item, SessionAuthenticated? session) {
+    final localCoverPath = item.localCoverPath;
+    if (localCoverPath != null) return Uri.file(localCoverPath);
+    if (session == null) return null;
+    return Uri.parse(
+      coverImageUrl(
+        serverUrl: session.serverUrl,
+        itemId: item.id,
+        token: session.user.effectiveToken,
+        updatedAt: item.updatedAt,
+      ),
+    );
+  }
+
   List<Uri> _streamSourceUris(
     List<AudioTrack> tracks,
     SessionAuthenticated session,
@@ -684,6 +707,7 @@ class PlaybackController extends Notifier<void> {
         item: item,
         sourceUris: _streamSourceUris(item.tracks, session),
         startPosition: resumePosition,
+        artUri: _artUriFor(item, session),
       );
       _handler.onItemFinished = () => _onFinished(item);
       _handler.onPlayerError = (e) => _onPlayerError(item, e);

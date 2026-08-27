@@ -100,6 +100,7 @@ class LibraryItemDetail {
     this.episodeId,
     this.ebookFile,
     this.isLocalOnly = false,
+    this.localCoverPath,
   });
 
   factory LibraryItemDetail.fromJson(Map<String, dynamic> json) {
@@ -241,6 +242,13 @@ class LibraryItemDetail {
   /// locally instead (mirroring how a downloaded item's local progress
   /// cache works, but as the only copy rather than a resume-offline cache).
   final bool isLocalOnly;
+
+  /// On-disk path to a cover file already downloaded alongside this item
+  /// (`DownloadedItemsCompanion.coverLocalPath`, set by
+  /// [DownloadRepository.buildOfflineItemDetail]) -- lets playback show lock
+  /// screen/notification art for offline items without a network fetch.
+  /// Null for streamed items, which fall back to [coverImageUrl] instead.
+  final String? localCoverPath;
 
   bool get isPodcast => mediaType == 'podcast';
   bool get isEpisode => episodeId != null;

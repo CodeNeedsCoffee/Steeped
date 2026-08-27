@@ -56,6 +56,12 @@ class HomeShellScreen extends ConsumerWidget {
       // transient failure (a real network blip, not just that race)
       // would otherwise leave a user stuck here until a full app
       // restart, with no way to just try again.
+      // A no-connectivity startup (see [DownloadsScreen]/[playItem]'s
+      // isDownloaded branch, both already fully offline-capable) used to
+      // dead-end here with nothing but Retry -- downloaded books were
+      // unreachable even though playing them needs no network at all.
+      // "View Downloads" routes around `librariesProvider` entirely, since
+      // `/downloads` and its playback path depend only on local storage.
       error: (error, _) => Scaffold(
         body: Center(
           child: Column(
@@ -66,6 +72,11 @@ class HomeShellScreen extends ConsumerWidget {
               FilledButton.tonal(
                 onPressed: () => ref.invalidate(librariesProvider),
                 child: const Text('Retry'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () => context.push('/downloads'),
+                child: const Text('View Downloads'),
               ),
             ],
           ),
@@ -352,25 +363,21 @@ class _SeriesTabState extends ConsumerState<_SeriesTab> {
     }
     if (serverUrl == null) return const SizedBox.shrink();
 
-    return GridView.builder(
+    return ListView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.fromLTRB(16, topInset, 16, 16),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 160,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
-        childAspectRatio: 0.72,
-      ),
+      padding: EdgeInsets.fromLTRB(0, topInset, 0, 16),
       itemCount: state.series.length + (state.hasMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index >= state.series.length) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
-        return _SeriesCard(
+        return _SeriesRow(
           series: state.series[index],
           serverUrl: serverUrl,
           token: token,
-          width: double.infinity,
         );
       },
     );
@@ -539,6 +546,69 @@ class _SeriesCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The dedicated Series tab's row style (distinct from [_SeriesCard], which
+/// stays a single-cover tile for the Home tab's horizontal "Series" shelf).
+/// Modeled on Audiobookshelf's own series list: one full-width row per
+/// series with every book's cover shown in a horizontally-scrollable strip,
+/// so the whole series is browsable without opening [SeriesDetailScreen] --
+/// tapping the row (header or any cover) still opens it, same destination as
+/// [_SeriesCard].
+class _SeriesRow extends StatelessWidget {
+  const _SeriesRow({
+    required this.series,
+    required this.serverUrl,
+    required this.token,
+  });
+
+  final LibrarySeries series;
+  final String serverUrl;
+  final String? token;
+
+  static const _coverSize = 130.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/series/${series.id}', extra: series),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              series.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Text(
+              '${series.books.length} book${series.books.length == 1 ? '' : 's'}',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            if (series.books.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: _coverSize,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: series.books.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) => _ItemCover(
+                    item: series.books[index],
+                    serverUrl: serverUrl,
+                    token: token,
+                    size: _coverSize,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
