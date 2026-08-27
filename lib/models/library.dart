@@ -19,6 +19,14 @@ class Library {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'mediaType': mediaType,
+    'icon': icon,
+    'displayOrder': displayOrder,
+  };
+
   final String id;
   final String name;
   final String mediaType; // 'book' | 'podcast'

@@ -54,6 +54,7 @@ class DownloadRepository {
       tracks: item.tracks,
       progressCurrentTime: item.progress?.currentTime,
       progressIsFinished: item.progress?.isFinished ?? false,
+      libraryId: item.libraryId,
       serverUrl: serverUrl,
       token: token,
     );
@@ -82,6 +83,7 @@ class DownloadRepository {
       tracks: [track],
       progressCurrentTime: episode.progress?.currentTime,
       progressIsFinished: episode.progress?.isFinished ?? false,
+      libraryId: podcast.libraryId,
       serverUrl: serverUrl,
       token: token,
     );
@@ -98,6 +100,7 @@ class DownloadRepository {
     required List<AudioTrack> tracks,
     required double? progressCurrentTime,
     required bool progressIsFinished,
+    required String? libraryId,
     required String serverUrl,
     required String? token,
   }) async {
@@ -120,6 +123,7 @@ class DownloadRepository {
             status: const Value('downloading'),
             progressCurrentTime: Value(progressCurrentTime),
             progressIsFinished: Value(progressIsFinished),
+            libraryId: Value(libraryId),
           ),
         );
 
@@ -282,6 +286,7 @@ class DownloadRepository {
 
     return LibraryItemDetail(
       id: id,
+      libraryId: row.libraryId,
       episodeId: episodeId,
       mediaType: episodeId == null ? 'book' : 'podcast',
       coverPath: null,
