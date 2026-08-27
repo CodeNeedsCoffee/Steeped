@@ -29,15 +29,17 @@ flutter pub get
 # `flutter pub get` regenerates FlutterGeneratedPluginSwiftPackage's
 # Package.swift from scratch every time, always at Flutter's hardcoded
 # default deployment target (iOS 13.0). The patch that raises it to match
-# this project's real IPHONEOS_DEPLOYMENT_TARGET (14.0, which
-# background_downloader requires) only runs inside the `flutter build`
-# command itself (flutter_tools: SwiftPackageManager.updateMinimumDeployment,
-# called from mac.dart's buildXcodeProject) -- not from `pub get`, and not
-# from a raw `pod install`. Xcode Cloud's own archive step calls
-# `xcodebuild` directly rather than going through the `flutter` CLI, so
-# that patch never ran, which is why Build 7 and Build 9 both failed
-# archiving with the identical 13.0/14.0 mismatch even after the
-# unrelated Flutter-version fix in Build 8. `--config-only` runs
+# this project's real IPHONEOS_DEPLOYMENT_TARGET (15.0 -- raised from 14.0
+# 2026-08-26 ahead of Apple's Spring 2027 MinimumOSVersion 15.0 requirement;
+# still comfortably above what background_downloader itself needs) only
+# runs inside the `flutter build` command itself (flutter_tools:
+# SwiftPackageManager.updateMinimumDeployment, called from mac.dart's
+# buildXcodeProject) -- not from `pub get`, and not from a raw `pod
+# install`. Xcode Cloud's own archive step calls `xcodebuild` directly
+# rather than going through the `flutter` CLI, so that patch never ran,
+# which is why Build 7 and Build 9 both failed archiving with the
+# identical 13.0/14.0 mismatch even after the unrelated Flutter-version
+# fix in Build 8. `--config-only` runs
 # Flutter's iOS project-config pipeline (deployment-target patch and Pods
 # both included) without an actual build -- it's flutter_tools' own
 # documented option for exactly this pattern of letting a separate tool
