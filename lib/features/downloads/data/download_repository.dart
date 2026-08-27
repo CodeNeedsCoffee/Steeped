@@ -110,6 +110,13 @@ class DownloadRepository {
           .toList(),
     );
 
+    // Re-downloading an item whose previous attempt left anything behind (a
+    // cancelled-but-still-running task, a half-written file from a killed
+    // download) would otherwise collide: task ids are derived from
+    // `downloadId`, so the old task shadows the new one and the re-download
+    // silently never starts. Clearing first makes a retry always self-heal.
+    await _discardInFlight(downloadId);
+
     await _db
         .into(_db.downloadedItems)
         .insertOnConflictUpdate(
@@ -334,6 +341,18 @@ class DownloadRepository {
     return _db.select(_db.downloadedItems).watch();
   }
 
+  /// Stops anything still running for [downloadId] and removes what it left
+  /// on disk. Cancelling is the part that matters: `background_downloader`
+  /// tasks outlive the rows that describe them, so without this a delete (or
+  /// a re-download) races a task that keeps writing into a directory nothing
+  /// is tracking any more — which strands a partial file and a live task id.
+  Future<void> _discardInFlight(String downloadId) async {
+    await FileDownloader().cancelAll(group: groupFor(downloadId));
+    final docsDir = await getApplicationDocumentsDirectory();
+    final itemDir = Directory('${docsDir.path}/${_dirFor(downloadId)}');
+    if (await itemDir.exists()) await itemDir.delete(recursive: true);
+  }
+
   Future<void> deleteDownload(String itemId) async {
     final tracks = await localTracksFor(itemId);
     for (final t in tracks) {
@@ -343,9 +362,7 @@ class DownloadRepository {
       if (await file.exists()) await file.delete();
     }
 
-    final docsDir = await getApplicationDocumentsDirectory();
-    final itemDir = Directory('${docsDir.path}/${_dirFor(itemId)}');
-    if (await itemDir.exists()) await itemDir.delete(recursive: true);
+    await _discardInFlight(itemId);
 
     await (_db.delete(
       _db.downloadedTracks,

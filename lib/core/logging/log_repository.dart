@@ -13,6 +13,11 @@ class LogRepository {
 
   static const _maxEntries = 500;
 
+  /// Entries older than this are dropped at startup (see [purgeOldEntries]).
+  /// A week is long enough to still investigate "it broke yesterday evening"
+  /// without carrying months of dead noise forever.
+  static const retentionPeriod = Duration(days: 7);
+
   /// Trimming used to read the *entire* table back into Dart just to call
   /// `.length` on it, then issue one DELETE per excess row. At the 500-entry
   /// cap that's 500 rows materialised and shipped across the database isolate
@@ -25,6 +30,31 @@ class LogRepository {
   /// order, so unlike `timestamp` it can't tie between two entries written in
   /// the same instant and leave the table one over the cap forever.
   Future<void> log(String level, String tag, String message) async {
+    // Collapse a repeat of whatever was logged last instead of inserting a
+    // duplicate row. Only the immediately-previous entry is compared: a
+    // retry loop emits its identical failures consecutively, which is the
+    // flood worth folding, while the same message recurring later still
+    // gets its own row rather than silently bumping an old count.
+    final previous =
+        await (_db.select(_db.logEntries)
+              ..orderBy([(t) => OrderingTerm.desc(t.id)])
+              ..limit(1))
+            .getSingleOrNull();
+    if (previous != null &&
+        previous.level == level &&
+        previous.tag == tag &&
+        previous.message == message) {
+      await (_db.update(
+        _db.logEntries,
+      )..where((t) => t.id.equals(previous.id))).write(
+        LogEntriesCompanion(
+          timestamp: Value(DateTime.now()),
+          repeatCount: Value(previous.repeatCount + 1),
+        ),
+      );
+      return;
+    }
+
     await _db
         .into(_db.logEntries)
         .insert(
@@ -53,6 +83,17 @@ class LogRepository {
     return (_db.select(_db.logEntries)
           ..orderBy([(t) => OrderingTerm.desc(t.timestamp)]))
         .watch();
+  }
+
+  /// Drops entries older than [retentionPeriod]. Called once at startup
+  /// rather than on every write: the [_maxEntries] cap already bounds the
+  /// table between runs, so this only needs to catch entries that aged out
+  /// while under that cap (a quiet week leaves old rows sitting forever).
+  Future<int> purgeOldEntries() {
+    final cutoff = DateTime.now().subtract(retentionPeriod);
+    return (_db.delete(
+      _db.logEntries,
+    )..where((t) => t.timestamp.isSmallerThanValue(cutoff))).go();
   }
 
   Future<void> clear() => _db.delete(_db.logEntries).go();

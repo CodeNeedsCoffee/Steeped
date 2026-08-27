@@ -1474,8 +1474,27 @@ class $LogEntriesTable extends LogEntries
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _repeatCountMeta = const VerificationMeta(
+    'repeatCount',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, timestamp, level, tag, message];
+  late final GeneratedColumn<int> repeatCount = GeneratedColumn<int>(
+    'repeat_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    timestamp,
+    level,
+    tag,
+    message,
+    repeatCount,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1521,6 +1540,15 @@ class $LogEntriesTable extends LogEntries
     } else if (isInserting) {
       context.missing(_messageMeta);
     }
+    if (data.containsKey('repeat_count')) {
+      context.handle(
+        _repeatCountMeta,
+        repeatCount.isAcceptableOrUnknown(
+          data['repeat_count']!,
+          _repeatCountMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1550,6 +1578,10 @@ class $LogEntriesTable extends LogEntries
         DriftSqlType.string,
         data['${effectivePrefix}message'],
       )!,
+      repeatCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}repeat_count'],
+      )!,
     );
   }
 
@@ -1561,16 +1593,27 @@ class $LogEntriesTable extends LogEntries
 
 class LogEntry extends DataClass implements Insertable<LogEntry> {
   final int id;
+
+  /// Most recent occurrence — an entry repeated back-to-back updates this
+  /// rather than inserting again, so a persistently-failing operation stays
+  /// sorted by when it last happened.
   final DateTime timestamp;
   final String level;
   final String tag;
   final String message;
+
+  /// How many times this identical entry has occurred in a row. A retry loop
+  /// (a socket reconnecting every 5s with no network) would otherwise emit
+  /// hundreds of byte-identical rows and evict every useful entry under the
+  /// size cap — collapsing them keeps the count visible without the flood.
+  final int repeatCount;
   const LogEntry({
     required this.id,
     required this.timestamp,
     required this.level,
     required this.tag,
     required this.message,
+    required this.repeatCount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1580,6 +1623,7 @@ class LogEntry extends DataClass implements Insertable<LogEntry> {
     map['level'] = Variable<String>(level);
     map['tag'] = Variable<String>(tag);
     map['message'] = Variable<String>(message);
+    map['repeat_count'] = Variable<int>(repeatCount);
     return map;
   }
 
@@ -1590,6 +1634,7 @@ class LogEntry extends DataClass implements Insertable<LogEntry> {
       level: Value(level),
       tag: Value(tag),
       message: Value(message),
+      repeatCount: Value(repeatCount),
     );
   }
 
@@ -1604,6 +1649,7 @@ class LogEntry extends DataClass implements Insertable<LogEntry> {
       level: serializer.fromJson<String>(json['level']),
       tag: serializer.fromJson<String>(json['tag']),
       message: serializer.fromJson<String>(json['message']),
+      repeatCount: serializer.fromJson<int>(json['repeatCount']),
     );
   }
   @override
@@ -1615,6 +1661,7 @@ class LogEntry extends DataClass implements Insertable<LogEntry> {
       'level': serializer.toJson<String>(level),
       'tag': serializer.toJson<String>(tag),
       'message': serializer.toJson<String>(message),
+      'repeatCount': serializer.toJson<int>(repeatCount),
     };
   }
 
@@ -1624,12 +1671,14 @@ class LogEntry extends DataClass implements Insertable<LogEntry> {
     String? level,
     String? tag,
     String? message,
+    int? repeatCount,
   }) => LogEntry(
     id: id ?? this.id,
     timestamp: timestamp ?? this.timestamp,
     level: level ?? this.level,
     tag: tag ?? this.tag,
     message: message ?? this.message,
+    repeatCount: repeatCount ?? this.repeatCount,
   );
   LogEntry copyWithCompanion(LogEntriesCompanion data) {
     return LogEntry(
@@ -1638,6 +1687,9 @@ class LogEntry extends DataClass implements Insertable<LogEntry> {
       level: data.level.present ? data.level.value : this.level,
       tag: data.tag.present ? data.tag.value : this.tag,
       message: data.message.present ? data.message.value : this.message,
+      repeatCount: data.repeatCount.present
+          ? data.repeatCount.value
+          : this.repeatCount,
     );
   }
 
@@ -1648,13 +1700,15 @@ class LogEntry extends DataClass implements Insertable<LogEntry> {
           ..write('timestamp: $timestamp, ')
           ..write('level: $level, ')
           ..write('tag: $tag, ')
-          ..write('message: $message')
+          ..write('message: $message, ')
+          ..write('repeatCount: $repeatCount')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, timestamp, level, tag, message);
+  int get hashCode =>
+      Object.hash(id, timestamp, level, tag, message, repeatCount);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1663,7 +1717,8 @@ class LogEntry extends DataClass implements Insertable<LogEntry> {
           other.timestamp == this.timestamp &&
           other.level == this.level &&
           other.tag == this.tag &&
-          other.message == this.message);
+          other.message == this.message &&
+          other.repeatCount == this.repeatCount);
 }
 
 class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
@@ -1672,12 +1727,14 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
   final Value<String> level;
   final Value<String> tag;
   final Value<String> message;
+  final Value<int> repeatCount;
   const LogEntriesCompanion({
     this.id = const Value.absent(),
     this.timestamp = const Value.absent(),
     this.level = const Value.absent(),
     this.tag = const Value.absent(),
     this.message = const Value.absent(),
+    this.repeatCount = const Value.absent(),
   });
   LogEntriesCompanion.insert({
     this.id = const Value.absent(),
@@ -1685,6 +1742,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
     required String level,
     required String tag,
     required String message,
+    this.repeatCount = const Value.absent(),
   }) : level = Value(level),
        tag = Value(tag),
        message = Value(message);
@@ -1694,6 +1752,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
     Expression<String>? level,
     Expression<String>? tag,
     Expression<String>? message,
+    Expression<int>? repeatCount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1701,6 +1760,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
       if (level != null) 'level': level,
       if (tag != null) 'tag': tag,
       if (message != null) 'message': message,
+      if (repeatCount != null) 'repeat_count': repeatCount,
     });
   }
 
@@ -1710,6 +1770,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
     Value<String>? level,
     Value<String>? tag,
     Value<String>? message,
+    Value<int>? repeatCount,
   }) {
     return LogEntriesCompanion(
       id: id ?? this.id,
@@ -1717,6 +1778,7 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
       level: level ?? this.level,
       tag: tag ?? this.tag,
       message: message ?? this.message,
+      repeatCount: repeatCount ?? this.repeatCount,
     );
   }
 
@@ -1738,6 +1800,9 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
     if (message.present) {
       map['message'] = Variable<String>(message.value);
     }
+    if (repeatCount.present) {
+      map['repeat_count'] = Variable<int>(repeatCount.value);
+    }
     return map;
   }
 
@@ -1748,7 +1813,8 @@ class LogEntriesCompanion extends UpdateCompanion<LogEntry> {
           ..write('timestamp: $timestamp, ')
           ..write('level: $level, ')
           ..write('tag: $tag, ')
-          ..write('message: $message')
+          ..write('message: $message, ')
+          ..write('repeatCount: $repeatCount')
           ..write(')'))
         .toString();
   }
@@ -3677,6 +3743,7 @@ typedef $$LogEntriesTableCreateCompanionBuilder =
       required String level,
       required String tag,
       required String message,
+      Value<int> repeatCount,
     });
 typedef $$LogEntriesTableUpdateCompanionBuilder =
     LogEntriesCompanion Function({
@@ -3685,6 +3752,7 @@ typedef $$LogEntriesTableUpdateCompanionBuilder =
       Value<String> level,
       Value<String> tag,
       Value<String> message,
+      Value<int> repeatCount,
     });
 
 class $$LogEntriesTableFilterComposer
@@ -3718,6 +3786,11 @@ class $$LogEntriesTableFilterComposer
 
   ColumnFilters<String> get message => $composableBuilder(
     column: $table.message,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get repeatCount => $composableBuilder(
+    column: $table.repeatCount,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3755,6 +3828,11 @@ class $$LogEntriesTableOrderingComposer
     column: $table.message,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get repeatCount => $composableBuilder(
+    column: $table.repeatCount,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LogEntriesTableAnnotationComposer
@@ -3780,6 +3858,11 @@ class $$LogEntriesTableAnnotationComposer
 
   GeneratedColumn<String> get message =>
       $composableBuilder(column: $table.message, builder: (column) => column);
+
+  GeneratedColumn<int> get repeatCount => $composableBuilder(
+    column: $table.repeatCount,
+    builder: (column) => column,
+  );
 }
 
 class $$LogEntriesTableTableManager
@@ -3815,12 +3898,14 @@ class $$LogEntriesTableTableManager
                 Value<String> level = const Value.absent(),
                 Value<String> tag = const Value.absent(),
                 Value<String> message = const Value.absent(),
+                Value<int> repeatCount = const Value.absent(),
               }) => LogEntriesCompanion(
                 id: id,
                 timestamp: timestamp,
                 level: level,
                 tag: tag,
                 message: message,
+                repeatCount: repeatCount,
               ),
           createCompanionCallback:
               ({
@@ -3829,12 +3914,14 @@ class $$LogEntriesTableTableManager
                 required String level,
                 required String tag,
                 required String message,
+                Value<int> repeatCount = const Value.absent(),
               }) => LogEntriesCompanion.insert(
                 id: id,
                 timestamp: timestamp,
                 level: level,
                 tag: tag,
                 message: message,
+                repeatCount: repeatCount,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

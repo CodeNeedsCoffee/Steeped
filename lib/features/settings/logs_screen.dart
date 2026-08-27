@@ -55,7 +55,10 @@ class LogsScreen extends ConsumerWidget {
                 ),
                 title: Text(entry.message),
                 subtitle: Text(
-                  '${entry.tag} · ${DateFormat.yMd().add_Hms().format(entry.timestamp)}',
+                  '${entry.tag} · ${DateFormat.yMd().add_Hms().format(entry.timestamp)}'
+                  // Collapsed repeats would otherwise look like a single
+                  // occurrence, hiding that something failed in a loop.
+                  '${entry.repeatCount > 1 ? ' · ×${entry.repeatCount}' : ''}',
                 ),
               );
             },
