@@ -4,14 +4,20 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/log_repository.dart';
+import '../../../core/network/dio_client.dart';
 import '../../../core/storage/session_storage.dart';
 import '../../../models/server_status.dart';
+import '../../settings/data/account_repository.dart';
 import '../data/auth_repository.dart';
 import 'session_expired_signal.dart';
 import 'session_state.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => const AuthRepository(),
+);
+
+final accountRepositoryProvider = Provider<AccountRepository>(
+  (ref) => AccountRepository(ref.watch(dioProvider)),
 );
 
 class SessionController extends Notifier<SessionState> {
@@ -157,6 +163,42 @@ class SessionController extends Notifier<SessionState> {
         accessToken: accessToken,
         refreshToken: refreshToken,
       ),
+    );
+  }
+
+  /// Changes the signed-in user's password. Lives here rather than in the
+  /// screen because a successful change *rotates this session's tokens* —
+  /// the server invalidates the user's other JWT sessions and issues
+  /// replacements for this one — so storage and in-memory state both have to
+  /// move together, exactly as [updateTokens]' note above describes.
+  ///
+  /// Throws [DioException] on failure so the caller can map status codes to
+  /// user-facing copy.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final current = state;
+    if (current is! SessionAuthenticated) return;
+
+    final tokens = await ref
+        .read(accountRepositoryProvider)
+        .changePassword(
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+          refreshToken: current.user.refreshToken,
+        );
+
+    // Null on a pre-2.26.0 server: nothing was rotated, and the existing
+    // legacy token stays valid, so there's nothing to persist.
+    if (tokens.accessToken == null) return;
+    await _storage.saveRefreshedTokens(
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    );
+    updateTokens(
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
     );
   }
 }
