@@ -704,12 +704,30 @@ class _SpeedSelector extends StatelessWidget {
           child: _SpeedSheet(initialSpeed: currentSpeed, onChanged: onChanged),
         ),
       ),
+      // Trimmed from the default button padding so the label gets as much of
+      // this [Expanded] slot as possible before any scaling kicks in.
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
       // Sized to sit visually level with the 32-36px transport icons either
       // side of it -- at default button text size the speed read as a stray
       // label rather than a peer control.
-      child: Text(
-        formatPlaybackSpeed(currentSpeed),
-        style: Theme.of(context).textTheme.titleLarge,
+      //
+      // This sits in an [Expanded], so on a narrow screen (or at a large
+      // display-font setting) the slot can be thinner than the label: a
+      // four-character value like "1.25x" then wrapped its trailing "x"
+      // onto a second line. Scaling down keeps it on one line at whatever
+      // size fits, rather than reflowing or clipping.
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          formatPlaybackSpeed(currentSpeed),
+          maxLines: 1,
+          softWrap: false,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
       ),
     );
   }
