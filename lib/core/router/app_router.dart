@@ -21,6 +21,7 @@ import '../../features/podcasts/recent_episodes_screen.dart';
 import '../../models/library_series.dart';
 import '../../features/settings/account_screen.dart';
 import '../../features/settings/appearance_screen.dart';
+import '../../features/settings/change_password_screen.dart';
 import '../../features/settings/logs_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/stats/history_screen.dart';
@@ -158,6 +159,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/account',
         builder: (context, state) => const AccountScreen(),
+      ),
+      GoRoute(
+        path: '/account/password',
+        builder: (context, state) => const ChangePasswordScreen(),
       ),
       GoRoute(
         path: '/stats',

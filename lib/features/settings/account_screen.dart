@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
@@ -77,6 +78,17 @@ class AccountScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          // Hidden for guests: the server rejects their password change with
+          // a 403 (`MeController.updatePassword`), so offering it would only
+          // ever lead to a dead end.
+          if (user.type != 'guest')
+            ListTile(
+              leading: const Icon(Icons.lock_outline),
+              title: const Text('Change Password'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/account/password'),
+            ),
+          const SizedBox(height: 8),
           FilledButton.tonalIcon(
             onPressed: () =>
                 ref.read(sessionControllerProvider.notifier).logout(),
