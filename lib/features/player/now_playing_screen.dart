@@ -13,6 +13,7 @@ import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../settings/data/app_settings.dart';
 import '../settings/state/settings_providers.dart';
+import 'data/playback_speed.dart';
 import 'state/playback_controller.dart';
 import 'time_display_mode_selector.dart';
 
@@ -266,7 +267,13 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: _SpeedSelector(
-                    currentSpeed: ref.watch(playbackSpeedProvider).valueOrNull ?? 1.0,
+                    // `playbackSpeedProvider` maps over `playbackState`,
+                    // which hasn't emitted before the first player event —
+                    // falling back to the persisted setting stops a user
+                    // whose saved speed is 1.3 from briefly seeing 1x.
+                    currentSpeed:
+                        ref.watch(playbackSpeedProvider).valueOrNull ??
+                        settings.playbackSpeed,
                     onChanged: controller.setSpeed,
                   ),
                 ),
@@ -671,7 +678,12 @@ class _ProgressSection extends StatelessWidget {
 /// the caller) rather than its own local state -- it used to default to a
 /// hardcoded 1.0 on every build, which never reflected a speed persisted
 /// from a previous session (or changed elsewhere, e.g. a future remote/car
-/// control) until the user picked a new value from this exact dropdown.
+/// control) until the user picked a new value.
+///
+/// Was a [DropdownButton] over a fixed 0.25 grid, which couldn't express
+/// speeds like 1.1 or 1.3 -- and, because `DropdownButton` asserts its value
+/// matches exactly one item, would have thrown outright once any off-grid
+/// speed was in effect. Now a button opening [_SpeedSheet].
 class _SpeedSelector extends StatelessWidget {
   const _SpeedSelector({required this.currentSpeed, required this.onChanged});
 
@@ -680,15 +692,210 @@ class _SpeedSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButton<double>(
-      value: currentSpeed,
-      items: const [0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
-          .map((s) => DropdownMenuItem(value: s, child: Text('${s}x')))
-          .toList(),
-      onChanged: (value) {
-        if (value == null) return;
-        onChanged(value);
-      },
+    return TextButton(
+      onPressed: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (sheetContext) => Padding(
+          // Lifts the sheet above the keyboard while the value is typed.
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+          ),
+          child: _SpeedSheet(initialSpeed: currentSpeed, onChanged: onChanged),
+        ),
+      ),
+      // Sized to sit visually level with the 32-36px transport icons either
+      // side of it -- at default button text size the speed read as a stray
+      // label rather than a peer control.
+      child: Text(
+        formatPlaybackSpeed(currentSpeed),
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+    );
+  }
+}
+
+/// Playback-speed editor: coarse/fine steppers, a typed value, and presets.
+/// Every change applies immediately rather than on a confirm button, so the
+/// effect is audible while adjusting.
+class _SpeedSheet extends StatefulWidget {
+  const _SpeedSheet({required this.initialSpeed, required this.onChanged});
+
+  final double initialSpeed;
+  final ValueChanged<double> onChanged;
+
+  @override
+  State<_SpeedSheet> createState() => _SpeedSheetState();
+}
+
+class _SpeedSheetState extends State<_SpeedSheet> {
+  late double _speed = normalizePlaybackSpeed(widget.initialSpeed);
+  final _inputController = TextEditingController();
+  String? _inputError;
+
+  /// The typed-value field stays collapsed by default -- steppers and
+  /// presets cover almost every adjustment, so showing a text field and
+  /// keyboard affordance permanently just crowds the sheet.
+  bool _showExactInput = false;
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
+
+  /// Local state drives the readout so steppers feel instant; the caller
+  /// persists and the live provider catches up on the next player event.
+  void _apply(double speed) {
+    setState(() {
+      _speed = speed;
+      _inputError = null;
+    });
+    widget.onChanged(speed);
+  }
+
+  void _applyTypedValue() {
+    final parsed = parsePlaybackSpeed(_inputController.text);
+    if (parsed == null) {
+      setState(
+        () => _inputError =
+            'Enter a number between $minPlaybackSpeed and $maxPlaybackSpeed.',
+      );
+      return;
+    }
+    _inputController.clear();
+    FocusScope.of(context).unfocus();
+    _apply(parsed);
+    // Collapse again once a value lands, returning the sheet to its compact
+    // form rather than leaving an empty field and the keyboard behind.
+    setState(() => _showExactInput = false);
+  }
+
+  void _toggleExactInput() {
+    setState(() {
+      _showExactInput = !_showExactInput;
+      if (!_showExactInput) {
+        _inputController.clear();
+        _inputError = null;
+      }
+    });
+    if (!_showExactInput) FocusScope.of(context).unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Playback Speed', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            // Matching [Expanded]s either side keep the speed itself dead
+            // centre; a plain centred Row would centre the text *and* the
+            // pencil as one group, pushing the number off to the left. Same
+            // trick the transport row above uses for its own centre trio.
+            Row(
+              children: [
+                const Expanded(child: SizedBox.shrink()),
+                Text(
+                  formatPlaybackSpeed(_speed),
+                  style: theme.textTheme.displaySmall,
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: _toggleExactInput,
+                      tooltip: _showExactInput
+                          ? 'Hide exact speed'
+                          : 'Enter exact speed',
+                      isSelected: _showExactInput,
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (final delta in [-0.25, -0.1, 0.1, 0.25]) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: OutlinedButton(
+                      // Disabled at the bounds so the button visibly stops
+                      // instead of silently no-opping.
+                      onPressed: stepPlaybackSpeed(_speed, delta) == _speed
+                          ? null
+                          : () => _apply(stepPlaybackSpeed(_speed, delta)),
+                      child: Text(
+                        '${delta > 0 ? '+' : '−'}${delta.abs()}',
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (_showExactInput) ...[
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController,
+                      // Revealed on demand, so focus it straight away rather
+                      // than making the reveal a two-tap affair.
+                      autofocus: true,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _applyTypedValue(),
+                      decoration: InputDecoration(
+                        labelText: 'Exact speed',
+                        hintText: formatPlaybackSpeed(_speed),
+                        errorText: _inputError,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: FilledButton(
+                      onPressed: _applyTypedValue,
+                      child: const Text('Set'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              children: [
+                for (final preset in playbackSpeedPresets)
+                  ChoiceChip(
+                    label: Text(formatPlaybackSpeed(preset)),
+                    selected: _speed == preset,
+                    onSelected: (_) => _apply(preset),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _speed == 1.0 ? null : () => _apply(1.0),
+              child: const Text('Reset to 1x'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
