@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/auth/data/token_refresh_coordinator.dart';
 import '../../features/auth/state/session_controller.dart';
 import '../../features/auth/state/session_expired_signal.dart';
 import '../../features/auth/state/session_state.dart';
@@ -27,6 +28,7 @@ final dioProvider = Provider<Dio>((ref) {
   dio.interceptors.add(
     AuthInterceptor(
       sessionStorage: ref.watch(sessionStorageProvider),
+      tokenRefreshCoordinator: ref.watch(tokenRefreshCoordinatorProvider),
       onSessionExpired: () async {
         await ref.read(sessionStorageProvider).clear();
         ref.read(sessionExpiredSignalProvider.notifier).fire();

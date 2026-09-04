@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as socket_io;
 
+import '../../features/auth/data/token_refresh_coordinator.dart';
 import '../../features/auth/state/session_controller.dart';
 import '../../features/auth/state/session_state.dart';
 import '../logging/log_repository.dart';
@@ -173,32 +174,29 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
     _authRetryCount++;
     _disconnect();
 
-    final storage = _ref.read(sessionStorageProvider);
-    final refreshToken = await storage.readRefreshToken();
-    if (refreshToken != null) {
-      try {
-        final result = await _ref
-            .read(authRepositoryProvider)
-            .refresh(serverUrl: serverUrl, refreshToken: refreshToken);
-        await storage.saveRefreshedTokens(
-          accessToken: result.user.accessToken,
-          refreshToken: result.user.refreshToken ?? refreshToken,
-        );
-        // Bug fix 2026-08-03: without this, the in-memory session (and
-        // anything reading its token directly, like PlaybackController's
-        // stream URL builder) never saw this refresh — see
-        // SessionController.updateTokens for the full story.
-        _ref
-            .read(sessionControllerProvider.notifier)
-            .updateTokens(
-              accessToken: result.user.accessToken,
-              refreshToken: result.user.refreshToken ?? refreshToken,
-            );
-      } catch (_) {
-        // Refresh itself failed, or this is a legacy-token server with no
-        // refresh endpoint — fall through and just retry with whatever's
-        // already in storage rather than giving up immediately.
-      }
+    // Goes through TokenRefreshCoordinator (shared with AuthInterceptor and
+    // SessionController's bootstrap) rather than calling AuthRepository.
+    // refresh directly, so a socket reconnect racing a REST 401 never sends
+    // the same soon-to-be-stale refresh token to the server twice — see
+    // TokenRefreshCoordinator's doc comment.
+    try {
+      final user = await _ref
+          .read(tokenRefreshCoordinatorProvider)
+          .refresh(serverUrl: serverUrl);
+      // Bug fix 2026-08-03: without this, the in-memory session (and
+      // anything reading its token directly, like PlaybackController's
+      // stream URL builder) never saw this refresh — see
+      // SessionController.updateTokens for the full story.
+      _ref
+          .read(sessionControllerProvider.notifier)
+          .updateTokens(
+            accessToken: user.accessToken,
+            refreshToken: user.refreshToken,
+          );
+    } catch (_) {
+      // Refresh itself failed, or this is a legacy-token server with no
+      // refresh endpoint — fall through and just retry with whatever's
+      // already in storage rather than giving up immediately.
     }
 
     await Future.delayed(Duration(seconds: 2 * _authRetryCount));
