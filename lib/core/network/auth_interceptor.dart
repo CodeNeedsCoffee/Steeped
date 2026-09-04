@@ -1,21 +1,23 @@
 import 'package:dio/dio.dart';
 
+import '../../features/auth/data/token_refresh_coordinator.dart';
 import '../storage/session_storage.dart';
 
 /// Attaches the bearer token to every request, and on a 401 makes a single
-/// attempt to refresh via `POST /auth/refresh` (`x-refresh-token` header)
-/// before retrying the original request once. Mirrors the reference app's
-/// `plugins/nativeHttp.js` behavior — no silent retry loop beyond one
-/// refresh+retry; failure calls [onSessionExpired] so the app can force a
-/// re-login.
+/// attempt to refresh via [TokenRefreshCoordinator] before retrying the
+/// original request once. Mirrors the reference app's `plugins/nativeHttp.js`
+/// behavior — no silent retry loop beyond one refresh+retry; failure calls
+/// [onSessionExpired] so the app can force a re-login.
 class AuthInterceptor extends QueuedInterceptor {
   AuthInterceptor({
     required this.sessionStorage,
+    required this.tokenRefreshCoordinator,
     required this.onSessionExpired,
     required this.onTokensRefreshed,
   });
 
   final SessionStorage sessionStorage;
+  final TokenRefreshCoordinator tokenRefreshCoordinator;
   final Future<void> Function() onSessionExpired;
 
   /// Bug fix 2026-08-03: a refresh here previously only reached secure
@@ -51,37 +53,25 @@ class AuthInterceptor extends QueuedInterceptor {
       return;
     }
 
-    final refreshToken = await sessionStorage.readRefreshToken();
-    if (refreshToken == null) {
-      await onSessionExpired();
-      handler.next(err);
-      return;
-    }
-
     try {
-      final refreshDio = Dio(
-        BaseOptions(baseUrl: err.requestOptions.baseUrl),
+      // Goes through TokenRefreshCoordinator (shared with SocketService and
+      // SessionController's bootstrap) rather than posting to /auth/refresh
+      // directly, so a REST 401 racing a socket reconnect never sends the
+      // same soon-to-be-stale refresh token to the server twice — see
+      // TokenRefreshCoordinator's doc comment.
+      final user = await tokenRefreshCoordinator.refresh(
+        serverUrl: err.requestOptions.baseUrl,
       );
-      final response = await refreshDio.post<Map<String, dynamic>>(
-        _refreshPath,
-        options: Options(headers: {'x-refresh-token': refreshToken}),
-      );
-      final userJson = response.data?['user'] as Map<String, dynamic>?;
-      final newAccessToken = userJson?['accessToken'] as String?;
-      final newRefreshToken = userJson?['refreshToken'] as String?;
+      final newAccessToken = user.accessToken;
       if (newAccessToken == null) {
         await onSessionExpired();
         handler.next(err);
         return;
       }
 
-      await sessionStorage.saveRefreshedTokens(
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken ?? refreshToken,
-      );
       onTokensRefreshed(
         accessToken: newAccessToken,
-        refreshToken: newRefreshToken ?? refreshToken,
+        refreshToken: user.refreshToken,
       );
 
       final retryOptions = err.requestOptions

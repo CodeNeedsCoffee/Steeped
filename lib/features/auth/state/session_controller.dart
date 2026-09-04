@@ -9,12 +9,9 @@ import '../../../core/storage/session_storage.dart';
 import '../../../models/server_status.dart';
 import '../../settings/data/account_repository.dart';
 import '../data/auth_repository.dart';
+import '../data/token_refresh_coordinator.dart';
 import 'session_expired_signal.dart';
 import 'session_state.dart';
-
-final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => const AuthRepository(),
-);
 
 final accountRepositoryProvider = Provider<AccountRepository>(
   (ref) => AccountRepository(ref.watch(dioProvider)),
@@ -23,11 +20,13 @@ final accountRepositoryProvider = Provider<AccountRepository>(
 class SessionController extends Notifier<SessionState> {
   late final AuthRepository _repository;
   late final SessionStorage _storage;
+  late final TokenRefreshCoordinator _coordinator;
 
   @override
   SessionState build() {
     _repository = ref.watch(authRepositoryProvider);
     _storage = ref.watch(sessionStorageProvider);
+    _coordinator = ref.watch(tokenRefreshCoordinatorProvider);
 
     // AuthInterceptor fires this when a background token refresh fails on
     // some unrelated API call; react by forcing the user back to login.
@@ -51,14 +50,27 @@ class SessionController extends Notifier<SessionState> {
     final refreshToken = await _storage.readRefreshToken();
     if (refreshToken != null) {
       // 2.26.0+ server: proactively refresh to confirm the session is
-      // still valid and get current user/permissions data.
+      // still valid and get current user/permissions data. Goes through
+      // TokenRefreshCoordinator so this never races AuthInterceptor's or
+      // SocketService's own reactive refreshes over the same refresh token
+      // — see TokenRefreshCoordinator's doc comment.
       try {
-        final result = await _repository.refresh(
-          serverUrl: serverUrl,
-          refreshToken: refreshToken,
-        );
-        await _storage.save(serverUrl: serverUrl, user: result.user);
-        state = SessionAuthenticated(serverUrl: serverUrl, user: result.user);
+        final user = await _coordinator.refresh(serverUrl: serverUrl);
+        await _storage.save(serverUrl: serverUrl, user: user);
+        state = SessionAuthenticated(serverUrl: serverUrl, user: user);
+      } on StateError catch (e) {
+        // The coordinator found no refresh token in storage by the time it
+        // actually ran — same conclusion as a server-rejected refresh.
+        await ref
+            .read(logRepositoryProvider)
+            .log(
+              'error',
+              'session',
+              'Startup token refresh rejected by server: $e',
+            );
+        await _storage.clear();
+        state = const SessionUnauthenticated();
+        return;
       } on DioException catch (e) {
         // PLAN.md Phase 6.6 gap: a cold start with no network previously
         // couldn't tell "the refresh token is actually invalid" (a real
