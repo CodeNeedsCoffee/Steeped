@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +9,9 @@ import '../../../core/storage/app_database.dart';
 import '../../../core/storage/device_storage.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/podcast_episode.dart';
+import '../../auth/data/token_refresh_coordinator.dart';
+import '../../auth/state/session_controller.dart';
+import '../../auth/state/session_state.dart';
 import '../../library/state/library_providers.dart';
 import '../../settings/data/app_settings.dart';
 import '../../settings/state/settings_providers.dart';
@@ -64,6 +69,14 @@ final downloadProgressProvider = StateProvider<Map<String, double>>(
 /// be watched somewhere near app root to activate — see [HomeShellScreen])
 /// and writes completed tracks/covers into drift via [DownloadRepository].
 class DownloadController extends Notifier<void> {
+  /// Bounds [_retryWithFreshToken] per task id — see that method's doc
+  /// comment. Cleared on success so a task that later fails again (a fresh
+  /// download queued much later, reusing the same `downloadId`/track index
+  /// and therefore the same task id) gets its own full budget rather than
+  /// inheriting a count from an unrelated earlier attempt.
+  final Map<String, int> _authRetryCounts = {};
+  static const _maxAuthRetries = 2;
+
   @override
   void build() {
     FileDownloader().updates.listen(_onUpdate);
@@ -73,6 +86,7 @@ class DownloadController extends Notifier<void> {
     switch (update) {
       case TaskStatusUpdate():
         if (update.status == TaskStatus.complete) {
+          _authRetryCounts.remove(update.task.taskId);
           final repo = ref.read(downloadRepositoryProvider);
           if (update.task.taskId.endsWith('__cover')) {
             repo.onCoverComplete(update.task);
@@ -80,14 +94,18 @@ class DownloadController extends Notifier<void> {
             repo.onTrackComplete(update.task);
           }
         } else if (update.status == TaskStatus.failed) {
-          ref
-              .read(logRepositoryProvider)
-              .log(
-                'error',
-                'download',
-                'Download failed for task ${update.task.taskId}: '
-                    '${update.exception}',
-              );
+          if (_isAuthFailure(update)) {
+            unawaited(_retryWithFreshToken(update.task));
+          } else {
+            ref
+                .read(logRepositoryProvider)
+                .log(
+                  'error',
+                  'download',
+                  'Download failed for task ${update.task.taskId}: '
+                      '${update.exception}',
+                );
+          }
         }
       case TaskProgressUpdate():
         final itemId = update.task.metaData;
@@ -96,6 +114,85 @@ class DownloadController extends Notifier<void> {
         map[itemId] = update.progress;
         ref.read(downloadProgressProvider.notifier).state = map;
     }
+  }
+
+  bool _isAuthFailure(TaskStatusUpdate update) {
+    final exception = update.exception;
+    final code = update.responseStatusCode ??
+        (exception is TaskHttpException ? exception.httpResponseCode : null);
+    return code == 401 || code == 403;
+  }
+
+  /// Bug fix 2026-09-22 (evan: downloads of long books occasionally missing
+  /// tracks). Each track/cover [DownloadTask.url] has the access token baked
+  /// in at enqueue time (see [DownloadRepository._enqueue]) — the same
+  /// short-lived JWT whose mid-book expiry [PlaybackController
+  /// ._attemptRecovery] already guards against for live streaming. A large
+  /// download queued over a slow connection can easily outlive that token,
+  /// and unlike a stream, `background_downloader`'s own built-in retry (see
+  /// its `retries` task option, unused here) just resubmits the identical,
+  /// still-expired URL — it has no way to know the URL itself needs
+  /// rebuilding. This forces a refresh through the same
+  /// [TokenRefreshCoordinator] used everywhere else, then re-enqueues the
+  /// exact same task with a fresh token spliced into its URL. Bounded to
+  /// [_maxAuthRetries] per task id so a genuinely revoked session (or a
+  /// legacy pre-2.26.0 server with no refresh endpoint at all) fails once
+  /// and stops instead of looping forever.
+  Future<void> _retryWithFreshToken(Task task) async {
+    final attempts = (_authRetryCounts[task.taskId] ?? 0) + 1;
+    if (attempts > _maxAuthRetries) {
+      unawaited(
+        ref
+            .read(logRepositoryProvider)
+            .log(
+              'error',
+              'download',
+              'Giving up on ${task.taskId} after $_maxAuthRetries '
+                  'auth-refresh retries',
+            ),
+      );
+      return;
+    }
+    _authRetryCounts[task.taskId] = attempts;
+
+    final session = ref.read(sessionControllerProvider);
+    if (session is! SessionAuthenticated) return;
+
+    final String? freshToken;
+    try {
+      final user = await ref
+          .read(tokenRefreshCoordinatorProvider)
+          .refresh(serverUrl: session.serverUrl);
+      // Same reasoning as PlaybackController._refreshSessionToken: push the
+      // refreshed tokens into the in-memory session too, not just storage,
+      // so a next track that was still mid-download with the old token
+      // benefits from the same refresh instead of failing independently.
+      ref
+          .read(sessionControllerProvider.notifier)
+          .updateTokens(
+            accessToken: user.accessToken,
+            refreshToken: user.refreshToken,
+          );
+      freshToken = user.effectiveToken;
+    } catch (e) {
+      unawaited(
+        ref
+            .read(logRepositoryProvider)
+            .log(
+              'error',
+              'download',
+              'Token refresh failed while retrying ${task.taskId}: $e',
+            ),
+      );
+      return;
+    }
+    if (freshToken == null || task is! DownloadTask) return;
+
+    final uri = Uri.parse(task.url);
+    final refreshedUrl = uri
+        .replace(queryParameters: {...uri.queryParameters, 'token': freshToken})
+        .toString();
+    await FileDownloader().enqueue(task.copyWith(url: refreshedUrl));
   }
 
   /// PLAN.md Phase 9.3 (Data/cellular controls).

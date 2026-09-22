@@ -17,6 +17,7 @@ import '../../../models/audio_track.dart';
 import '../../../models/bookmark.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/podcast_episode.dart';
+import '../../auth/data/token_refresh_coordinator.dart';
 import '../../auth/state/session_controller.dart';
 import '../../auth/state/session_state.dart';
 import '../../downloads/state/download_controller.dart';
@@ -165,6 +166,19 @@ class PlaybackController extends Notifier<void> {
   /// from the 500-entry cap and burying whatever actually needed reading.
   String? _lastSyncErrorKind;
 
+  /// When playback last actually stopped (any cause — an explicit [pause],
+  /// a hardware/lock-screen button, a sleep timer). See [resume]'s doc
+  /// comment for what this guards against.
+  DateTime? _pausedAt;
+
+  /// How long a pause has to last before [resume] treats the stream's
+  /// baked-in token as possibly stale and proactively refreshes it. Well
+  /// under the ~1 hour JWT lifetime the Logs screen's socket-reauth cadence
+  /// suggests, so it fires with room to spare — an unnecessary reload here
+  /// just costs one brief re-buffer, while missing a genuinely stale token
+  /// costs a failed-attempt-and-retry cycle on the very first resume.
+  static const _tokenStaleAfterPause = Duration(minutes: 10);
+
   @override
   void build() {
     _playbackStateSub = _handler.playbackState.listen(_onPlaybackStateChanged);
@@ -214,6 +228,7 @@ class PlaybackController extends Notifier<void> {
     if (state.playing) {
       _startSyncTimer(item);
     } else {
+      _pausedAt = DateTime.now();
       _syncTimer?.cancel();
       _syncTimer = null;
       _sync(item);
@@ -544,6 +559,19 @@ class PlaybackController extends Notifier<void> {
                     'dropped connection).',
               ),
         );
+        // Bug fix 2026-09-22 (evan: "stops playing" on lock, reproduces on
+        // both Android and iOS, with no player-error log entry at all).
+        // `just_audio`'s `errorStream` — the only other trigger for
+        // [_recoverFromPlayerError] — never fires for a plain rebuffering
+        // stall (no bytes arriving, no exception thrown either), which is
+        // exactly what a network drop during a locked screen looks like on
+        // either platform. Without this, the only thing that ever gets the
+        // stream moving again is the user unlocking the phone and the OS
+        // handing the network back — this proactively attempts the same
+        // reload-with-fresh-token recovery [_onPlayerError] uses, so a
+        // lock-driven stall is treated as the reconnect problem it actually
+        // is instead of silently waiting on the user to notice.
+        unawaited(_recoverFromPlayerError(item));
       }
     } else {
       _staleSyncTicks = 0;
@@ -601,7 +629,28 @@ class PlaybackController extends Notifier<void> {
     unawaited(_recoverFromPlayerError(item));
   }
 
-  static const _maxPlayerErrorRetries = 3;
+  /// Bug fix 2026-09-22 (evan: streamed playback stops for good every time
+  /// the phone is locked — reproduces on both Android and iOS). Locking the
+  /// screen routinely causes a brief-but-real network interruption (Doze's
+  /// standby windows on Android, a similar radio/Wi-Fi power-save dip on
+  /// iOS) — confirmed by the Logs screen showing several minutes of
+  /// continuous "Socket disconnected" / "Failed host lookup" entries
+  /// starting right after lock. The old budget here (3 attempts, 2s+6s+14s
+  /// = 22s total) was sized for "a restarting server or a wifi/cellular
+  /// handoff", not a multi-minute lock-driven outage, so it reliably
+  /// exhausted itself while the phone was still locked and hit the give-up
+  /// branch below, which calls `_handler.pause()` — and with
+  /// `androidStopForegroundOnPause: true` (main.dart) that tears down the
+  /// foreground service too, so playback didn't just pause, it stopped for
+  /// good until the app was reopened. Raised to 10 attempts with backoff
+  /// capped at 30s (2, 6, 14, 30×7 ≈ 4.5 minutes total) so a lock-driven
+  /// outage has room to clear on its own before this gives up.
+  static const _maxPlayerErrorRetries = 10;
+
+  /// Cap on the exponential backoff between retries — see
+  /// [_maxPlayerErrorRetries]'s doc comment. Uncapped, attempt 10 alone
+  /// would be `(1 << 10) * 2 - 2` ≈ 34 minutes.
+  static const _maxRetryBackoff = Duration(seconds: 30);
 
   /// Bug fix 2026-08-04 (evan: streamed playback froze *again* after another
   /// idle period — the 2026-08-03 fix only added logging/pause, so the user
@@ -632,13 +681,28 @@ class PlaybackController extends Notifier<void> {
     if (_recoveryInFlight) return;
     _recoveryInFlight = true;
     try {
-      await _attemptRecovery(item);
+      // Bug fix 2026-09-22 (evan: "resumed playing but started all the way
+      // back at the beginning" after a lock-driven stall). Captured once,
+      // right here, rather than inside [_attemptRecovery] itself — a player
+      // that has already thrown a source error (or a `just_audio` instance
+      // left mid-`prepare()` by [_recoverFromPlayerError]'s own earlier,
+      // now-timed-out attempt) reliably reports position 0 once queried
+      // again, not wherever it actually stalled. Re-reading
+      // `_handler.globalPositionSeconds` fresh on every retry/recursion (the
+      // old behavior) meant every attempt after the first one used that
+      // already-zeroed value. Threading one snapshot through the whole
+      // episode instead means a later attempt that finally succeeds still
+      // resumes from where playback actually froze.
+      await _attemptRecovery(item, _handler.globalPositionSeconds);
     } finally {
       _recoveryInFlight = false;
     }
   }
 
-  Future<void> _attemptRecovery(LibraryItemDetail item) async {
+  Future<void> _attemptRecovery(
+    LibraryItemDetail item,
+    double resumePosition,
+  ) async {
     final current = ref.read(currentPlaybackItemProvider);
     final isStillCurrent =
         current != null && current.downloadId == item.downloadId;
@@ -689,9 +753,13 @@ class PlaybackController extends Notifier<void> {
                 '(attempt $attempt/$_maxPlayerErrorRetries)',
           ),
     );
-    // 2s, 6s, 14s — enough for a restarting server or a wifi/cellular handoff
-    // to settle, instead of reloading straight back into the same failure.
-    await Future.delayed(Duration(seconds: (1 << attempt) * 2 - 2));
+    // 2s, 6s, 14s, then capped at 30s — see [_maxPlayerErrorRetries] for why
+    // this needs to stay patient well past a typical server restart or
+    // wifi/cellular handoff.
+    final backoff = Duration(seconds: (1 << attempt) * 2 - 2);
+    await Future.delayed(
+      backoff > _maxRetryBackoff ? _maxRetryBackoff : backoff,
+    );
 
     // The user may have moved on (or stopped playback outright) during that
     // delay — re-check rather than yanking a now-unrelated item back in.
@@ -702,13 +770,47 @@ class PlaybackController extends Notifier<void> {
     }
 
     try {
-      final resumePosition = _handler.globalPositionSeconds;
-      await _handler.loadItem(
-        item: item,
-        sourceUris: _streamSourceUris(item.tracks, session),
-        startPosition: resumePosition,
-        artUri: _artUriFor(item, session),
-      );
+      // Bug fix 2026-09-22 (evan: streamed playback froze at track
+      // boundaries on long books, visible as a `-1013` /
+      // NSURLErrorUserAuthenticationRequired player error alongside
+      // `Socket auth failed` log entries around the same time). Each
+      // track's stream URL has the access token baked in at [loadItem]
+      // time (see [_streamSourceUris]) — on a multi-hour book that
+      // short-lived JWT can expire before playback ever reaches a later
+      // track. This retry used to just re-read whatever token happened to
+      // already be in memory, which only helped if some *unrelated* event
+      // (a REST 401, a socket reconnect) had refreshed it in the meantime;
+      // otherwise every one of the bounded retry attempts reused the same
+      // expired token and failed identically. Forcing a refresh here closes
+      // that gap. Goes through [TokenRefreshCoordinator] (shared with
+      // AuthInterceptor/SocketService) so this never races them for the
+      // same soon-to-be-stale refresh token.
+      // Bug fix 2026-09-22 (evan: "eventually stops" for good, with no
+      // further log activity at all — not even the unrelated socket
+      // reconnect logging). Neither call below is bounded on its own: Dio's
+      // configured timeouts don't always fire when packets are silently
+      // dropped rather than actively refused (exactly what a lock-driven
+      // network blip looks like), and `just_audio`'s `setAudioSource`/
+      // `prepare()` has no built-in timeout at all. Without this, a single
+      // hung attempt parks this `await` forever, so the loop never reaches
+      // attempt 4 (or the give-up branch) — it just silently wedges,
+      // indistinguishable from the app itself having frozen. A timeout here
+      // turns that hang into an ordinary failure the existing `catch`
+      // below already knows how to retry.
+      final refreshedSession =
+          await _refreshSessionToken(session).timeout(
+            const Duration(seconds: 20),
+            onTimeout: () => null,
+          ) ??
+          session;
+      await _handler
+          .loadItem(
+            item: item,
+            sourceUris: _streamSourceUris(item.tracks, refreshedSession),
+            startPosition: resumePosition,
+            artUri: _artUriFor(item, refreshedSession),
+          )
+          .timeout(const Duration(seconds: 20));
       _handler.onItemFinished = () => _onFinished(item);
       _handler.onPlayerError = (e) => _onPlayerError(item, e);
       unawaited(_handler.play());
@@ -723,8 +825,40 @@ class PlaybackController extends Notifier<void> {
       // Recurses through the *inner* method on purpose: the re-entrancy guard
       // in [_recoverFromPlayerError] is still held by this call, and going
       // through it again would silently drop this retry instead of taking the
-      // next attempt (or the give-up branch above).
-      await _attemptRecovery(item);
+      // next attempt (or the give-up branch above). Passes the same
+      // [resumePosition] snapshot along rather than re-reading the player —
+      // see [_recoverFromPlayerError]'s doc comment for why.
+      await _attemptRecovery(item, resumePosition);
+    }
+  }
+
+  /// Forces a token refresh before a stream retry, rather than trusting
+  /// whatever's already in [SessionController]'s in-memory state — see the
+  /// 2026-09-22 note in [_attemptRecovery] for why. Returns null (falling
+  /// back to the caller's existing session) on failure: a revoked refresh
+  /// token, no connectivity, or a legacy pre-2.26.0 server with no refresh
+  /// endpoint at all are all cases where retrying with the existing token
+  /// is still worth a shot rather than aborting outright.
+  Future<SessionAuthenticated?> _refreshSessionToken(
+    SessionAuthenticated session,
+  ) async {
+    try {
+      final user = await ref
+          .read(tokenRefreshCoordinatorProvider)
+          .refresh(serverUrl: session.serverUrl);
+      // Same reasoning as SocketService._retryAfterAuthFailure: push the
+      // refreshed tokens into the in-memory session too, not just storage,
+      // so anything else reading session.user.effectiveToken picks them up.
+      ref
+          .read(sessionControllerProvider.notifier)
+          .updateTokens(
+            accessToken: user.accessToken,
+            refreshToken: user.refreshToken,
+          );
+      final refreshed = ref.read(sessionControllerProvider);
+      return refreshed is SessionAuthenticated ? refreshed : null;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -922,9 +1056,47 @@ class PlaybackController extends Notifier<void> {
   /// An explicit user press is the one unambiguous signal that they want us to
   /// try again, so it restores the reconnect/backoff budgets that a failed run
   /// deliberately leaves spent (see [_playerErrorRetryCount]).
-  Future<void> resume() {
+  ///
+  /// Bug fix 2026-09-22 (evan: resuming after a long pause sometimes took a
+  /// visible failed-attempt-and-retry cycle before audio actually came
+  /// back). A paused player's loaded tracks still carry whatever token was
+  /// baked into their URLs at the last [loadItem]/[_attemptRecovery] call —
+  /// if the pause outlasted that token's TTL, the first buffer refill after
+  /// `play()` used to 401 and only recover once [_onPlayerError] /
+  /// [_attemptRecovery] forced a refresh on retry. Past [_tokenStaleAfterPause]
+  /// this refreshes and reloads proactively instead, so that guaranteed-to-fail
+  /// first attempt never happens. Skipped for a short pause (the overwhelming
+  /// common case) to avoid an unnecessary reload/re-buffer on every ordinary
+  /// play/pause, and for downloaded/local-only items, which have no streamed
+  /// token to go stale.
+  Future<void> resume() async {
     _resetPlaybackHealth();
-    return _handler.play();
+    final pausedAt = _pausedAt;
+    if (pausedAt != null &&
+        DateTime.now().difference(pausedAt) >= _tokenStaleAfterPause) {
+      await _reloadCurrentStreamWithFreshToken();
+    }
+    await _handler.play();
+  }
+
+  Future<void> _reloadCurrentStreamWithFreshToken() async {
+    final item = ref.read(currentPlaybackItemProvider);
+    if (item == null || item.isLocalOnly) return;
+    final session = ref.read(sessionControllerProvider);
+    if (session is! SessionAuthenticated) return;
+    if (await ref.read(downloadRepositoryProvider).isDownloaded(item.downloadId)) {
+      return;
+    }
+
+    final refreshed = await _refreshSessionToken(session) ?? session;
+    await _handler.loadItem(
+      item: item,
+      sourceUris: _streamSourceUris(item.tracks, refreshed),
+      startPosition: _handler.globalPositionSeconds,
+      artUri: _artUriFor(item, refreshed),
+    );
+    _handler.onItemFinished = () => _onFinished(item);
+    _handler.onPlayerError = (e) => _onPlayerError(item, e);
   }
 
   /// PLAN.md Phase 9.3: jump interval is now configurable in Settings →

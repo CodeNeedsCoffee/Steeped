@@ -1,6 +1,9 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/theme/skin_registry.dart';
 import '../auth/state/session_controller.dart';
@@ -180,6 +183,7 @@ class SettingsScreen extends ConsumerWidget {
           const EreaderSettingsPanel(),
 
           const _SectionHeader('Advanced'),
+          if (Platform.isAndroid) const _BatteryOptimizationTile(),
           ListTile(
             leading: const Icon(Icons.folder_outlined),
             title: const Text('Local Media'),
@@ -198,6 +202,85 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 32),
         ],
       ),
+    );
+  }
+}
+
+/// Bug fix 2026-09-22 (evan: streamed playback silently stalling while the
+/// phone is locked). Android's app-standby/Doze battery management can
+/// throttle a backgrounded app's audio focus and networking even with a
+/// correctly-declared `mediaPlayback` foreground service (see
+/// AndroidManifest.xml) — confirmed live via `adb shell cmd appops get`
+/// showing `TAKE_AUDIO_FOCUS`/`CONTROL_AUDIO` scoped to foreground-only for
+/// this app. `Permission.ignoreBatteryOptimizations` is the user-facing,
+/// Play-Store-safe way to ask the OS to exempt Steeped from that (the
+/// `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` manifest permission only lets the
+/// app *ask*; Android still shows its own system dialog for the user to
+/// accept). iOS has no equivalent concept — `UIBackgroundModes: audio`
+/// (Info.plist) is the entire story there — so this tile is Android-only.
+class _BatteryOptimizationTile extends StatefulWidget {
+  const _BatteryOptimizationTile();
+
+  @override
+  State<_BatteryOptimizationTile> createState() =>
+      _BatteryOptimizationTileState();
+}
+
+class _BatteryOptimizationTileState extends State<_BatteryOptimizationTile>
+    with WidgetsBindingObserver {
+  PermissionStatus? _status;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // A `.request()` that falls through to the system Settings app (some
+    // OEMs do this instead of the in-app dialog) only updates `_status`
+    // once the user comes back here, not when `request()` itself returns.
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final status = await Permission.ignoreBatteryOptimizations.status;
+    if (mounted) setState(() => _status = status);
+  }
+
+  Future<void> _request() async {
+    final status = await Permission.ignoreBatteryOptimizations.request();
+    if (mounted) setState(() => _status = status);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final granted = _status?.isGranted ?? false;
+    return ListTile(
+      leading: const Icon(Icons.battery_charging_full_outlined),
+      title: const Text('Unrestricted background playback'),
+      subtitle: Text(
+        granted
+            ? 'Exempt from battery optimization — audio won\'t be throttled '
+                  'while the phone is locked'
+            : 'Recommended — prevents Android from throttling audio focus '
+                  'and networking while the phone is locked',
+      ),
+      trailing: granted
+          ? Icon(
+              Icons.check_circle,
+              color: Theme.of(context).colorScheme.primary,
+            )
+          : const Icon(Icons.chevron_right),
+      onTap: granted ? null : _request,
     );
   }
 }
