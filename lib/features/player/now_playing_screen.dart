@@ -219,6 +219,20 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+          if (currentChapter != null && currentChapter.title.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                currentChapter.title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           Builder(
             builder: (context) {
@@ -233,10 +247,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       label: showBookTime ? 'Chapter' : null,
                       value: chapterElapsed,
                       max: chapterMax,
-                      onChanged: (value) => controller.seekToGlobalPosition(
+                      onSeek: (value) => controller.seekToGlobalPosition(
                         currentChapter.start + value,
                       ),
-                      elapsed: _formatTime(chapterElapsed / speed),
+                      formatElapsed: (value) => _formatTime(value / speed),
                       total: _formatTime(chapterDuration / speed),
                     ),
                   if (showChapterTime && showBookTime)
@@ -246,8 +260,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       label: showChapterTime ? 'Book' : null,
                       value: position.clamp(0, duration),
                       max: duration,
-                      onChanged: controller.seekToGlobalPosition,
-                      elapsed: _formatTime(position / speed),
+                      onSeek: controller.seekToGlobalPosition,
+                      formatElapsed: (value) => _formatTime(value / speed),
                       total: _formatTime(duration / speed),
                     ),
                 ],
@@ -628,26 +642,50 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 /// mode (PLAN.md Phase 5.5), so turning on "Chapter" and "Book" together
 /// shows two independently-scoped progress bars instead of one book-wide
 /// bar with two text rows.
-class _ProgressSection extends StatelessWidget {
+///
+/// Bug fix 2026-09-22 (evan: seek bar "bounces around a lot back and forth"
+/// while dragging). The old version was stateless and wired the `Slider`'s
+/// `value` straight to the live playback-position stream, with `onChanged`
+/// (fired on *every frame* of the drag) issuing a real network seek each
+/// time. A streamed seek doesn't complete instantly, so the position stream
+/// kept emitting the pre-seek position mid-drag, snapping the thumb back
+/// under the user's finger — and the dozens of overlapping seeks dispatched
+/// during one drag gesture could resolve out of order, landing on whichever
+/// one's position event happened to arrive last rather than where the user
+/// actually released. Now the thumb (and the elapsed-time label) tracks a
+/// local [_dragValue] while dragging, completely decoupled from the live
+/// stream, and exactly one real seek is issued on release.
+class _ProgressSection extends StatefulWidget {
   const _ProgressSection({
     required this.value,
     required this.max,
-    required this.onChanged,
-    required this.elapsed,
+    required this.onSeek,
+    required this.formatElapsed,
     required this.total,
     this.label,
   });
 
   final double value;
   final double max;
-  final ValueChanged<double> onChanged;
-  final String elapsed;
+  final ValueChanged<double> onSeek;
+  final String Function(double value) formatElapsed;
   final String total;
   final String? label;
 
   @override
+  State<_ProgressSection> createState() => _ProgressSectionState();
+}
+
+class _ProgressSectionState extends State<_ProgressSection> {
+  /// Non-null only while the user has a finger on the slider. Read in
+  /// preference to [_ProgressSection.value] so mid-drag rebuilds (the live
+  /// stream still ticking in the background) never fight the drag gesture.
+  double? _dragValue;
+
+  @override
   Widget build(BuildContext context) {
-    final label = this.label;
+    final label = widget.label;
+    final displayValue = _dragValue ?? widget.value;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -660,13 +698,25 @@ class _ProgressSection extends StatelessWidget {
           data: SliderTheme.of(context).copyWith(
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
           ),
-          child: Slider(value: value, max: max, onChanged: onChanged),
+          child: Slider(
+            value: displayValue,
+            max: widget.max,
+            onChangeStart: (value) => setState(() => _dragValue = value),
+            onChanged: (value) => setState(() => _dragValue = value),
+            onChangeEnd: (value) {
+              setState(() => _dragValue = null);
+              widget.onSeek(value);
+            },
+          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [Text(elapsed), Text(total)],
+            children: [
+              Text(widget.formatElapsed(displayValue)),
+              Text(widget.total),
+            ],
           ),
         ),
       ],
