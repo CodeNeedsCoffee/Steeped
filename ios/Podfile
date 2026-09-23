@@ -40,5 +40,19 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    # Bug fix 2026-09-22 (evan: Xcode Cloud archive failing with "The iOS
+    # deployment target 'IPHONEOS_DEPLOYMENT_TARGET' is set to 13.0, but the
+    # range of supported deployment target versions is 15.0 to 27.0.x. (in
+    # target 'Flutter' from project 'Pods')"). `platform :ios, '15.0'` above
+    # only sets the *Podfile's* target -- it doesn't override each
+    # individual pod target, and the auto-generated `Flutter` pod (wrapping
+    # the engine framework) keeps whatever the Flutter SDK's own tooling
+    # stamped it with regardless, which the Xcode version this project
+    # builds with no longer supports at all. Forcing every pod target's
+    # deployment target down to match the app's is the standard fix for
+    # this class of Flutter+CocoaPods drift.
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
   end
 end
