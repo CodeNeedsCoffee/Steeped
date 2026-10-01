@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/network/cover_image_url.dart';
@@ -11,6 +10,7 @@ import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../downloads/state/download_controller.dart';
 import '../player/mini_player.dart';
+import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import 'state/podcast_providers.dart';
 
@@ -140,7 +140,7 @@ class _RecentEpisodeTile extends ConsumerWidget {
               if (context.mounted &&
                   ref.read(currentPlaybackItemProvider)?.downloadId ==
                       downloadId) {
-                context.push('/now-playing');
+                openNowPlaying(context, ref);
               }
             },
     );

@@ -17,6 +17,7 @@ import '../downloads/state/download_controller.dart';
 import '../../widgets/glass_surface.dart';
 import '../../widgets/playback_loading_badge.dart';
 import '../player/mini_player.dart';
+import '../player/now_playing_navigation.dart';
 import '../player/state/pending_sync_controller.dart';
 import '../player/state/playback_controller.dart';
 import 'library_grid_screen.dart';
@@ -799,7 +800,7 @@ class _OfflineDownloadTile extends ConsumerWidget {
               if (context.mounted &&
                   ref.read(currentPlaybackItemProvider)?.downloadId ==
                       item.itemId) {
-                context.push('/now-playing');
+                openNowPlaying(context, ref);
               }
             },
     );

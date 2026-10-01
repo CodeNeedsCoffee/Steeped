@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/utils/format_bytes.dart';
 import '../../widgets/playback_loading_badge.dart';
 import '../player/mini_player.dart';
+import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import 'state/download_controller.dart';
 
@@ -127,7 +127,7 @@ class DownloadsScreen extends ConsumerWidget {
                         if (context.mounted &&
                             ref.read(currentPlaybackItemProvider)?.downloadId ==
                                 item.itemId) {
-                          context.push('/now-playing');
+                          openNowPlaying(context, ref);
                         }
                       }
                     : null,

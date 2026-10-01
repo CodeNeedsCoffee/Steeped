@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bug fix 2026-09-24 (evan: lock-screen/notification media controls missing
+  again on a fresh release-shaped install — confirmed via `adb logcat`:
+  `java.lang.IllegalArgumentException: You must specify an icon resource id
+  to build a CustomAction`, thrown inside `audio_service`'s
+  notification-building code). `audio_service`'s `MediaControl` icons
+  (`androidIcon: 'drawable/audio_service_stop'`, etc.) are set from Dart and
+  resolved on the Android side at runtime via
+  `Resources.getIdentifier(...)` — the resource shrinker Flutter's Gradle
+  plugin enables by default for release builds protects resources
+  referenced via such runtime string lookups by scanning the app's
+  Java/Kotlin dex bytecode for matching string literals, but that string
+  only exists in Dart's compiled AOT code, invisible to that scan. So it
+  strips these icons as "unused", and `getIdentifier` returns 0 at runtime.
+  This is Android's own documented way to protect resources the shrinker
+  can't see are used: https://developer.android.com/studio/build/shrink-code#keep-resources
+
+  2026-09-24 follow-up: `ic_replay`/`ic_replay_forward` (the app's own
+  custom rewind/fast-forward `MediaControl` icons, steeped_audio_handler.dart)
+  hit this exact same failure mode — same runtime-string-resolved
+  `androidIcon`, same invisibility to the shrinker's bytecode scan — so
+  they need the same protection.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/audio_service_*,@drawable/ic_replay,@drawable/ic_replay_forward" />

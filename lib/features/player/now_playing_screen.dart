@@ -294,7 +294,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               ),
               IconButton(
                 iconSize: 36,
-                icon: const Icon(Icons.fast_rewind),
+                icon: const Icon(Icons.replay),
                 onPressed: controller.jumpBackward,
               ),
               const SizedBox(width: 16),
@@ -320,7 +320,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               const SizedBox(width: 16),
               IconButton(
                 iconSize: 36,
-                icon: const Icon(Icons.fast_forward),
+                icon: Transform.flip(
+                  flipX: true,
+                  child: const Icon(Icons.replay),
+                ),
                 onPressed: controller.jumpForward,
               ),
               Expanded(

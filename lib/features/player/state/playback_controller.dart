@@ -148,6 +148,16 @@ class PlaybackController extends Notifier<void> {
   /// others on the same player.
   bool _recoveryInFlight = false;
 
+  /// Set when a pause is observed (from any source — lockscreen,
+  /// notification, headset, in-app) while [_recoveryInFlight] is true.
+  /// Consulted by [_attemptRecovery] right before it would resume playback,
+  /// so a user pause issued mid-recovery sticks instead of being silently
+  /// overridden once the reconnect finishes. Deliberately does not stop the
+  /// recovery itself from running to completion — the reload/fresh-token/
+  /// seek work still happens, so a later explicit resume doesn't have to
+  /// repeat it.
+  bool _recoveryPauseRequested = false;
+
   /// Guards against overlapping progress syncs. The 15s [Timer.periodic]
   /// fires regardless of whether the previous tick's request finished, so a
   /// slow server used to accumulate concurrent in-flight PATCHes — extra load
@@ -229,6 +239,7 @@ class PlaybackController extends Notifier<void> {
       _startSyncTimer(item);
     } else {
       _pausedAt = DateTime.now();
+      if (_recoveryInFlight) _recoveryPauseRequested = true;
       _syncTimer?.cancel();
       _syncTimer = null;
       _sync(item);
@@ -680,6 +691,7 @@ class PlaybackController extends Notifier<void> {
   Future<void> _recoverFromPlayerError(LibraryItemDetail item) async {
     if (_recoveryInFlight) return;
     _recoveryInFlight = true;
+    _recoveryPauseRequested = false;
     try {
       // Bug fix 2026-09-22 (evan: "resumed playing but started all the way
       // back at the beginning" after a lock-driven stall). Captured once,
@@ -813,6 +825,20 @@ class PlaybackController extends Notifier<void> {
           .timeout(const Duration(seconds: 20));
       _handler.onItemFinished = () => _onFinished(item);
       _handler.onPlayerError = (e) => _onPlayerError(item, e);
+      if (_recoveryPauseRequested) {
+        ref.read(isReconnectingProvider.notifier).state = false;
+        unawaited(
+          ref
+              .read(logRepositoryProvider)
+              .log(
+                'info',
+                'playback',
+                'Reconnected ${item.id} but leaving it paused — user paused '
+                    'during recovery.',
+              ),
+        );
+        return;
+      }
       unawaited(_handler.play());
       _startSyncTimer(item);
       ref.read(isReconnectingProvider.notifier).state = false;
@@ -1074,7 +1100,15 @@ class PlaybackController extends Notifier<void> {
     final pausedAt = _pausedAt;
     if (pausedAt != null &&
         DateTime.now().difference(pausedAt) >= _tokenStaleAfterPause) {
+      // Bug fix 2026-09-24: this reload involves a real network round-trip
+      // (token refresh + re-preparing the stream) with nothing previously
+      // signaling that to the user — surfacing the same reconnect spinner
+      // [_attemptRecovery] already uses (see now_playing_screen.dart's
+      // `isConnecting`) rather than leaving the play/pause button showing
+      // nothing while it works.
+      ref.read(isReconnectingProvider.notifier).state = true;
       await _reloadCurrentStreamWithFreshToken();
+      ref.read(isReconnectingProvider.notifier).state = false;
     }
     await _handler.play();
   }

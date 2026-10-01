@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as socket_io;
 
-import '../../features/auth/data/token_refresh_coordinator.dart';
 import '../../features/auth/state/session_controller.dart';
 import '../../features/auth/state/session_state.dart';
 import '../logging/log_repository.dart';
@@ -40,7 +39,6 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
   final Ref _ref;
   socket_io.Socket? _socket;
   String? _connectedServerUrl;
-  int _authRetryCount = 0;
   bool _isDisposed = false;
 
   /// Bug found 2026-08-01 (reported by evan: "auth fails randomly"): the
@@ -93,22 +91,32 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
     });
     socket.on('init', (_) {
       if (_isDisposed) return;
-      _authRetryCount = 0;
       state = SocketConnectionStatus.authenticated;
     });
     socket.on('auth_failed', (_) {
       if (_isDisposed) return;
       state = SocketConnectionStatus.authFailed;
+      // Bug fix 2026-09-30: this used to actively drive its own
+      // /auth/refresh-and-retry loop (bounded to 3 attempts) right here.
+      // That meant a refresh could fire from an arbitrary background
+      // moment — a socket reconnect after a network blip, screen lock, app
+      // switch — with nothing tying it to real foreground activity, making
+      // it far more exposed to iOS suspending the app mid-request (the
+      // server had already rotated the refresh token server-side; the
+      // client never persisted the new one; the *old* one — now dead — was
+      // all that was left in Keychain for the next cold start). The
+      // reference app (~/Code/audiobookshelf-app plugins/server.js
+      // `onAuthFailed`) does none of this: it just flags itself
+      // unauthenticated and leaves refreshing entirely to a real REST call
+      // hitting a genuine 401 (nativeHttp.js), which then re-authenticates
+      // the socket as a side effect via `updateTokens`. Mirrored here:
+      // SessionController.updateTokens calls reauthenticateIfNeeded below
+      // whenever that reactive refresh succeeds.
       unawaited(
         _ref
             .read(logRepositoryProvider)
-            .log(
-              'warning',
-              'socket',
-              'Socket auth failed — refreshing token and retrying',
-            ),
+            .log('warning', 'socket', 'Socket auth failed'),
       );
-      unawaited(_retryAfterAuthFailure(serverUrl));
     });
     socket.onDisconnect((_) {
       // `dispose()` -> `_disconnect()` -> `socket.dispose()` triggers this
@@ -151,57 +159,19 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
     if (token != null) socket.emit('auth', token);
   }
 
-  /// A real `auth_failed` means the access token has actually expired —
-  /// re-reading storage alone won't help unless something else already
-  /// refreshed it, so this forces the same `/auth/refresh` call
-  /// `AuthInterceptor`/`SessionController` bootstrap already use, bounded
-  /// to 3 attempts with backoff so a genuinely revoked refresh token (or a
-  /// legacy-token server, which has no refresh endpoint at all) can't spin
-  /// forever.
-  Future<void> _retryAfterAuthFailure(String serverUrl) async {
-    if (_authRetryCount >= 3) {
-      unawaited(
-        _ref
-            .read(logRepositoryProvider)
-            .log(
-              'error',
-              'socket',
-              'Socket auth retry exhausted after 3 attempts — giving up',
-            ),
-      );
-      return;
-    }
-    _authRetryCount++;
-    _disconnect();
-
-    // Goes through TokenRefreshCoordinator (shared with AuthInterceptor and
-    // SessionController's bootstrap) rather than calling AuthRepository.
-    // refresh directly, so a socket reconnect racing a REST 401 never sends
-    // the same soon-to-be-stale refresh token to the server twice — see
-    // TokenRefreshCoordinator's doc comment.
-    try {
-      final user = await _ref
-          .read(tokenRefreshCoordinatorProvider)
-          .refresh(serverUrl: serverUrl);
-      // Bug fix 2026-08-03: without this, the in-memory session (and
-      // anything reading its token directly, like PlaybackController's
-      // stream URL builder) never saw this refresh — see
-      // SessionController.updateTokens for the full story.
-      _ref
-          .read(sessionControllerProvider.notifier)
-          .updateTokens(
-            accessToken: user.accessToken,
-            refreshToken: user.refreshToken,
-          );
-    } catch (_) {
-      // Refresh itself failed, or this is a legacy-token server with no
-      // refresh endpoint — fall through and just retry with whatever's
-      // already in storage rather than giving up immediately.
-    }
-
-    await Future.delayed(Duration(seconds: 2 * _authRetryCount));
-    final session = _ref.read(sessionControllerProvider);
-    if (session is SessionAuthenticated) await _connect(serverUrl);
+  /// Called by [SessionController.updateTokens] after any refresh succeeds
+  /// elsewhere — `AuthInterceptor`'s reactive REST-401 refresh, or the
+  /// cold-start bootstrap refresh — mirroring the reference app's
+  /// `nativeHttp.js` `updateTokens()` calling `$socket.sendAuthenticate()`
+  /// when the socket is connected but not authenticated. Without this,
+  /// nothing pokes an existing `authFailed` socket to retry with the
+  /// freshly rotated token: `socket_io_client` only auto-reconnects on a
+  /// transport-level drop, not on this app-level event — the underlying
+  /// connection is still up, just unauthenticated.
+  void reauthenticateIfNeeded() {
+    final socket = _socket;
+    if (socket == null || state != SocketConnectionStatus.authFailed) return;
+    unawaited(_emitFreshAuth(socket));
   }
 
   void _disconnect() {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/network/cover_image_url.dart';
 import '../../core/theme/app_skin_style.dart';
@@ -11,6 +10,7 @@ import '../../widgets/playback_loading_badge.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../settings/state/settings_providers.dart';
+import 'now_playing_navigation.dart';
 import 'state/playback_controller.dart';
 
 /// PLAN.md Phase 5.2: persistent bottom bar. Drop this in as a Scaffold's
@@ -37,6 +37,14 @@ class MiniPlayer extends ConsumerWidget {
       Future.microtask(
         () => ref.read(cellularBlockNoticeProvider.notifier).state = null,
       );
+    });
+    // See resetNowPlayingOpenGuard's doc comment: a forced logout while
+    // Now Playing is open strands its open-guard at `true` forever via a
+    // stack-replacing redirect rather than a pop. MiniPlayer's widget stays
+    // mounted (just covered) under that pushed route, so this listener
+    // catches the transition and clears the guard regardless.
+    ref.listen(sessionControllerProvider, (previous, next) {
+      if (next is! SessionAuthenticated) resetNowPlayingOpenGuard(ref);
     });
 
     final item = ref.watch(currentPlaybackItemProvider);
@@ -66,7 +74,7 @@ class MiniPlayer extends ConsumerWidget {
     };
 
     final content = InkWell(
-      onTap: () => context.push('/now-playing'),
+      onTap: () => openNowPlaying(context, ref),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: Row(
@@ -75,7 +83,7 @@ class MiniPlayer extends ConsumerWidget {
               icon: const Icon(Icons.keyboard_arrow_up),
               iconSize: 36,
               tooltip: 'Expand',
-              onPressed: () => context.push('/now-playing'),
+              onPressed: () => openNowPlaying(context, ref),
             ),
             if (serverUrl != null)
               ClipRRect(
@@ -101,7 +109,7 @@ class MiniPlayer extends ConsumerWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.fast_rewind),
+              icon: const Icon(Icons.replay),
               iconSize: 28,
               visualDensity: VisualDensity.compact,
               tooltip: 'Rewind',
@@ -118,7 +126,10 @@ class MiniPlayer extends ConsumerWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.fast_forward),
+              icon: Transform.flip(
+                flipX: true,
+                child: const Icon(Icons.replay),
+              ),
               iconSize: 28,
               visualDensity: VisualDensity.compact,
               tooltip: 'Fast forward',

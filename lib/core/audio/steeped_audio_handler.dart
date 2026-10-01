@@ -175,27 +175,47 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
       ),
     );
 
-    await _player.setAudioSources(children);
+    // Bug fix 2026-09-24 (evan: resuming a book briefly flashed "Opening
+    // Credits"/0:00 before snapping to the real position — reproduced on
+    // video). `setAudioSources` with no initial-position args always
+    // prepares at track 0 / position 0 first, and that state is real:
+    // `just_audio` broadcasts it immediately, and the Now Playing UI (bound
+    // to `globalPositionStream`/`playbackState`) showed it before the old
+    // code's separate follow-up `seekToGlobalPosition` call corrected it a
+    // moment later. Passing the target track/offset in as
+    // `initialIndex`/`initialPosition` instead makes the native prepare
+    // call start there directly, so track 0/position 0 is never reported at
+    // all -- nothing to flash.
+    final (initialIndex, initialPosition) = startPosition > 0 && _tracks.isNotEmpty
+        ? _trackAndOffsetFor(startPosition)
+        : (0, Duration.zero);
+    await _player.setAudioSources(
+      children,
+      initialIndex: initialIndex,
+      initialPosition: initialPosition,
+    );
     await _player.setSpeed(playbackSpeed);
-    if (startPosition > 0) {
-      await seekToGlobalPosition(startPosition);
-    }
   }
 
   /// Maps a global timeline position (what chapters are defined in terms
-  /// of) onto the correct child track + offset within it.
-  Future<void> seekToGlobalPosition(double seconds) async {
-    if (_tracks.isEmpty) return;
+  /// of) onto the correct child track index + offset within it.
+  (int, Duration) _trackAndOffsetFor(double seconds) {
     var targetIndex = _tracks.indexWhere((t) => seconds < t.endOffset);
     if (targetIndex == -1) targetIndex = _tracks.length - 1;
     final offsetWithin = (seconds - _tracks[targetIndex].startOffset).clamp(
       0,
       double.infinity,
     );
-    await _player.seek(
+    return (
+      targetIndex,
       Duration(milliseconds: (offsetWithin * 1000).round()),
-      index: targetIndex,
     );
+  }
+
+  Future<void> seekToGlobalPosition(double seconds) async {
+    if (_tracks.isEmpty) return;
+    final (index, offset) = _trackAndOffsetFor(seconds);
+    await _player.seek(offset, index: index);
   }
 
   /// Current position across the whole concatenated playlist, in seconds.
@@ -239,6 +259,26 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> rewind() => jumpBy(-jumpIntervalSeconds.toDouble());
 
+  /// Replay-style icons (evan's request, 2026-09-24) in place of
+  /// `audio_service`'s built-in `MediaControl.rewind`/`.fastForward`
+  /// (double-triangle `audio_service_fast_rewind`/`_fast_forward`
+  /// drawables) -- `ic_replay`/`ic_replay_forward` are rendered from the
+  /// same Material Icons font Flutter uses in-app (`Icons.replay`, plain
+  /// and horizontally mirrored), so the lock-screen/notification controls
+  /// visually match the in-app jump buttons. Android-only: `androidIcon` is
+  /// inert on iOS, which always renders its own system skip-interval icon
+  /// via `MPRemoteCommandCenter` regardless of what's set here.
+  static const _rewindControl = MediaControl(
+    androidIcon: 'drawable/ic_replay',
+    label: 'Rewind',
+    action: MediaAction.rewind,
+  );
+  static const _fastForwardControl = MediaControl(
+    androidIcon: 'drawable/ic_replay_forward',
+    label: 'Fast Forward',
+    action: MediaAction.fastForward,
+  );
+
   void _broadcastState(PlaybackEvent event) {
     final playing = _player.playing;
     // Keeps the lock-screen/notification duration matched to whichever
@@ -256,10 +296,10 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
     playbackState.add(
       playbackState.value.copyWith(
         controls: [
-          MediaControl.rewind,
+          _rewindControl,
           if (playing) MediaControl.pause else MediaControl.play,
           MediaControl.stop,
-          MediaControl.fastForward,
+          _fastForwardControl,
         ],
         systemActions: const {MediaAction.seek},
         androidCompactActionIndices: const [0, 1, 3],

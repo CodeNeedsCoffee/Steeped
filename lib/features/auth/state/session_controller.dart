@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/log_repository.dart';
 import '../../../core/network/dio_client.dart';
+import '../../../core/network/socket_service.dart';
 import '../../../core/storage/session_storage.dart';
 import '../../../models/server_status.dart';
 import '../../settings/data/account_repository.dart';
@@ -176,6 +177,10 @@ class SessionController extends Notifier<SessionState> {
         refreshToken: refreshToken,
       ),
     );
+    // Pokes an existing `authFailed` socket to retry with this freshly
+    // rotated token — see SocketService.reauthenticateIfNeeded for why
+    // nothing else does this automatically.
+    ref.read(socketServiceProvider.notifier).reauthenticateIfNeeded();
   }
 
   /// Changes the signed-in user's password. Lives here rather than in the

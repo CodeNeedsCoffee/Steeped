@@ -10,6 +10,7 @@ import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../downloads/state/download_controller.dart';
 import '../player/mini_player.dart';
+import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import '../podcasts/podcast_detail_view.dart';
 import 'state/library_providers.dart';
@@ -111,9 +112,7 @@ class _ItemDetailBody extends ConsumerWidget {
           const SizedBox(height: 12),
           LinearProgressIndicator(value: _displayProgressFraction(item)),
           Text(
-            item.progress!.isFinished
-                ? 'Finished'
-                : '${(_displayProgressFraction(item) * 100).round()}% complete',
+            item.progress!.isFinished ? 'Finished' : _progressSummary(item),
             style: textTheme.labelSmall,
           ),
         ],
@@ -131,7 +130,7 @@ class _ItemDetailBody extends ConsumerWidget {
                       if (context.mounted &&
                           ref.read(currentPlaybackItemProvider)?.id ==
                               item.id) {
-                        context.push('/now-playing');
+                        openNowPlaying(context, ref);
                       }
                     },
               icon: isLoadingPlay
@@ -236,6 +235,22 @@ class _ItemDetailBody extends ConsumerWidget {
     final duration = item.duration;
     if (duration == null || duration <= 0) return progress.progress;
     return (progress.currentTime / duration).clamp(0, 1);
+  }
+
+  /// "$X% complete", plus "$Yh $Zm left" for audiobooks specifically --
+  /// gated on [LibraryItemDetail.tracks] rather than just `duration != null`
+  /// because an ebook-only item's `currentTime`/`duration` both sit at 0
+  /// (see [MediaProgress]'s doc comment: its real reading position lives in
+  /// `ebookProgress`/`ebookLocation` instead), so there's no time-based
+  /// countdown to show for those.
+  String _progressSummary(LibraryItemDetail item) {
+    final percent = '${(_displayProgressFraction(item) * 100).round()}% complete';
+    final duration = item.duration;
+    if (item.tracks.isEmpty || duration == null || duration <= 0) {
+      return percent;
+    }
+    final remaining = (duration - item.progress!.currentTime).clamp(0.0, duration).toDouble();
+    return '$percent · ${_formatDuration(remaining)} left';
   }
 }
 

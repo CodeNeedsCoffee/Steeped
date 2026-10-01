@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../widgets/playback_loading_badge.dart';
 import '../player/mini_player.dart';
+import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import 'state/local_media_providers.dart';
 
@@ -89,7 +89,7 @@ class LocalMediaScreen extends ConsumerWidget {
                       .playLocalMedia(item.id);
                   if (context.mounted &&
                       ref.read(currentPlaybackItemProvider)?.id == item.id) {
-                    context.push('/now-playing');
+                    openNowPlaying(context, ref);
                   }
                 },
               );

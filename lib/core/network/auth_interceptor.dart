@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../features/auth/data/token_refresh_coordinator.dart';
+import '../../models/auth_user.dart';
 import '../storage/session_storage.dart';
 
 /// Attaches the bearer token to every request, and on a 401 makes a single
@@ -53,34 +54,64 @@ class AuthInterceptor extends QueuedInterceptor {
       return;
     }
 
+    final AuthUser user;
     try {
       // Goes through TokenRefreshCoordinator (shared with SocketService and
       // SessionController's bootstrap) rather than posting to /auth/refresh
       // directly, so a REST 401 racing a socket reconnect never sends the
       // same soon-to-be-stale refresh token to the server twice — see
       // TokenRefreshCoordinator's doc comment.
-      final user = await tokenRefreshCoordinator.refresh(
+      user = await tokenRefreshCoordinator.refresh(
         serverUrl: err.requestOptions.baseUrl,
       );
-      final newAccessToken = user.accessToken;
-      if (newAccessToken == null) {
+    } catch (e) {
+      // Bug fix 2026-09-30: this used to treat *any* failure here — a
+      // genuine server rejection, but equally a plain network timeout mid-
+      // refresh — as proof the session was dead, and unconditionally wiped
+      // secure storage via onSessionExpired(). A refresh call that never
+      // reached the server (or whose response never arrived) says nothing
+      // about whether the stored refresh token is actually still valid, so
+      // that path was destroying perfectly good sessions on nothing more
+      // than a bad-signal moment. Mirrors SessionController._bootstrap's
+      // existing DioExceptionType.badResponse-only distinction, and
+      // AudioBooth's CredentialsActor.handleError (~/Code/AudioBooth):
+      // only a definitive rejection — the refresh endpoint itself
+      // responding 401/403, or no refresh token existing at all — means
+      // the session is actually gone. Anything else is transient; leave
+      // the stored tokens alone and let the next call try again.
+      final isDefinitiveRejection =
+          e is StateError ||
+          (e is DioException && e.type == DioExceptionType.badResponse);
+      if (isDefinitiveRejection) {
         await onSessionExpired();
-        handler.next(err);
-        return;
       }
+      handler.next(err);
+      return;
+    }
 
-      onTokensRefreshed(
-        accessToken: newAccessToken,
-        refreshToken: user.refreshToken,
-      );
+    final newAccessToken = user.accessToken;
+    if (newAccessToken == null) {
+      await onSessionExpired();
+      handler.next(err);
+      return;
+    }
 
+    onTokensRefreshed(
+      accessToken: newAccessToken,
+      refreshToken: user.refreshToken,
+    );
+
+    try {
+      // A failure here is the *original* request failing again for reasons
+      // unrelated to auth (the refresh above already succeeded and is
+      // persisted) — propagate it as-is rather than treating it as a
+      // session-expiry signal too.
       final retryOptions = err.requestOptions
         ..headers['Authorization'] = 'Bearer $newAccessToken';
       final retryDio = Dio(BaseOptions(baseUrl: err.requestOptions.baseUrl));
       final retryResponse = await retryDio.fetch(retryOptions);
       handler.resolve(retryResponse);
     } catch (_) {
-      await onSessionExpired();
       handler.next(err);
     }
   }
