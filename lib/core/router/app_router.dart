@@ -16,6 +16,7 @@ import '../../features/library/library_grid_screen.dart';
 import '../../features/library/search_screen.dart';
 import '../../features/library/series_detail_screen.dart';
 import '../../features/localmedia/local_media_screen.dart';
+import '../../features/player/now_playing_navigation.dart';
 import '../../features/player/now_playing_screen.dart';
 import '../../features/podcasts/recent_episodes_screen.dart';
 import '../../models/library_series.dart';
@@ -33,7 +34,7 @@ import 'splash_screen.dart';
 /// PLAN.md Phase 1.4 (routes) + Phase 3 (real auth-gated redirects, added
 /// once [SessionController] existed to check).
 final appRouterProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/',
     refreshListenable: GoRouterRefreshNotifier(
       ref,
@@ -179,4 +180,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/logs', builder: (context, state) => const LogsScreen()),
     ],
   );
+
+  // See nowPlayingOpenProvider's doc comment: keeps that flag in sync with
+  // the router's real current stack, so it's correct whether `/now-playing`
+  // left the stack via a normal pop or via this same `redirect` replacing
+  // the stack out from under it (e.g. a forced logout).
+  router.routerDelegate.addListener(() {
+    final isOpen = router.routerDelegate.currentConfiguration.matches.any(
+      (match) => match.matchedLocation == '/now-playing',
+    );
+    ref.read(nowPlayingOpenProvider.notifier).state = isOpen;
+  });
+
+  return router;
 });

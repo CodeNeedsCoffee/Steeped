@@ -38,14 +38,6 @@ class MiniPlayer extends ConsumerWidget {
         () => ref.read(cellularBlockNoticeProvider.notifier).state = null,
       );
     });
-    // See resetNowPlayingOpenGuard's doc comment: a forced logout while
-    // Now Playing is open strands its open-guard at `true` forever via a
-    // stack-replacing redirect rather than a pop. MiniPlayer's widget stays
-    // mounted (just covered) under that pushed route, so this listener
-    // catches the transition and clears the guard regardless.
-    ref.listen(sessionControllerProvider, (previous, next) {
-      if (next is! SessionAuthenticated) resetNowPlayingOpenGuard(ref);
-    });
 
     final item = ref.watch(currentPlaybackItemProvider);
     if (item == null) return const SizedBox.shrink();
