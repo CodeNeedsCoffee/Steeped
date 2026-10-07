@@ -34,7 +34,7 @@ Locked in during Phase 0 of the build plan — see `PLAN.md` (0.1–0.13) for fu
 | State management | Riverpod |
 | Navigation | go_router |
 | Networking | dio |
-| Real-time | web_socket_channel |
+| Real-time | socket_io_client (socket.io v4 — the server doesn't speak raw websockets) |
 | Local database | drift (SQLite) |
 | Secure storage | flutter_secure_storage |
 | Audio | just_audio + audio_service |

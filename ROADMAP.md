@@ -201,6 +201,29 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   integration-test harness (see `linux/README.md`) — connect → login → Series tab → series detail → search,
   all real network calls, no mocks. See `PLAN.md` Phase 4 (4.5, 4.7, 4.10) for full detail.
 
+- **Bug fix (2026-09-30/10-01, reported by evan: iOS sessions logging out after extended idle periods)**:
+  `AuthInterceptor`'s refresh-failure handling treated *any* error from `/auth/refresh` — including a plain
+  network timeout — as proof the session was dead, wiping the stored session on nothing more than a
+  bad-signal moment. Fixed to only force logout on a definitive rejection (a real 401/403 from the refresh
+  call itself, or no refresh token in storage); any other error now leaves the session alone, matching the
+  distinction `SessionController`'s cold-start bootstrap already made. Also removed `SocketService`'s own
+  active refresh-and-retry loop (the one added in the 2026-08-01 fix above) — it could fire a refresh from
+  an arbitrary background moment, which iOS suspending the app mid-request could turn into a permanently
+  dead refresh token (the server rotates the token on every use regardless of whether the client ever sees
+  the response). Socket recovery now works the way the reference app does it: a successful REST-401 refresh
+  re-authenticates the existing socket as a side effect, rather than the socket chasing its own refresh.
+  Cross-checked against a cloned copy of `AudioBooth` (a native Audiobookshelf iOS client) for comparison.
+  **Not yet verified live** against the original multi-day iOS pattern — needs real on-device idle time to
+  confirm. See `PLAN.md` Phase 3.4 and 3.6 for full detail.
+
+- **Bug fix (2026-10-01, reported by evan: mini-player occasionally got permanently stuck, no errors
+  anywhere)**: a forced logout while Now Playing was open could strand the mini-player's open/closed guard
+  at `true` forever, because the guard only cleared on a route *pop* and a forced-logout redirect replaces
+  the navigation stack instead of popping it. Fixed by deriving the guard from the router's actual current
+  state (whether `/now-playing` is still present in its route stack) instead of tracking it by hand, so it's
+  correct no matter how the route leaves the stack. **Not yet verified live** — needs an on-device repro.
+  See `PLAN.md` Phase 5.2 for full detail.
+
 ## Next
 
 - Two parallel threads are open — Milestone 3 (skins) and Milestone 4 (car integration) — pick up either:
@@ -266,4 +289,7 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ---
 
-*Last updated: 2026-08-26 (library browsing follow-ups — series covers, Home/Series/Library tabs, Books+Series search)*
+*Last updated: 2026-10-01 (auth refresh-failure handling + stuck-mini-player fixes — see the two bug-fix
+entries above; note several commits between 2026-08-26 and this update — refresh-token fixes, playback
+fixes, font sizing, playback speed, iOS deployment tweaks — landed without a matching ROADMAP entry and
+aren't reconstructed here)*
