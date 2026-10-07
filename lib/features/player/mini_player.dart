@@ -65,7 +65,18 @@ class MiniPlayer extends ConsumerWidget {
       _ => (null, null),
     };
 
-    final content = InkWell(
+    // Glass Modern: the default 55%-alpha surface sits dark-on-dark and the
+    // card vanishes, so give the bar a lighter accent-tinted fill, a light
+    // edge, an accent glow and a thin progress line (Bookshelf unchanged).
+    final position = ref.watch(playbackPositionProvider).valueOrNull ?? 0.0;
+    final duration = item.duration ?? 0.0;
+    final progress = duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
+    final glassFill = Color.alphaBlend(
+      scheme.primary.withValues(alpha: 0.22),
+      scheme.surface,
+    ).withValues(alpha: 0.88);
+
+    final row = InkWell(
       onTap: () => openNowPlaying(context, ref),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
@@ -132,6 +143,21 @@ class MiniPlayer extends ConsumerWidget {
       ),
     );
 
+    final content = isFrosted
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              row,
+              LinearProgressIndicator(
+                value: progress,
+                minHeight: 2,
+                color: scheme.primary,
+                backgroundColor: Colors.white.withValues(alpha: 0.10),
+              ),
+            ],
+          )
+        : row;
+
     return SafeArea(
       top: false,
       child: Padding(
@@ -139,11 +165,22 @@ class MiniPlayer extends ConsumerWidget {
         child: Material(
           color: Colors.transparent,
           elevation: 8,
-          shadowColor: Colors.black.withValues(alpha: 0.35),
+          shadowColor: isFrosted
+              ? scheme.primary.withValues(alpha: 0.55)
+              : Colors.black.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(radii.lg),
           clipBehavior: Clip.antiAlias,
           child: isFrosted
-              ? GlassSurface(child: content)
+              ? DecoratedBox(
+                  position: DecorationPosition.foreground,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(radii.lg),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.24),
+                    ),
+                  ),
+                  child: GlassSurface(color: glassFill, child: content),
+                )
               : Container(color: scheme.surfaceContainerHigh, child: content),
         ),
       ),
