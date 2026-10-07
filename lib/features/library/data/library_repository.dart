@@ -4,7 +4,9 @@ import 'package:dio/dio.dart';
 
 import '../../../models/library.dart';
 import '../../../models/library_item.dart';
+import '../../../models/library_browse.dart';
 import '../../../models/library_item_detail.dart';
+import '../../../models/library_query.dart';
 import '../../../models/library_series.dart';
 import '../../../models/personalized_shelf.dart';
 import '../../../models/search_results.dart';
@@ -67,10 +69,18 @@ class LibraryRepository {
     required int page,
     int limit = 40,
     String? filter,
+    String? sort,
+    bool desc = false,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/libraries/$libraryId/items',
-      queryParameters: {'page': page, 'limit': limit, 'filter': ?filter},
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        'filter': ?filter,
+        'sort': ?sort,
+        if (sort != null && desc) 'desc': 1,
+      },
     );
     final data = response.data ?? const {};
     final results = (data['results'] as List<dynamic>?) ?? const [];
@@ -158,4 +168,152 @@ class LibraryRepository {
     );
     return SearchResults.fromJson(response.data ?? const {});
   }
+
+  // ---- LIBRARY_PLAN.md L1/L4: filter data, authors, collections, playlists
+
+  Future<LibraryFilterData> fetchFilterData(String libraryId) async {
+    final r = await _dio.get<Map<String, dynamic>>(
+      '/api/libraries/$libraryId/filterdata',
+    );
+    return LibraryFilterData.fromJson(r.data ?? const {});
+  }
+
+  Future<List<Author>> fetchAuthors(String libraryId) async {
+    final r = await _dio.get<Map<String, dynamic>>(
+      '/api/libraries/$libraryId/authors',
+    );
+    final list = (r.data?['authors'] as List<dynamic>?) ?? const [];
+    final authors = list
+        .whereType<Map<String, dynamic>>()
+        .map(Author.fromJson)
+        .toList();
+    authors.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return authors;
+  }
+
+  Future<Author> fetchAuthor(String authorId) async {
+    final r = await _dio.get<Map<String, dynamic>>(
+      '/api/authors/$authorId',
+      queryParameters: {'include': 'items,series'},
+    );
+    return Author.fromJson(r.data ?? const {});
+  }
+
+  Future<List<LibraryCollection>> fetchCollections(String libraryId) async {
+    final r = await _dio.get<Map<String, dynamic>>(
+      '/api/libraries/$libraryId/collections',
+    );
+    final list = (r.data?['results'] as List<dynamic>?) ?? const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(LibraryCollection.fromJson)
+        .toList();
+  }
+
+  Future<LibraryCollection> fetchCollection(String id) async {
+    final r = await _dio.get<Map<String, dynamic>>('/api/collections/$id');
+    return LibraryCollection.fromJson(r.data ?? const {});
+  }
+
+  Future<LibraryCollection> createCollection({
+    required String libraryId,
+    required String name,
+    List<String> bookIds = const [],
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/api/collections',
+      data: {'libraryId': libraryId, 'name': name, 'books': bookIds},
+    );
+    return LibraryCollection.fromJson(r.data ?? const {});
+  }
+
+  /// Rename and/or replace the full book list (order = list order).
+  Future<void> updateCollection(
+    String id, {
+    String? name,
+    List<String>? bookIds,
+  }) => _dio.patch<void>(
+    '/api/collections/$id',
+    data: {'name': ?name, 'books': ?bookIds},
+  );
+
+  Future<void> deleteCollection(String id) =>
+      _dio.delete<void>('/api/collections/$id');
+
+  Future<void> addBookToCollection(String id, String bookId) =>
+      _dio.post<void>('/api/collections/$id/book', data: {'id': bookId});
+
+  Future<void> removeBookFromCollection(String id, String bookId) =>
+      _dio.delete<void>('/api/collections/$id/book/$bookId');
+
+  Future<List<Playlist>> fetchPlaylists(String libraryId) async {
+    final r = await _dio.get<Map<String, dynamic>>(
+      '/api/libraries/$libraryId/playlists',
+    );
+    final list = (r.data?['results'] as List<dynamic>?) ?? const [];
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map(Playlist.fromJson)
+        .toList();
+  }
+
+  Future<Playlist> fetchPlaylist(String id) async {
+    final r = await _dio.get<Map<String, dynamic>>('/api/playlists/$id');
+    return Playlist.fromJson(r.data ?? const {});
+  }
+
+  Future<Playlist> createPlaylist({
+    required String libraryId,
+    required String name,
+    List<({String libraryItemId, String? episodeId})> items = const [],
+  }) async {
+    final r = await _dio.post<Map<String, dynamic>>(
+      '/api/playlists',
+      data: {
+        'libraryId': libraryId,
+        'name': name,
+        'items': [
+          for (final i in items)
+            {'libraryItemId': i.libraryItemId, 'episodeId': ?i.episodeId},
+        ],
+      },
+    );
+    return Playlist.fromJson(r.data ?? const {});
+  }
+
+  Future<void> renamePlaylist(String id, String name) =>
+      _dio.patch<void>('/api/playlists/$id', data: {'name': name});
+
+  /// Confirmed against `PlaylistController.update`: a non-empty `items`
+  /// array rewrites the playlist order.
+  Future<void> reorderPlaylist(String id, List<PlaylistItem> items) =>
+      _dio.patch<void>(
+        '/api/playlists/$id',
+        data: {
+          'items': [
+            for (final i in items)
+              {'libraryItemId': i.libraryItemId, 'episodeId': ?i.episodeId},
+          ],
+        },
+      );
+
+  Future<void> deletePlaylist(String id) =>
+      _dio.delete<void>('/api/playlists/$id');
+
+  Future<void> addToPlaylist(
+    String id,
+    String libraryItemId, {
+    String? episodeId,
+  }) => _dio.post<void>(
+    '/api/playlists/$id/item',
+    data: {'libraryItemId': libraryItemId, 'episodeId': ?episodeId},
+  );
+
+  Future<void> removeFromPlaylist(
+    String id,
+    String libraryItemId, {
+    String? episodeId,
+  }) => _dio.delete<void>(
+    '/api/playlists/$id/item/$libraryItemId${episodeId == null ? '' : '/$episodeId'}',
+  );
 }

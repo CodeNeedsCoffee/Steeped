@@ -15,6 +15,7 @@ import '../../../core/network/cover_image_url.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../models/audio_track.dart';
 import '../../../models/bookmark.dart';
+import '../../../models/library_browse.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/podcast_episode.dart';
 import '../../auth/data/token_refresh_coordinator.dart';
@@ -1073,6 +1074,35 @@ class PlaybackController extends Notifier<void> {
             isFinished: true,
           );
     }
+    await _advanceQueue(item);
+  }
+
+  /// Starts [queue] at [startIndex] (books only; an episode entry ends the
+  /// queue because episodes need their podcast loaded first).
+  Future<void> startQueue(PlayQueue queue, int startIndex) async {
+    ref.read(playQueueProvider.notifier).state = queue;
+    await playItem(queue.items[startIndex].libraryItemId);
+  }
+
+  /// When a queued item finishes, play the next one (LIBRARY_PLAN.md L7).
+  Future<void> _advanceQueue(LibraryItemDetail finished) async {
+    final queue = ref.read(playQueueProvider);
+    if (queue == null) return;
+    final index = queue.indexOf(finished.downloadId);
+    if (index < 0 || index + 1 >= queue.items.length) {
+      ref.read(playQueueProvider.notifier).state = null;
+      return;
+    }
+    final next = queue.items[index + 1];
+    if (next.episodeId != null) {
+      ref.read(playQueueProvider.notifier).state = null;
+      return;
+    }
+    try {
+      await playItem(next.libraryItemId);
+    } catch (_) {
+      ref.read(playQueueProvider.notifier).state = null;
+    }
   }
 
   /// No explicit sync here — the `playbackState` listener above reacts to
@@ -1207,6 +1237,24 @@ class PlaybackController extends Notifier<void> {
     await _handler.stop();
   }
 }
+
+/// LIBRARY_PLAN.md L7: an ordered list (a playlist or collection) being
+/// played through. The current position is derived from whichever item is
+/// loaded, so reordering/removing entries never desyncs an index.
+class PlayQueue {
+  const PlayQueue({required this.name, required this.items});
+
+  final String name;
+  final List<PlaylistItem> items;
+
+  PlayQueue copyWith({List<PlaylistItem>? items}) =>
+      PlayQueue(name: name, items: items ?? this.items);
+
+  int indexOf(String downloadId) =>
+      items.indexWhere((i) => i.downloadId == downloadId);
+}
+
+final playQueueProvider = StateProvider<PlayQueue?>((ref) => null);
 
 final playbackControllerProvider = NotifierProvider<PlaybackController, void>(
   PlaybackController.new,

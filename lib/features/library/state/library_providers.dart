@@ -7,11 +7,15 @@ import '../../../core/network/dio_client.dart';
 import '../../../core/network/retry.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../models/library.dart';
+import '../../../models/library_browse.dart';
+import '../../../models/library_query.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/personalized_shelf.dart';
 import '../../../models/search_results.dart';
 import '../../downloads/state/download_controller.dart';
 import '../data/library_cache_repository.dart';
+import '../data/library_query_store.dart';
+import '../data/recent_searches_store.dart';
 import '../data/library_repository.dart';
 import 'library_items_state.dart';
 import 'library_series_state.dart';
@@ -100,14 +104,96 @@ final itemDetailProvider = FutureProvider.autoDispose
       );
     });
 
+final libraryQueryStoreProvider = Provider<LibraryQueryStore>(
+  (ref) => LibraryQueryStore(ref.watch(appDatabaseProvider)),
+);
+
+/// LIBRARY_PLAN.md L4: the Books grid's sort / filter / view mode for one
+/// library, persisted per library. Starts at the default and swaps in the
+/// saved value as soon as it's read (a no-op if they're equal).
+class LibraryQueryController extends FamilyNotifier<LibraryQuery, String> {
+  late String _libraryId;
+
+  @override
+  LibraryQuery build(String libraryId) {
+    _libraryId = libraryId;
+    var disposed = false;
+    ref.onDispose(() => disposed = true);
+    Future.microtask(() async {
+      final saved = await ref.read(libraryQueryStoreProvider).load(libraryId);
+      if (!disposed) state = saved;
+    });
+    return const LibraryQuery();
+  }
+
+  void update(LibraryQuery query) {
+    state = query;
+    unawaited(ref.read(libraryQueryStoreProvider).save(_libraryId, query));
+  }
+}
+
+final libraryQueryProvider =
+    NotifierProvider.family<LibraryQueryController, LibraryQuery, String>(
+      LibraryQueryController.new,
+    );
+
+final libraryFilterDataProvider = FutureProvider.autoDispose
+    .family<LibraryFilterData, String>((ref, libraryId) {
+      return withNetworkRetry(
+        () => ref.watch(libraryRepositoryProvider).fetchFilterData(libraryId),
+      );
+    });
+
+final authorsProvider = FutureProvider.autoDispose.family<List<Author>, String>(
+  (ref, libraryId) => withNetworkRetry(
+    () => ref.watch(libraryRepositoryProvider).fetchAuthors(libraryId),
+  ),
+);
+
+final authorDetailProvider = FutureProvider.autoDispose.family<Author, String>(
+  (ref, authorId) => withNetworkRetry(
+    () => ref.watch(libraryRepositoryProvider).fetchAuthor(authorId),
+  ),
+);
+
+final collectionsProvider = FutureProvider.autoDispose
+    .family<List<LibraryCollection>, String>(
+      (ref, libraryId) => withNetworkRetry(
+        () => ref.watch(libraryRepositoryProvider).fetchCollections(libraryId),
+      ),
+    );
+
+final collectionDetailProvider = FutureProvider.autoDispose
+    .family<LibraryCollection, String>(
+      (ref, id) => withNetworkRetry(
+        () => ref.watch(libraryRepositoryProvider).fetchCollection(id),
+      ),
+    );
+
+final playlistsProvider = FutureProvider.autoDispose
+    .family<List<Playlist>, String>(
+      (ref, libraryId) => withNetworkRetry(
+        () => ref.watch(libraryRepositoryProvider).fetchPlaylists(libraryId),
+      ),
+    );
+
+final playlistDetailProvider = FutureProvider.autoDispose
+    .family<Playlist, String>(
+      (ref, id) => withNetworkRetry(
+        () => ref.watch(libraryRepositoryProvider).fetchPlaylist(id),
+      ),
+    );
+
 class LibraryItemsController extends FamilyNotifier<LibraryItemsState, String> {
-  late final LibraryRepository _repository;
-  late final String _libraryId;
+  late LibraryRepository _repository;
+  late String _libraryId;
+  late LibraryQuery _query;
 
   @override
   LibraryItemsState build(String libraryId) {
     _repository = ref.watch(libraryRepositoryProvider);
     _libraryId = libraryId;
+    _query = ref.watch(libraryQueryProvider(libraryId));
     Future.microtask(loadFirstPage);
     return const LibraryItemsState.initial();
   }
@@ -116,7 +202,13 @@ class LibraryItemsController extends FamilyNotifier<LibraryItemsState, String> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final page = await withNetworkRetry(
-        () => _repository.fetchLibraryItems(_libraryId, page: 0),
+        () => _repository.fetchLibraryItems(
+          _libraryId,
+          page: 0,
+          filter: _query.filterParam,
+          sort: _query.sort.param,
+          desc: _query.desc,
+        ),
       );
       state = LibraryItemsState(
         items: page.items,
@@ -136,7 +228,13 @@ class LibraryItemsController extends FamilyNotifier<LibraryItemsState, String> {
     try {
       final nextPage = state.page + 1;
       final page = await withNetworkRetry(
-        () => _repository.fetchLibraryItems(_libraryId, page: nextPage),
+        () => _repository.fetchLibraryItems(
+          _libraryId,
+          page: nextPage,
+          filter: _query.filterParam,
+          sort: _query.sort.param,
+          desc: _query.desc,
+        ),
       );
       state = state.copyWith(
         items: [...state.items, ...page.items],
@@ -267,4 +365,35 @@ class SearchController extends AutoDisposeFamilyNotifier<
 final searchControllerProvider = NotifierProvider.autoDispose
     .family<SearchController, AsyncValue<SearchResults?>, String>(
       SearchController.new,
+    );
+
+final recentSearchesStoreProvider = Provider<RecentSearchesStore>(
+  (ref) => RecentSearchesStore(ref.watch(appDatabaseProvider)),
+);
+
+class RecentSearchesController extends Notifier<List<String>> {
+  @override
+  List<String> build() {
+    var disposed = false;
+    ref.onDispose(() => disposed = true);
+    Future.microtask(() async {
+      final saved = await ref.read(recentSearchesStoreProvider).load();
+      if (!disposed) state = saved;
+    });
+    return const [];
+  }
+
+  Future<void> add(String term) async {
+    state = await ref.read(recentSearchesStoreProvider).add(term);
+  }
+
+  Future<void> clear() async {
+    state = const [];
+    await ref.read(recentSearchesStoreProvider).clear();
+  }
+}
+
+final recentSearchesProvider =
+    NotifierProvider<RecentSearchesController, List<String>>(
+      RecentSearchesController.new,
     );

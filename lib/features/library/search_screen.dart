@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/network/cover_image_url.dart';
 import '../../models/library_item.dart';
+import '../../models/library_query.dart';
 import '../../models/library_series.dart';
+import '../../models/search_results.dart';
+import 'library_actions.dart';
+import 'library_browse_widgets.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
@@ -50,12 +54,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           controller: _controller,
           autofocus: true,
           decoration: const InputDecoration(
-            hintText: 'Search books and series…',
+            hintText: 'Search books, series, authors…',
             border: InputBorder.none,
           ),
-          onChanged: (query) => ref
-              .read(searchControllerProvider(widget.libraryId).notifier)
-              .search(query),
+          onChanged: (query) {
+            setState(() {});
+            ref
+                .read(searchControllerProvider(widget.libraryId).notifier)
+                .search(query);
+          },
+          onSubmitted: (q) => ref.read(recentSearchesProvider.notifier).add(q),
         ),
       ),
       body: serverUrl == null
@@ -63,7 +71,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           : resultsAsync.when(
               data: (results) {
                 if (results == null) {
-                  return const Center(child: Text('Search this library.'));
+                  return _RecentSearches(
+                    onPick: (term) {
+                      _controller.text = term;
+                      setState(() {});
+                      ref
+                          .read(searchControllerProvider(widget.libraryId).notifier)
+                          .search(term);
+                    },
+                  );
                 }
                 if (results.isEmpty) {
                   return const Center(child: Text('No results.'));
@@ -84,6 +100,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             )
                             .toList(),
                       ),
+                    if (results.authors.isNotEmpty)
+                      _ResultSection(
+                        title: 'Authors',
+                        children: [
+                          for (final a in results.authors)
+                            ListTile(
+                              leading: AuthorAvatar(
+                                author: a,
+                                serverUrl: serverUrl,
+                                token: token,
+                                size: 40,
+                              ),
+                              title: Text(a.name),
+                              subtitle: Text('${a.numBooks} books'),
+                              onTap: () {
+                                ref.read(recentSearchesProvider.notifier).add(_controller.text);
+                                context.push('/author/${a.id}');
+                              },
+                            ),
+                        ],
+                      ),
                     if (results.series.isNotEmpty)
                       _ResultSection(
                         title: 'Series',
@@ -97,6 +134,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             )
                             .toList(),
                       ),
+                    ..._facetSection(context, 'Narrators', LibraryFilterGroup.narrators, results.narrators),
+                    ..._facetSection(context, 'Genres', LibraryFilterGroup.genres, results.genres),
+                    ..._facetSection(context, 'Tags', LibraryFilterGroup.tags, results.tags),
                   ],
                 );
               },
@@ -104,6 +144,69 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               error: (error, _) =>
                   Center(child: Text('Search failed: $error')),
             ),
+    );
+  }
+}
+
+extension on _SearchScreenState {
+  List<Widget> _facetSection(
+    BuildContext context,
+    String title,
+    LibraryFilterGroup group,
+    List<SearchFacet> facets,
+  ) {
+    if (facets.isEmpty) return const [];
+    return [
+      _ResultSection(
+        title: title,
+        children: [
+          for (final f in facets)
+            ListTile(
+              leading: const Icon(Icons.filter_alt_outlined),
+              title: Text(f.name),
+              subtitle: Text('${f.count} items'),
+              onTap: () {
+                ref.read(recentSearchesProvider.notifier).add(_controller.text);
+                final q = ref.read(libraryQueryProvider(widget.libraryId));
+                ref
+                    .read(libraryQueryProvider(widget.libraryId).notifier)
+                    .update(q.withFilter(group, f.name));
+                context.push('/library/${widget.libraryId}');
+              },
+            ),
+        ],
+      ),
+    ];
+  }
+}
+
+class _RecentSearches extends ConsumerWidget {
+  const _RecentSearches({required this.onPick});
+
+  final void Function(String) onPick;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recent = ref.watch(recentSearchesProvider);
+    if (recent.isEmpty) {
+      return const Center(child: Text('Search this library.'));
+    }
+    return ListView(
+      children: [
+        ListTile(
+          title: const Text('Recent searches'),
+          trailing: TextButton(
+            onPressed: () => ref.read(recentSearchesProvider.notifier).clear(),
+            child: const Text('Clear'),
+          ),
+        ),
+        for (final term in recent)
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: Text(term),
+            onTap: () => onPick(term),
+          ),
+      ],
     );
   }
 }
@@ -129,7 +232,7 @@ class _ResultSection extends StatelessWidget {
   }
 }
 
-class _BookResultTile extends StatelessWidget {
+class _BookResultTile extends ConsumerWidget {
   const _BookResultTile({required this.item, required this.serverUrl, required this.token});
 
   final LibraryItem item;
@@ -137,8 +240,9 @@ class _BookResultTile extends StatelessWidget {
   final String? token;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ListTile(
+      onLongPress: () => showItemQuickActions(context, ref, item),
       leading: CoverImage(
         url: coverImageUrl(
           serverUrl: serverUrl,

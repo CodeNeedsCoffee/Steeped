@@ -18,6 +18,7 @@ class LibraryItem {
     required this.seriesName,
     required this.duration,
     required this.hasEbook,
+    this.libraryId,
   });
 
   factory LibraryItem.fromJson(Map<String, dynamic> json) {
@@ -41,6 +42,7 @@ class LibraryItem {
           ? null
           : (media['duration'] as num?)?.toDouble(),
       hasEbook: !isPodcast && media['ebookFormat'] != null,
+      libraryId: json['libraryId']?.toString(),
     );
   }
 
@@ -54,4 +56,5 @@ class LibraryItem {
   final String? seriesName;
   final double? duration; // seconds, books only in this minified shape
   final bool hasEbook;
+  final String? libraryId;
 }

@@ -20,7 +20,7 @@ import '../player/mini_player.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/pending_sync_controller.dart';
 import '../player/state/playback_controller.dart';
-import 'library_grid_screen.dart';
+import 'library_browse_tab.dart';
 import 'state/library_providers.dart';
 
 /// PLAN.md Phase 4.2 (libraries + switcher), 4.3 (personalized home
@@ -246,7 +246,11 @@ class _HomeShellTabs extends ConsumerWidget {
                   : _SeriesTab(libraryId: libraryId),
             isOffline
                 ? const _OfflineTabPlaceholder(label: 'Library')
-                : LibraryItemsGrid(libraryId: libraryId, topPadding: topInset),
+                : LibraryBrowseTab(
+                    libraryId: libraryId,
+                    isPodcast: isPodcast,
+                    topPadding: topInset,
+                  ),
           ],
         ),
         bottomNavigationBar: const MiniPlayer(),

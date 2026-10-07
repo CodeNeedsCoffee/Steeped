@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/network/cover_image_url.dart';
 import '../../core/theme/app_skin_style.dart';
 import '../../models/library_item.dart';
+import '../../models/library_query.dart';
+import 'library_actions.dart';
+import 'library_toolbar.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
@@ -25,7 +28,12 @@ class LibraryGridScreen extends ConsumerWidget {
     final total = ref.watch(libraryItemsProvider(libraryId)).total;
     return Scaffold(
       appBar: AppBar(title: Text('Library ($total)')),
-      body: LibraryItemsGrid(libraryId: libraryId),
+      body: Column(
+        children: [
+          LibraryToolbar(libraryId: libraryId),
+          Expanded(child: LibraryItemsGrid(libraryId: libraryId, topPadding: 4)),
+        ],
+      ),
       bottomNavigationBar: const MiniPlayer(),
     );
   }
@@ -80,6 +88,7 @@ class _LibraryItemsGridState extends ConsumerState<LibraryItemsGrid> {
   Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
     final state = ref.watch(libraryItemsProvider(widget.libraryId));
+    final viewMode = ref.watch(libraryQueryProvider(widget.libraryId)).viewMode;
     final (serverUrl, token) = switch (session) {
       SessionAuthenticated(:final serverUrl, :final user) => (
         serverUrl,
@@ -95,12 +104,64 @@ class _LibraryItemsGridState extends ConsumerState<LibraryItemsGrid> {
       return Center(child: Text('Failed to load: ${state.error}'));
     }
     if (state.items.isEmpty) {
-      return const Center(child: Text('This library is empty.'));
+      final filtered = ref.watch(libraryQueryProvider(widget.libraryId)).hasFilter;
+      return Center(
+        child: Text(filtered ? 'Nothing matches this filter.' : 'This library is empty.'),
+      );
     }
     if (serverUrl == null) {
       return const SizedBox.shrink();
     }
-    return GridView.builder(
+    Future<void> refresh() => ref
+        .read(libraryItemsProvider(widget.libraryId).notifier)
+        .loadFirstPage();
+    if (viewMode == LibraryViewMode.list) {
+      return RefreshIndicator(
+        onRefresh: refresh,
+        child: ListView.builder(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(8, widget.topPadding, 8, 16),
+          itemCount: state.items.length + (state.hasMore ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index >= state.items.length) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final item = state.items[index];
+            return ListTile(
+              leading: CoverImage(
+                url: coverImageUrl(
+                  serverUrl: serverUrl,
+                  itemId: item.id,
+                  token: token,
+                  updatedAt: item.updatedAt,
+                ),
+                width: 48,
+                height: 48,
+              ),
+              title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text(
+                [
+                  ?item.authorOrPublisherName,
+                  if (item.duration != null) _fmt(item.duration!),
+                ].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => context.push('/item/${item.id}'),
+              onLongPress: () => showItemQuickActions(context, ref, item),
+            );
+          },
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: refresh,
+      child: GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       controller: _scrollController,
       padding: EdgeInsets.fromLTRB(16, widget.topPadding, 16, 16),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -115,21 +176,36 @@ class _LibraryItemsGridState extends ConsumerState<LibraryItemsGrid> {
           return const Center(child: CircularProgressIndicator());
         }
         final item = state.items[index];
-        return _GridTile(item: item, serverUrl: serverUrl, token: token);
+        return LibraryBookTile(item: item, serverUrl: serverUrl, token: token);
       },
+    ),
     );
+  }
+
+  static String _fmt(double seconds) {
+    final d = Duration(seconds: seconds.round());
+    return d.inHours == 0
+        ? '${d.inMinutes}m'
+        : '${d.inHours}h ${d.inMinutes.remainder(60)}m';
   }
 }
 
-class _GridTile extends StatelessWidget {
-  const _GridTile({required this.item, required this.serverUrl, required this.token});
+/// Cover tile shared by the library grid, author/collection screens; a long
+/// press opens the quick-actions sheet (LIBRARY_PLAN.md L6).
+class LibraryBookTile extends ConsumerWidget {
+  const LibraryBookTile({
+    required this.item,
+    required this.serverUrl,
+    required this.token,
+    super.key,
+  });
 
   final LibraryItem item;
   final String serverUrl;
   final String? token;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final coverStyle =
         Theme.of(context).extension<AppSkinStyle>()?.coverStyle ??
         CoverStyle.modernCard;
@@ -146,6 +222,7 @@ class _GridTile extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => context.push('/item/${item.id}'),
+      onLongPress: () => showItemQuickActions(context, ref, item),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -73,6 +73,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         ref.watch(playbackLoadingIdProvider) == item.downloadId ||
         ref.watch(isReconnectingProvider);
     final sleepRemaining = ref.watch(sleepTimerRemainingProvider);
+    final queue = ref.watch(playQueueProvider);
     final controller = ref.read(playbackControllerProvider.notifier);
     final (serverUrl, token) = switch (session) {
       SessionAuthenticated(:final serverUrl, :final user) => (
@@ -140,6 +141,12 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         ),
         title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
+          if (queue != null)
+            IconButton(
+              icon: const Icon(Icons.queue_music),
+              tooltip: 'Queue',
+              onPressed: () => _showQueueSheet(context),
+            ),
           IconButton(
             icon: Icon(
               sleepRemaining != null
@@ -480,6 +487,79 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// LIBRARY_PLAN.md L7: the playlist/collection being played through.
+  void _showQueueSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Consumer(
+        builder: (sheetContext, ref, _) {
+          final queue = ref.watch(playQueueProvider);
+          final current = ref.watch(currentPlaybackItemProvider);
+          if (queue == null) return const SizedBox(height: 120, child: Center(child: Text('Queue finished.')));
+          return SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * 0.6,
+            child: Column(
+              children: [
+                ListTile(
+                  title: Text('Queue: ${queue.name}'),
+                  trailing: TextButton(
+                    onPressed: () {
+                      ref.read(playQueueProvider.notifier).state = null;
+                      Navigator.of(sheetContext).pop();
+                    },
+                    child: const Text('Clear'),
+                  ),
+                ),
+                Expanded(
+                  child: ReorderableListView.builder(
+                    itemCount: queue.items.length,
+                    onReorder: (a, b) {
+                      final items = [...queue.items];
+                      if (b > a) b -= 1;
+                      items.insert(b, items.removeAt(a));
+                      ref.read(playQueueProvider.notifier).state =
+                          queue.copyWith(items: items);
+                    },
+                    itemBuilder: (context, i) {
+                      final it = queue.items[i];
+                      final isCurrent = current?.downloadId == it.downloadId;
+                      return ListTile(
+                        key: ValueKey('${it.downloadId}#$i'),
+                        selected: isCurrent,
+                        leading: Icon(isCurrent ? Icons.equalizer : Icons.music_note),
+                        title: Text(it.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        onTap: isCurrent
+                            ? null
+                            : () => ref
+                                  .read(playbackControllerProvider.notifier)
+                                  .playItem(it.libraryItemId),
+                        trailing: Padding(
+                          padding: const EdgeInsets.only(right: 32),
+                          child: IconButton(
+                            tooltip: 'Remove from queue',
+                            icon: const Icon(Icons.close),
+                            onPressed: isCurrent
+                                ? null
+                                : () => ref.read(playQueueProvider.notifier).state =
+                                      queue.copyWith(
+                                        items: [...queue.items]..removeAt(i),
+                                      ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

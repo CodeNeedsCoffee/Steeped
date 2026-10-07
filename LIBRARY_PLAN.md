@@ -97,3 +97,19 @@ Each step ends with its Linux integration test passing and the PLAN.md/ROADMAP.m
 - Playlist reorder payload shape should be confirmed against `PlaylistController.update` before building.
 - Glass visuals are subjective; expect one round of tuning after you see screenshots.
 - No Android/iOS verification in this plan by decision; platform-specific behaviour stays flagged as unverified.
+
+## Status (2026-10-07)
+
+Built: G0, L1, L2, L3, L4, L5, L6, L7. Verified in the Linux app against audiobooks.dev with
+`integration_test/library_features_test.dart` (sub-filter, sort + persistence, direction, progress filter + chip,
+grid/list, quick-actions sheet, authors + detail, collections load, playlist create/add/reorder/remove/delete round trip
+with the server, search + recent searches) plus unit tests in `test/features/library/`.
+
+Not verified (flagged honestly):
+- Play-queue auto-advance (L7): needs audio, which Linux lacks; the logic is in `PlaybackController._advanceQueue`
+  and has no controller-level test yet.
+- Collection create/edit/delete: the demo account is read-only for collections, so only listing was exercised.
+- The add-to-playlist / add-to-collection sheets were exercised through the repository calls, not tapped through the UI.
+- Playlist drag-reorder was verified server-side; the drag gesture itself was not driven.
+- Search facet taps (narrator/genre/tag) set the library filter and open the filtered grid; not tapped in the test.
+- Nothing here was run on Android or iOS.

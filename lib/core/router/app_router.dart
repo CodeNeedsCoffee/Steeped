@@ -12,6 +12,7 @@ import '../../features/ebook/epub_reader_screen.dart';
 import '../../features/ebook/pdf_reader_screen.dart';
 import '../../features/library/home_shell_screen.dart';
 import '../../features/library/item_detail_screen.dart';
+import '../../features/library/library_detail_screens.dart';
 import '../../features/library/library_grid_screen.dart';
 import '../../features/library/search_screen.dart';
 import '../../features/library/series_detail_screen.dart';
@@ -86,6 +87,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/item/:itemId',
         builder: (context, state) =>
             ItemDetailScreen(itemId: state.pathParameters['itemId']!),
+      ),
+      GoRoute(
+        path: '/author/:authorId',
+        builder: (context, state) =>
+            AuthorDetailScreen(authorId: state.pathParameters['authorId']!),
+      ),
+      GoRoute(
+        path: '/collection/:collectionId',
+        builder: (context, state) => CollectionDetailScreen(
+          collectionId: state.pathParameters['collectionId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/playlist/:playlistId',
+        builder: (context, state) => PlaylistDetailScreen(
+          playlistId: state.pathParameters['playlistId']!,
+        ),
       ),
       GoRoute(
         path: '/series/:seriesId',
