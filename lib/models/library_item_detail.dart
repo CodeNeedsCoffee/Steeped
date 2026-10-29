@@ -1,3 +1,4 @@
+import 'library_item.dart';
 import 'audio_track.dart';
 import 'ebook_file.dart';
 import 'media_progress.dart';
@@ -249,6 +250,22 @@ class LibraryItemDetail {
   /// screen/notification art for offline items without a network fetch.
   /// Null for streamed items, which fall back to [coverImageUrl] instead.
   final String? localCoverPath;
+
+  /// The list-card shape of this item, for screens that open the shared
+  /// quick-actions sheet from a detail page.
+  LibraryItem toLibraryItem() => LibraryItem(
+    id: id,
+    mediaType: mediaType,
+    coverPath: coverPath,
+    updatedAt: updatedAt,
+    title: title,
+    subtitle: subtitle,
+    authorOrPublisherName: authorNames.isEmpty ? null : authorNames,
+    seriesName: series.isEmpty ? null : series.first.name,
+    duration: duration,
+    hasEbook: hasEbook,
+    libraryId: libraryId,
+  );
 
   bool get isPodcast => mediaType == 'podcast';
   bool get isEpisode => episodeId != null;

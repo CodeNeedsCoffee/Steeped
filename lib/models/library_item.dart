@@ -19,6 +19,8 @@ class LibraryItem {
     required this.duration,
     required this.hasEbook,
     this.libraryId,
+    this.seriesSequence,
+    this.collapsedSeries,
   });
 
   factory LibraryItem.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,16 @@ class LibraryItem {
           : (media['duration'] as num?)?.toDouble(),
       hasEbook: !isPodcast && media['ebookFormat'] != null,
       libraryId: json['libraryId']?.toString(),
+      // Only present when the item came from an author page's series group.
+      seriesSequence: metadata['series'] is Map<String, dynamic>
+          ? (metadata['series'] as Map<String, dynamic>)['sequence']
+                ?.toString()
+          : null,
+      collapsedSeries: json['collapsedSeries'] is Map<String, dynamic>
+          ? CollapsedSeries.fromJson(
+              json['collapsedSeries'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 
@@ -57,4 +69,31 @@ class LibraryItem {
   final double? duration; // seconds, books only in this minified shape
   final bool hasEbook;
   final String? libraryId;
+
+  /// Position within the series this item was grouped under (author pages).
+  final String? seriesSequence;
+
+  /// Set when the library list was fetched with `collapseseries`: this item
+  /// stands in for a whole series.
+  final CollapsedSeries? collapsedSeries;
+}
+
+class CollapsedSeries {
+  const CollapsedSeries({
+    required this.id,
+    required this.name,
+    required this.numBooks,
+  });
+
+  factory CollapsedSeries.fromJson(Map<String, dynamic> json) {
+    return CollapsedSeries(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Series',
+      numBooks: (json['numBooks'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  final String id;
+  final String name;
+  final int numBooks;
 }

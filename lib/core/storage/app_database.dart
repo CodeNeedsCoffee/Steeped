@@ -14,6 +14,23 @@ class KeyValueEntries extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// QOL_PLAN E2: one row per server + account the app is signed in to. Only
+/// non-secret metadata lives here; tokens are in secure storage under
+/// `profile:<id>:*` (see [SessionStorage]). Rows of other tables carry a
+/// `profileId` pointing at this id, so each server's downloads, queued
+/// progress and caches stay separate.
+class ServerProfiles extends Table {
+  TextColumn get id => text()();
+  TextColumn get serverUrl => text()();
+  TextColumn get username => text()();
+  TextColumn get userId => text().withDefault(const Constant(''))();
+  TextColumn get displayName => text().withDefault(const Constant(''))();
+  IntColumn get lastUsedAt => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// PLAN.md Phase 6.4: local record of a server item downloaded for offline
 /// use. `chaptersJson`/`coverLocalPath` let [DownloadRepository] rebuild a
 /// full playable item with zero network access — the thing that makes 6.6
@@ -40,6 +57,10 @@ class DownloadedItems extends Table {
   // this column existed have no value, and consumers treat null as "show
   // under every library" rather than hiding a real downloaded book.
   TextColumn get libraryId => text().nullable()();
+  // QOL_PLAN E2: which [ServerProfiles] row this was downloaded from. Empty
+  // only for rows written before profiles existed, until the first-launch
+  // migration assigns them to profile #1.
+  TextColumn get profileId => text().withDefault(const Constant(''))();
 
   @override
   Set<Column> get primaryKey => {itemId};
@@ -89,6 +110,9 @@ class PendingProgressSyncs extends Table {
   RealColumn get duration => real()();
   BoolColumn get isFinished => boolean().nullable()();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  // QOL_PLAN E2: the profile whose server this progress belongs to; it is
+  // only uploaded while that profile is active.
+  TextColumn get profileId => text().withDefault(const Constant(''))();
 
   @override
   Set<Column> get primaryKey => {syncKey};
@@ -118,6 +142,7 @@ class LocalMediaItems extends Table {
     LogEntries,
     PendingProgressSyncs,
     LocalMediaItems,
+    ServerProfiles,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -125,7 +150,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -151,6 +176,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 8) {
         await m.addColumn(logEntries, logEntries.repeatCount);
+      }
+      if (from < 9) {
+        // QOL_PLAN E2. Existing rows keep profileId '' (the column default)
+        // until [ProfileMigrator] assigns them to profile #1 on first
+        // launch, once it can read the old single session out of secure
+        // storage -- which a SQL migration can't.
+        await m.createTable(serverProfiles);
+        await m.addColumn(downloadedItems, downloadedItems.profileId);
+        await m.addColumn(pendingProgressSyncs, pendingProgressSyncs.profileId);
       }
     },
   );

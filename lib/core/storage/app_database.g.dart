@@ -349,6 +349,18 @@ class $DownloadedItemsTable extends DownloadedItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     itemId,
@@ -363,6 +375,7 @@ class $DownloadedItemsTable extends DownloadedItems
     progressCurrentTime,
     progressIsFinished,
     libraryId,
+    profileId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -472,6 +485,12 @@ class $DownloadedItemsTable extends DownloadedItems
         libraryId.isAcceptableOrUnknown(data['library_id']!, _libraryIdMeta),
       );
     }
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    }
     return context;
   }
 
@@ -529,6 +548,10 @@ class $DownloadedItemsTable extends DownloadedItems
         DriftSqlType.string,
         data['${effectivePrefix}library_id'],
       ),
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
     );
   }
 
@@ -551,6 +574,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
   final double? progressCurrentTime;
   final bool progressIsFinished;
   final String? libraryId;
+  final String profileId;
   const DownloadedItem({
     required this.itemId,
     required this.serverUrl,
@@ -564,6 +588,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
     this.progressCurrentTime,
     required this.progressIsFinished,
     this.libraryId,
+    required this.profileId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -590,6 +615,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
     if (!nullToAbsent || libraryId != null) {
       map['library_id'] = Variable<String>(libraryId);
     }
+    map['profile_id'] = Variable<String>(profileId);
     return map;
   }
 
@@ -617,6 +643,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
       libraryId: libraryId == null && nullToAbsent
           ? const Value.absent()
           : Value(libraryId),
+      profileId: Value(profileId),
     );
   }
 
@@ -640,6 +667,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
       ),
       progressIsFinished: serializer.fromJson<bool>(json['progressIsFinished']),
       libraryId: serializer.fromJson<String?>(json['libraryId']),
+      profileId: serializer.fromJson<String>(json['profileId']),
     );
   }
   @override
@@ -658,6 +686,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
       'progressCurrentTime': serializer.toJson<double?>(progressCurrentTime),
       'progressIsFinished': serializer.toJson<bool>(progressIsFinished),
       'libraryId': serializer.toJson<String?>(libraryId),
+      'profileId': serializer.toJson<String>(profileId),
     };
   }
 
@@ -674,6 +703,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
     Value<double?> progressCurrentTime = const Value.absent(),
     bool? progressIsFinished,
     Value<String?> libraryId = const Value.absent(),
+    String? profileId,
   }) => DownloadedItem(
     itemId: itemId ?? this.itemId,
     serverUrl: serverUrl ?? this.serverUrl,
@@ -693,6 +723,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
         : this.progressCurrentTime,
     progressIsFinished: progressIsFinished ?? this.progressIsFinished,
     libraryId: libraryId.present ? libraryId.value : this.libraryId,
+    profileId: profileId ?? this.profileId,
   );
   DownloadedItem copyWithCompanion(DownloadedItemsCompanion data) {
     return DownloadedItem(
@@ -720,6 +751,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
           ? data.progressIsFinished.value
           : this.progressIsFinished,
       libraryId: data.libraryId.present ? data.libraryId.value : this.libraryId,
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
     );
   }
 
@@ -737,7 +769,8 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
           ..write('createdAt: $createdAt, ')
           ..write('progressCurrentTime: $progressCurrentTime, ')
           ..write('progressIsFinished: $progressIsFinished, ')
-          ..write('libraryId: $libraryId')
+          ..write('libraryId: $libraryId, ')
+          ..write('profileId: $profileId')
           ..write(')'))
         .toString();
   }
@@ -756,6 +789,7 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
     progressCurrentTime,
     progressIsFinished,
     libraryId,
+    profileId,
   );
   @override
   bool operator ==(Object other) =>
@@ -772,7 +806,8 @@ class DownloadedItem extends DataClass implements Insertable<DownloadedItem> {
           other.createdAt == this.createdAt &&
           other.progressCurrentTime == this.progressCurrentTime &&
           other.progressIsFinished == this.progressIsFinished &&
-          other.libraryId == this.libraryId);
+          other.libraryId == this.libraryId &&
+          other.profileId == this.profileId);
 }
 
 class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
@@ -788,6 +823,7 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
   final Value<double?> progressCurrentTime;
   final Value<bool> progressIsFinished;
   final Value<String?> libraryId;
+  final Value<String> profileId;
   final Value<int> rowid;
   const DownloadedItemsCompanion({
     this.itemId = const Value.absent(),
@@ -802,6 +838,7 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     this.progressCurrentTime = const Value.absent(),
     this.progressIsFinished = const Value.absent(),
     this.libraryId = const Value.absent(),
+    this.profileId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DownloadedItemsCompanion.insert({
@@ -817,6 +854,7 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     this.progressCurrentTime = const Value.absent(),
     this.progressIsFinished = const Value.absent(),
     this.libraryId = const Value.absent(),
+    this.profileId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : itemId = Value(itemId),
        serverUrl = Value(serverUrl),
@@ -834,6 +872,7 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     Expression<double>? progressCurrentTime,
     Expression<bool>? progressIsFinished,
     Expression<String>? libraryId,
+    Expression<String>? profileId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -851,6 +890,7 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
       if (progressIsFinished != null)
         'progress_is_finished': progressIsFinished,
       if (libraryId != null) 'library_id': libraryId,
+      if (profileId != null) 'profile_id': profileId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -868,6 +908,7 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     Value<double?>? progressCurrentTime,
     Value<bool>? progressIsFinished,
     Value<String?>? libraryId,
+    Value<String>? profileId,
     Value<int>? rowid,
   }) {
     return DownloadedItemsCompanion(
@@ -883,6 +924,7 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
       progressCurrentTime: progressCurrentTime ?? this.progressCurrentTime,
       progressIsFinished: progressIsFinished ?? this.progressIsFinished,
       libraryId: libraryId ?? this.libraryId,
+      profileId: profileId ?? this.profileId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -928,6 +970,9 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
     if (libraryId.present) {
       map['library_id'] = Variable<String>(libraryId.value);
     }
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -949,6 +994,7 @@ class DownloadedItemsCompanion extends UpdateCompanion<DownloadedItem> {
           ..write('progressCurrentTime: $progressCurrentTime, ')
           ..write('progressIsFinished: $progressIsFinished, ')
           ..write('libraryId: $libraryId, ')
+          ..write('profileId: $profileId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1907,6 +1953,18 @@ class $PendingProgressSyncsTable extends PendingProgressSyncs
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     syncKey,
@@ -1916,6 +1974,7 @@ class $PendingProgressSyncsTable extends PendingProgressSyncs
     duration,
     isFinished,
     updatedAt,
+    profileId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1985,6 +2044,12 @@ class $PendingProgressSyncsTable extends PendingProgressSyncs
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    }
     return context;
   }
 
@@ -2022,6 +2087,10 @@ class $PendingProgressSyncsTable extends PendingProgressSyncs
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
     );
   }
 
@@ -2040,6 +2109,7 @@ class PendingProgressSync extends DataClass
   final double duration;
   final bool? isFinished;
   final DateTime updatedAt;
+  final String profileId;
   const PendingProgressSync({
     required this.syncKey,
     required this.libraryItemId,
@@ -2048,6 +2118,7 @@ class PendingProgressSync extends DataClass
     required this.duration,
     this.isFinished,
     required this.updatedAt,
+    required this.profileId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2063,6 +2134,7 @@ class PendingProgressSync extends DataClass
       map['is_finished'] = Variable<bool>(isFinished);
     }
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['profile_id'] = Variable<String>(profileId);
     return map;
   }
 
@@ -2079,6 +2151,7 @@ class PendingProgressSync extends DataClass
           ? const Value.absent()
           : Value(isFinished),
       updatedAt: Value(updatedAt),
+      profileId: Value(profileId),
     );
   }
 
@@ -2095,6 +2168,7 @@ class PendingProgressSync extends DataClass
       duration: serializer.fromJson<double>(json['duration']),
       isFinished: serializer.fromJson<bool?>(json['isFinished']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      profileId: serializer.fromJson<String>(json['profileId']),
     );
   }
   @override
@@ -2108,6 +2182,7 @@ class PendingProgressSync extends DataClass
       'duration': serializer.toJson<double>(duration),
       'isFinished': serializer.toJson<bool?>(isFinished),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'profileId': serializer.toJson<String>(profileId),
     };
   }
 
@@ -2119,6 +2194,7 @@ class PendingProgressSync extends DataClass
     double? duration,
     Value<bool?> isFinished = const Value.absent(),
     DateTime? updatedAt,
+    String? profileId,
   }) => PendingProgressSync(
     syncKey: syncKey ?? this.syncKey,
     libraryItemId: libraryItemId ?? this.libraryItemId,
@@ -2127,6 +2203,7 @@ class PendingProgressSync extends DataClass
     duration: duration ?? this.duration,
     isFinished: isFinished.present ? isFinished.value : this.isFinished,
     updatedAt: updatedAt ?? this.updatedAt,
+    profileId: profileId ?? this.profileId,
   );
   PendingProgressSync copyWithCompanion(PendingProgressSyncsCompanion data) {
     return PendingProgressSync(
@@ -2143,6 +2220,7 @@ class PendingProgressSync extends DataClass
           ? data.isFinished.value
           : this.isFinished,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
     );
   }
 
@@ -2155,7 +2233,8 @@ class PendingProgressSync extends DataClass
           ..write('currentTime: $currentTime, ')
           ..write('duration: $duration, ')
           ..write('isFinished: $isFinished, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('profileId: $profileId')
           ..write(')'))
         .toString();
   }
@@ -2169,6 +2248,7 @@ class PendingProgressSync extends DataClass
     duration,
     isFinished,
     updatedAt,
+    profileId,
   );
   @override
   bool operator ==(Object other) =>
@@ -2180,7 +2260,8 @@ class PendingProgressSync extends DataClass
           other.currentTime == this.currentTime &&
           other.duration == this.duration &&
           other.isFinished == this.isFinished &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.profileId == this.profileId);
 }
 
 class PendingProgressSyncsCompanion
@@ -2192,6 +2273,7 @@ class PendingProgressSyncsCompanion
   final Value<double> duration;
   final Value<bool?> isFinished;
   final Value<DateTime> updatedAt;
+  final Value<String> profileId;
   final Value<int> rowid;
   const PendingProgressSyncsCompanion({
     this.syncKey = const Value.absent(),
@@ -2201,6 +2283,7 @@ class PendingProgressSyncsCompanion
     this.duration = const Value.absent(),
     this.isFinished = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.profileId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PendingProgressSyncsCompanion.insert({
@@ -2211,6 +2294,7 @@ class PendingProgressSyncsCompanion
     required double duration,
     this.isFinished = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.profileId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : syncKey = Value(syncKey),
        libraryItemId = Value(libraryItemId),
@@ -2224,6 +2308,7 @@ class PendingProgressSyncsCompanion
     Expression<double>? duration,
     Expression<bool>? isFinished,
     Expression<DateTime>? updatedAt,
+    Expression<String>? profileId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2234,6 +2319,7 @@ class PendingProgressSyncsCompanion
       if (duration != null) 'duration': duration,
       if (isFinished != null) 'is_finished': isFinished,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (profileId != null) 'profile_id': profileId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2246,6 +2332,7 @@ class PendingProgressSyncsCompanion
     Value<double>? duration,
     Value<bool?>? isFinished,
     Value<DateTime>? updatedAt,
+    Value<String>? profileId,
     Value<int>? rowid,
   }) {
     return PendingProgressSyncsCompanion(
@@ -2256,6 +2343,7 @@ class PendingProgressSyncsCompanion
       duration: duration ?? this.duration,
       isFinished: isFinished ?? this.isFinished,
       updatedAt: updatedAt ?? this.updatedAt,
+      profileId: profileId ?? this.profileId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2284,6 +2372,9 @@ class PendingProgressSyncsCompanion
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2300,6 +2391,7 @@ class PendingProgressSyncsCompanion
           ..write('duration: $duration, ')
           ..write('isFinished: $isFinished, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('profileId: $profileId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2739,6 +2831,418 @@ class LocalMediaItemsCompanion extends UpdateCompanion<LocalMediaItem> {
   }
 }
 
+class $ServerProfilesTable extends ServerProfiles
+    with TableInfo<$ServerProfilesTable, ServerProfile> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ServerProfilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serverUrlMeta = const VerificationMeta(
+    'serverUrl',
+  );
+  @override
+  late final GeneratedColumn<String> serverUrl = GeneratedColumn<String>(
+    'server_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _usernameMeta = const VerificationMeta(
+    'username',
+  );
+  @override
+  late final GeneratedColumn<String> username = GeneratedColumn<String>(
+    'username',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _lastUsedAtMeta = const VerificationMeta(
+    'lastUsedAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastUsedAt = GeneratedColumn<int>(
+    'last_used_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    serverUrl,
+    username,
+    userId,
+    displayName,
+    lastUsedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'server_profiles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ServerProfile> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('server_url')) {
+      context.handle(
+        _serverUrlMeta,
+        serverUrl.isAcceptableOrUnknown(data['server_url']!, _serverUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_serverUrlMeta);
+    }
+    if (data.containsKey('username')) {
+      context.handle(
+        _usernameMeta,
+        username.isAcceptableOrUnknown(data['username']!, _usernameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_usernameMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_used_at')) {
+      context.handle(
+        _lastUsedAtMeta,
+        lastUsedAt.isAcceptableOrUnknown(
+          data['last_used_at']!,
+          _lastUsedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ServerProfile map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ServerProfile(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      serverUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_url'],
+      )!,
+      username: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}username'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      lastUsedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_used_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ServerProfilesTable createAlias(String alias) {
+    return $ServerProfilesTable(attachedDatabase, alias);
+  }
+}
+
+class ServerProfile extends DataClass implements Insertable<ServerProfile> {
+  final String id;
+  final String serverUrl;
+  final String username;
+  final String userId;
+  final String displayName;
+  final int lastUsedAt;
+  const ServerProfile({
+    required this.id,
+    required this.serverUrl,
+    required this.username,
+    required this.userId,
+    required this.displayName,
+    required this.lastUsedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['server_url'] = Variable<String>(serverUrl);
+    map['username'] = Variable<String>(username);
+    map['user_id'] = Variable<String>(userId);
+    map['display_name'] = Variable<String>(displayName);
+    map['last_used_at'] = Variable<int>(lastUsedAt);
+    return map;
+  }
+
+  ServerProfilesCompanion toCompanion(bool nullToAbsent) {
+    return ServerProfilesCompanion(
+      id: Value(id),
+      serverUrl: Value(serverUrl),
+      username: Value(username),
+      userId: Value(userId),
+      displayName: Value(displayName),
+      lastUsedAt: Value(lastUsedAt),
+    );
+  }
+
+  factory ServerProfile.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ServerProfile(
+      id: serializer.fromJson<String>(json['id']),
+      serverUrl: serializer.fromJson<String>(json['serverUrl']),
+      username: serializer.fromJson<String>(json['username']),
+      userId: serializer.fromJson<String>(json['userId']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      lastUsedAt: serializer.fromJson<int>(json['lastUsedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'serverUrl': serializer.toJson<String>(serverUrl),
+      'username': serializer.toJson<String>(username),
+      'userId': serializer.toJson<String>(userId),
+      'displayName': serializer.toJson<String>(displayName),
+      'lastUsedAt': serializer.toJson<int>(lastUsedAt),
+    };
+  }
+
+  ServerProfile copyWith({
+    String? id,
+    String? serverUrl,
+    String? username,
+    String? userId,
+    String? displayName,
+    int? lastUsedAt,
+  }) => ServerProfile(
+    id: id ?? this.id,
+    serverUrl: serverUrl ?? this.serverUrl,
+    username: username ?? this.username,
+    userId: userId ?? this.userId,
+    displayName: displayName ?? this.displayName,
+    lastUsedAt: lastUsedAt ?? this.lastUsedAt,
+  );
+  ServerProfile copyWithCompanion(ServerProfilesCompanion data) {
+    return ServerProfile(
+      id: data.id.present ? data.id.value : this.id,
+      serverUrl: data.serverUrl.present ? data.serverUrl.value : this.serverUrl,
+      username: data.username.present ? data.username.value : this.username,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      lastUsedAt: data.lastUsedAt.present
+          ? data.lastUsedAt.value
+          : this.lastUsedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServerProfile(')
+          ..write('id: $id, ')
+          ..write('serverUrl: $serverUrl, ')
+          ..write('username: $username, ')
+          ..write('userId: $userId, ')
+          ..write('displayName: $displayName, ')
+          ..write('lastUsedAt: $lastUsedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, serverUrl, username, userId, displayName, lastUsedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ServerProfile &&
+          other.id == this.id &&
+          other.serverUrl == this.serverUrl &&
+          other.username == this.username &&
+          other.userId == this.userId &&
+          other.displayName == this.displayName &&
+          other.lastUsedAt == this.lastUsedAt);
+}
+
+class ServerProfilesCompanion extends UpdateCompanion<ServerProfile> {
+  final Value<String> id;
+  final Value<String> serverUrl;
+  final Value<String> username;
+  final Value<String> userId;
+  final Value<String> displayName;
+  final Value<int> lastUsedAt;
+  final Value<int> rowid;
+  const ServerProfilesCompanion({
+    this.id = const Value.absent(),
+    this.serverUrl = const Value.absent(),
+    this.username = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.lastUsedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ServerProfilesCompanion.insert({
+    required String id,
+    required String serverUrl,
+    required String username,
+    this.userId = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.lastUsedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       serverUrl = Value(serverUrl),
+       username = Value(username);
+  static Insertable<ServerProfile> custom({
+    Expression<String>? id,
+    Expression<String>? serverUrl,
+    Expression<String>? username,
+    Expression<String>? userId,
+    Expression<String>? displayName,
+    Expression<int>? lastUsedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (serverUrl != null) 'server_url': serverUrl,
+      if (username != null) 'username': username,
+      if (userId != null) 'user_id': userId,
+      if (displayName != null) 'display_name': displayName,
+      if (lastUsedAt != null) 'last_used_at': lastUsedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ServerProfilesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? serverUrl,
+    Value<String>? username,
+    Value<String>? userId,
+    Value<String>? displayName,
+    Value<int>? lastUsedAt,
+    Value<int>? rowid,
+  }) {
+    return ServerProfilesCompanion(
+      id: id ?? this.id,
+      serverUrl: serverUrl ?? this.serverUrl,
+      username: username ?? this.username,
+      userId: userId ?? this.userId,
+      displayName: displayName ?? this.displayName,
+      lastUsedAt: lastUsedAt ?? this.lastUsedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (serverUrl.present) {
+      map['server_url'] = Variable<String>(serverUrl.value);
+    }
+    if (username.present) {
+      map['username'] = Variable<String>(username.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (lastUsedAt.present) {
+      map['last_used_at'] = Variable<int>(lastUsedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ServerProfilesCompanion(')
+          ..write('id: $id, ')
+          ..write('serverUrl: $serverUrl, ')
+          ..write('username: $username, ')
+          ..write('userId: $userId, ')
+          ..write('displayName: $displayName, ')
+          ..write('lastUsedAt: $lastUsedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2757,6 +3261,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $LocalMediaItemsTable localMediaItems = $LocalMediaItemsTable(
     this,
   );
+  late final $ServerProfilesTable serverProfiles = $ServerProfilesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2768,6 +3273,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     logEntries,
     pendingProgressSyncs,
     localMediaItems,
+    serverProfiles,
   ];
 }
 
@@ -2930,6 +3436,7 @@ typedef $$DownloadedItemsTableCreateCompanionBuilder =
       Value<double?> progressCurrentTime,
       Value<bool> progressIsFinished,
       Value<String?> libraryId,
+      Value<String> profileId,
       Value<int> rowid,
     });
 typedef $$DownloadedItemsTableUpdateCompanionBuilder =
@@ -2946,6 +3453,7 @@ typedef $$DownloadedItemsTableUpdateCompanionBuilder =
       Value<double?> progressCurrentTime,
       Value<bool> progressIsFinished,
       Value<String?> libraryId,
+      Value<String> profileId,
       Value<int> rowid,
     });
 
@@ -3048,6 +3556,11 @@ class $$DownloadedItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> downloadedTracksRefs(
     Expression<bool> Function($$DownloadedTracksTableFilterComposer f) f,
   ) {
@@ -3142,6 +3655,11 @@ class $$DownloadedItemsTableOrderingComposer
     column: $table.libraryId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DownloadedItemsTableAnnotationComposer
@@ -3200,6 +3718,9 @@ class $$DownloadedItemsTableAnnotationComposer
 
   GeneratedColumn<String> get libraryId =>
       $composableBuilder(column: $table.libraryId, builder: (column) => column);
+
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
 
   Expression<T> downloadedTracksRefs<T extends Object>(
     Expression<T> Function($$DownloadedTracksTableAnnotationComposer a) f,
@@ -3269,6 +3790,7 @@ class $$DownloadedItemsTableTableManager
                 Value<double?> progressCurrentTime = const Value.absent(),
                 Value<bool> progressIsFinished = const Value.absent(),
                 Value<String?> libraryId = const Value.absent(),
+                Value<String> profileId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DownloadedItemsCompanion(
                 itemId: itemId,
@@ -3283,6 +3805,7 @@ class $$DownloadedItemsTableTableManager
                 progressCurrentTime: progressCurrentTime,
                 progressIsFinished: progressIsFinished,
                 libraryId: libraryId,
+                profileId: profileId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3299,6 +3822,7 @@ class $$DownloadedItemsTableTableManager
                 Value<double?> progressCurrentTime = const Value.absent(),
                 Value<bool> progressIsFinished = const Value.absent(),
                 Value<String?> libraryId = const Value.absent(),
+                Value<String> profileId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DownloadedItemsCompanion.insert(
                 itemId: itemId,
@@ -3313,6 +3837,7 @@ class $$DownloadedItemsTableTableManager
                 progressCurrentTime: progressCurrentTime,
                 progressIsFinished: progressIsFinished,
                 libraryId: libraryId,
+                profileId: profileId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -3954,6 +4479,7 @@ typedef $$PendingProgressSyncsTableCreateCompanionBuilder =
       required double duration,
       Value<bool?> isFinished,
       Value<DateTime> updatedAt,
+      Value<String> profileId,
       Value<int> rowid,
     });
 typedef $$PendingProgressSyncsTableUpdateCompanionBuilder =
@@ -3965,6 +4491,7 @@ typedef $$PendingProgressSyncsTableUpdateCompanionBuilder =
       Value<double> duration,
       Value<bool?> isFinished,
       Value<DateTime> updatedAt,
+      Value<String> profileId,
       Value<int> rowid,
     });
 
@@ -4009,6 +4536,11 @@ class $$PendingProgressSyncsTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4056,6 +4588,11 @@ class $$PendingProgressSyncsTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PendingProgressSyncsTableAnnotationComposer
@@ -4093,6 +4630,9 @@ class $$PendingProgressSyncsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
 }
 
 class $$PendingProgressSyncsTableTableManager
@@ -4145,6 +4685,7 @@ class $$PendingProgressSyncsTableTableManager
                 Value<double> duration = const Value.absent(),
                 Value<bool?> isFinished = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String> profileId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingProgressSyncsCompanion(
                 syncKey: syncKey,
@@ -4154,6 +4695,7 @@ class $$PendingProgressSyncsTableTableManager
                 duration: duration,
                 isFinished: isFinished,
                 updatedAt: updatedAt,
+                profileId: profileId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4165,6 +4707,7 @@ class $$PendingProgressSyncsTableTableManager
                 required double duration,
                 Value<bool?> isFinished = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<String> profileId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingProgressSyncsCompanion.insert(
                 syncKey: syncKey,
@@ -4174,6 +4717,7 @@ class $$PendingProgressSyncsTableTableManager
                 duration: duration,
                 isFinished: isFinished,
                 updatedAt: updatedAt,
+                profileId: profileId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4434,6 +4978,231 @@ typedef $$LocalMediaItemsTableProcessedTableManager =
       LocalMediaItem,
       PrefetchHooks Function()
     >;
+typedef $$ServerProfilesTableCreateCompanionBuilder =
+    ServerProfilesCompanion Function({
+      required String id,
+      required String serverUrl,
+      required String username,
+      Value<String> userId,
+      Value<String> displayName,
+      Value<int> lastUsedAt,
+      Value<int> rowid,
+    });
+typedef $$ServerProfilesTableUpdateCompanionBuilder =
+    ServerProfilesCompanion Function({
+      Value<String> id,
+      Value<String> serverUrl,
+      Value<String> username,
+      Value<String> userId,
+      Value<String> displayName,
+      Value<int> lastUsedAt,
+      Value<int> rowid,
+    });
+
+class $$ServerProfilesTableFilterComposer
+    extends Composer<_$AppDatabase, $ServerProfilesTable> {
+  $$ServerProfilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverUrl => $composableBuilder(
+    column: $table.serverUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastUsedAt => $composableBuilder(
+    column: $table.lastUsedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ServerProfilesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ServerProfilesTable> {
+  $$ServerProfilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverUrl => $composableBuilder(
+    column: $table.serverUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastUsedAt => $composableBuilder(
+    column: $table.lastUsedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ServerProfilesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ServerProfilesTable> {
+  $$ServerProfilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get serverUrl =>
+      $composableBuilder(column: $table.serverUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get username =>
+      $composableBuilder(column: $table.username, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastUsedAt => $composableBuilder(
+    column: $table.lastUsedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$ServerProfilesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ServerProfilesTable,
+          ServerProfile,
+          $$ServerProfilesTableFilterComposer,
+          $$ServerProfilesTableOrderingComposer,
+          $$ServerProfilesTableAnnotationComposer,
+          $$ServerProfilesTableCreateCompanionBuilder,
+          $$ServerProfilesTableUpdateCompanionBuilder,
+          (
+            ServerProfile,
+            BaseReferences<_$AppDatabase, $ServerProfilesTable, ServerProfile>,
+          ),
+          ServerProfile,
+          PrefetchHooks Function()
+        > {
+  $$ServerProfilesTableTableManager(
+    _$AppDatabase db,
+    $ServerProfilesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ServerProfilesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ServerProfilesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ServerProfilesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> serverUrl = const Value.absent(),
+                Value<String> username = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<int> lastUsedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ServerProfilesCompanion(
+                id: id,
+                serverUrl: serverUrl,
+                username: username,
+                userId: userId,
+                displayName: displayName,
+                lastUsedAt: lastUsedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String serverUrl,
+                required String username,
+                Value<String> userId = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<int> lastUsedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ServerProfilesCompanion.insert(
+                id: id,
+                serverUrl: serverUrl,
+                username: username,
+                userId: userId,
+                displayName: displayName,
+                lastUsedAt: lastUsedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ServerProfilesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ServerProfilesTable,
+      ServerProfile,
+      $$ServerProfilesTableFilterComposer,
+      $$ServerProfilesTableOrderingComposer,
+      $$ServerProfilesTableAnnotationComposer,
+      $$ServerProfilesTableCreateCompanionBuilder,
+      $$ServerProfilesTableUpdateCompanionBuilder,
+      (
+        ServerProfile,
+        BaseReferences<_$AppDatabase, $ServerProfilesTable, ServerProfile>,
+      ),
+      ServerProfile,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4450,4 +5219,6 @@ class $AppDatabaseManager {
       $$PendingProgressSyncsTableTableManager(_db, _db.pendingProgressSyncs);
   $$LocalMediaItemsTableTableManager get localMediaItems =>
       $$LocalMediaItemsTableTableManager(_db, _db.localMediaItems);
+  $$ServerProfilesTableTableManager get serverProfiles =>
+      $$ServerProfilesTableTableManager(_db, _db.serverProfiles);
 }

@@ -20,6 +20,7 @@ DownloadedItem item({
     progressIsFinished: progressIsFinished,
     progressCurrentTime: progressCurrentTime,
     libraryId: libraryId,
+    profileId: 'profile-1',
   );
 }
 
