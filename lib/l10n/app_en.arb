@@ -3,5 +3,1112 @@
   "appName": "Steeped",
   "@appName": {
     "description": "The application name."
-  }
+  },
+  "connectToServer": "Connect to Server",
+  "enterYourAudiobookshelfServerAddress": "Enter your Audiobookshelf server address",
+  "serverAddress": "Server address",
+  "audiobookshelfExampleCom": "audiobookshelf.example.com",
+  "continueLabel": "Continue",
+  "logIn": "Log In",
+  "username": "Username",
+  "password": "Password",
+  "deleteAllDownloadsTitle": "Delete all downloads?",
+  "thisRemovesEveryDownloadedBook": "This removes every downloaded book and episode from this device. They remain on the server and can be downloaded again.",
+  "cancel": "Cancel",
+  "deleteAll": "Delete All",
+  "downloads": "Downloads",
+  "deleteAllDownloadsTooltip": "Delete all downloads",
+  "failedToLoad": "Failed to load: {error}",
+  "@failedToLoad": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+  "noDownloadsYet": "No downloads yet.",
+  "deleteDownload": "Delete download",
+  "storageIsRunningLowDelete": "Storage is running low. Delete a download to free up space.",
+  "tableOfContents": "Table of Contents",
+  "readingSettingsTooltip": "Reading settings",
+  "downloadingBook": "Downloading book…",
+  "readingSettings": "Reading Settings",
+  "font": "Font",
+  "sans": "Sans",
+  "serif": "Serif",
+  "bold": "Bold",
+  "fontSize": "Font size",
+  "lineSpacing": "Line spacing",
+  "theme": "Theme",
+  "light": "Light",
+  "dark": "Dark",
+  "black": "Black",
+  "downloading": "Downloading…",
+  "noLibrariesOnThisServer": "No libraries on this server.",
+  "failedToLoadLibraries": "Failed to load libraries: {error}",
+  "@failedToLoadLibraries": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+  "retry": "Retry",
+  "viewDownloads": "View Downloads",
+  "search": "Search",
+  "settings": "Settings",
+  "latestEpisodes": "Latest Episodes",
+  "failedToLoadHomeShelves": "Failed to load home shelves: {error}",
+  "@failedToLoadHomeShelves": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+  "nothingToShowYet": "Nothing to show yet.",
+  "failedToLoadSeries": "Failed to load series: {error}",
+  "@failedToLoadSeries": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+  "noSeriesInThisLibrary": "No series in this library.",
+  "bookCount": "{count, plural, =1{1 book} other{{count} books}}",
+  "@bookCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "canTReachTheServer": "Can't reach the server. Showing downloaded content.",
+  "continueListening": "Continue Listening",
+  "noDownloadedContentYet": "No downloaded content yet.",
+  "browsingNeedsAConnection": "{label} browsing needs a connection.",
+  "@browsingNeedsAConnection": {
+    "placeholders": {
+      "label": {
+        "type": "Object"
+      }
+    }
+  },
+  "moreActions": "More actions",
+  "discardProgressButton": "Discard progress",
+  "play": "Play",
+  "read": "Read",
+  "narratedBy": "Narrated by {join}",
+  "@narratedBy": {
+    "placeholders": {
+      "join": {
+        "type": "Object"
+      }
+    }
+  },
+  "isnTSupportedYetNo": ".{format} isn't supported yet — no pure-Dart RAR decoder exists for CBR.",
+  "@isnTSupportedYetNo": {
+    "placeholders": {
+      "format": {
+        "type": "Object"
+      }
+    }
+  },
+  "downloadSeries": "Download series: {name}",
+  "@downloadSeries": {
+    "placeholders": {
+      "name": {
+        "type": "Object"
+      }
+    }
+  },
+  "download": "Download",
+  "downloaded": "Downloaded",
+  "name": "Name",
+  "couldNotLoadPlaylists": "Could not load playlists: {e}",
+  "@couldNotLoadPlaylists": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "addToPlaylist": "Add to playlist",
+  "newPlaylistEllipsis": "New playlist…",
+  "addedTo": "Added to \"{name}\"",
+  "@addedTo": {
+    "placeholders": {
+      "name": {
+        "type": "Object"
+      }
+    }
+  },
+  "couldNotCreatePlaylist": "Could not create playlist: {e}",
+  "@couldNotCreatePlaylist": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "itemCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@itemCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "playlistUpdateFailed": "Playlist update failed: {e}",
+  "@playlistUpdateFailed": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "couldNotLoadCollections": "Could not load collections: {e}",
+  "@couldNotLoadCollections": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "addToCollection": "Add to collection",
+  "newCollectionEllipsis": "New collection…",
+  "couldNotCreateCollection": "Could not create collection: {e}",
+  "@couldNotCreateCollection": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "books": "{count} books",
+  "@books": {
+    "placeholders": {
+      "count": {
+        "type": "Object"
+      }
+    }
+  },
+  "collectionUpdateFailed": "Collection update failed: {e}",
+  "@collectionUpdateFailed": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "goToAuthor": "Go to author",
+  "goToSeries": "Go to series",
+  "details": "Details",
+  "downloadStarted": "Download started",
+  "downloadFailed": "Download failed: {e}",
+  "@downloadFailed": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "markFinished": "Mark finished",
+  "markNotFinished": "Mark not finished",
+  "couldNotUpdate": "Could not update: {e}",
+  "@couldNotUpdate": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "notAvailableForThisItem": "Not available for this item",
+  "couldNotOpen": "Could not open: {e}",
+  "@couldNotOpen": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "failedToLoadAuthors": "Failed to load authors: {e}",
+  "@failedToLoadAuthors": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "noAuthorsInThisLibrary": "No authors in this library.",
+  "failedToLoadCollections": "Failed to load collections: {e}",
+  "@failedToLoadCollections": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "newCollection": "New collection",
+  "noCollectionsYet": "No collections yet.",
+  "bookCountDuration": "{count, plural, =1{1 book} other{{count} books}} · {duration}",
+  "@bookCountDuration": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToLoadPlaylists": "Failed to load playlists: {e}",
+  "@failedToLoadPlaylists": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "newPlaylist": "New playlist",
+  "noPlaylistsYet": "No playlists yet.",
+  "itemCountDuration": "{count, plural, =1{1 item} other{{count} items}} · {duration}",
+  "@itemCountDuration": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToLoadAuthor": "Failed to load author: {e}",
+  "@failedToLoadAuthor": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "rename": "Rename",
+  "delete": "Delete",
+  "failedToLoadCollection": "Failed to load collection: {e}",
+  "@failedToLoadCollection": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "playAll": "Play all",
+  "downloadAll": "Download all",
+  "queuedDownloads": "Queued {n} downloads",
+  "@queuedDownloads": {
+    "placeholders": {
+      "n": {
+        "type": "Object"
+      }
+    }
+  },
+  "thisCollectionIsEmpty": "This collection is empty.",
+  "removeFromCollection": "Remove from collection",
+  "couldNotReorder": "Could not reorder: {e}",
+  "@couldNotReorder": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "failedToLoadPlaylist": "Failed to load playlist: {e}",
+  "@failedToLoadPlaylist": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "thisPlaylistIsEmpty": "This playlist is empty.",
+  "remove": "Remove",
+  "libraryLabel": "Library ({total})",
+  "@libraryLabel": {
+    "placeholders": {
+      "total": {
+        "type": "Object"
+      }
+    }
+  },
+  "sort": "Sort",
+  "filter": "Filter",
+  "clearAll": "Clear all",
+  "couldNotLoadFilters": "Could not load filters: {e}",
+  "@couldNotLoadFilters": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "filterBy": "Filter by",
+  "back": "Back",
+  "nothingToFilterOn": "Nothing to filter on.",
+  "searchBooksSeriesAuthors": "Search books, series, authors…",
+  "noResults": "No results.",
+  "searchFailed": "Search failed: {error}",
+  "@searchFailed": {
+    "placeholders": {
+      "error": {
+        "type": "Object"
+      }
+    }
+  },
+  "searchThisLibrary": "Search this library.",
+  "recentSearches": "Recent searches",
+  "clear": "Clear",
+  "seriesUnavailable": "Series unavailable.",
+  "localMedia": "Local Media",
+  "importAFile": "Import a file",
+  "imported": "Imported \"{title}\"",
+  "@imported": {
+    "placeholders": {
+      "title": {
+        "type": "Object"
+      }
+    }
+  },
+  "noLocalMediaYetTap": "No local media yet. Tap + to import an audio file from this device — these never touch the server.",
+  "discardProgressTitle": "Discard progress?",
+  "allListeningProgressForWill": "All listening progress for \"{title}\" will be removed. The book itself is not affected.",
+  "@allListeningProgressForWill": {
+    "placeholders": {
+      "title": {
+        "type": "Object"
+      }
+    }
+  },
+  "discard": "Discard",
+  "progressDiscarded": "Progress discarded",
+  "couldNotDiscardProgress": "Could not discard progress: {e}",
+  "@couldNotDiscardProgress": {
+    "placeholders": {
+      "e": {
+        "type": "Object"
+      }
+    }
+  },
+  "expand": "Expand",
+  "rewindSeconds": "Rewind {jumpBackSeconds} seconds",
+  "@rewindSeconds": {
+    "placeholders": {
+      "jumpBackSeconds": {
+        "type": "Object"
+      }
+    }
+  },
+  "forwardSeconds": "Forward {jumpForwardSeconds} seconds",
+  "@forwardSeconds": {
+    "placeholders": {
+      "jumpForwardSeconds": {
+        "type": "Object"
+      }
+    }
+  },
+  "close": "Close",
+  "queue": "Queue",
+  "timeDisplayTooltip": "Time display",
+  "sleepTimer": "Sleep Timer",
+  "timeDisplayMenu": "Time Display",
+  "markAsFinished": "Mark as Finished",
+  "markAsNotFinished": "Mark as Not Finished",
+  "discardProgressMenu": "Discard Progress",
+  "bookmarks": "Bookmarks",
+  "chapters": "Chapters",
+  "tracks": "Tracks",
+  "minutes": "{minutes} minutes",
+  "@minutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "Object"
+      }
+    }
+  },
+  "endOfChapter": "End of chapter",
+  "cancelTimer": "Cancel timer",
+  "queueFinished": "Queue finished.",
+  "queueNamed": "Queue: {name}",
+  "@queueNamed": {
+    "placeholders": {
+      "name": {
+        "type": "Object"
+      }
+    }
+  },
+  "removeFromQueue": "Remove from queue",
+  "noBookmarksYet": "No bookmarks yet",
+  "deleteBookmarkTooltip": "Delete bookmark",
+  "addBookmarkAtCurrentPosition": "Add bookmark at current position",
+  "addBookmark": "Add Bookmark",
+  "note": "Note",
+  "add": "Add",
+  "failedToAddBookmark": "Failed to add bookmark",
+  "deleteBookmarkTitle": "Delete bookmark?",
+  "thisRemovesFromTheServer": "This removes \"{title}\" from the server.",
+  "@thisRemovesFromTheServer": {
+    "placeholders": {
+      "title": {
+        "type": "Object"
+      }
+    }
+  },
+  "failedToDeleteBookmark": "Failed to delete bookmark",
+  "playbackSpeed": "Playback Speed",
+  "exactSpeed": "Exact speed",
+  "setLabel": "Set",
+  "resetTo1x": "Reset to 1x",
+  "restart": "Restart",
+  "min": "+{sleepExtendMinutes} min",
+  "@min": {
+    "placeholders": {
+      "sleepExtendMinutes": {
+        "type": "Object"
+      }
+    }
+  },
+  "dismiss": "Dismiss",
+  "syncWaitingTooltip": "{count, plural, =1{1 progress update} other{{count} progress updates}} waiting to sync — tap to retry",
+  "@syncWaitingTooltip": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "chapter": "Chapter",
+  "book": "Book",
+  "noEpisodesYet": "No episodes yet.",
+  "downloadEpisode": "Download episode",
+  "deleteDownloadedEpisode": "Delete downloaded episode",
+  "noRecentEpisodes": "No recent episodes.",
+  "account": "Account",
+  "server": "Server",
+  "downloadsAllowed": "Downloads allowed",
+  "uploadsAllowed": "Uploads allowed",
+  "updatesAllowed": "Updates allowed",
+  "deletesAllowed": "Deletes allowed",
+  "changePassword": "Change Password",
+  "logOut": "Log Out",
+  "appearance": "Appearance",
+  "skin": "Skin",
+  "passwordChanged": "Password changed.",
+  "currentPassword": "Current password",
+  "newPassword": "New password",
+  "atLeastCharacters": "At least {minPasswordLength} characters",
+  "@atLeastCharacters": {
+    "placeholders": {
+      "minPasswordLength": {
+        "type": "Object"
+      }
+    }
+  },
+  "confirmNewPassword": "Confirm new password",
+  "changingYourPasswordSignsYou": "Changing your password signs you out on your other devices. This one stays signed in.",
+  "logs": "Logs",
+  "clearLogs": "Clear logs",
+  "noLogEntriesYet": "No log entries yet.",
+  "stats": "Stats",
+  "history": "History",
+  "rssFeeds": "RSS Feeds",
+  "adminNotYetImplemented": "Admin — not yet implemented",
+  "jumpBack": "Jump back",
+  "jumpForward": "Jump forward",
+  "allowSeekingOnLockScreen": "Allow seeking on lock-screen controls",
+  "showADraggableProgressBar": "Show a draggable progress bar in the notification and lock screen",
+  "autoRewindOnResume": "Auto-rewind on resume",
+  "stepBackALittleWhen": "Step back a little when you press play",
+  "rewindFurtherAfterLongPauses": "Rewind further after long pauses",
+  "autoRewindScaleHint": "2x after 5 minutes, 3x after an hour",
+  "scaleElapsedTimeBySpeed": "Scale elapsed time by speed",
+  "showNowPlayingSTime": "Show Now Playing's time as real-world minutes at your current speed",
+  "showTracksTab": "Show Tracks tab",
+  "onNowPlayingAddA": "On Now Playing, add a toggle to switch between chapters and a multi-file book's raw audio-file tracks",
+  "defaultDuration": "Default duration",
+  "extendBy": "Extend by",
+  "fadeOutBeforePausing": "Fade out before pausing",
+  "fadeLength": "Fade length",
+  "sleepChimeBeforePausing": "Chime 30 seconds before pausing",
+  "startAutomaticallyAtNight": "Start automatically at night",
+  "beginTheDefaultTimerWhen": "Begin the default timer when playback starts inside the window",
+  "treatMeteredWiFiLike": "Treat metered Wi-Fi like cellular",
+  "applyTheChoicesAboveTo": "Apply the choices above to metered Wi-Fi, such as a phone hotspot",
+  "rememberLibrarySection": "Remember library section",
+  "reopenOnBooksAuthorsCollections": "Reopen on Books, Authors, Collections or Playlists, whichever you used last",
+  "collapseSeries": "Collapse series",
+  "showEachSeriesAsA": "Show each series as a single tile in the Books grid",
+  "showNetworkTypeOnThe": "Show network type on the Live badge",
+  "forExampleLiveMetered": "For example \"Live (metered)\"",
+  "maskServerAddress": "Mask server address",
+  "hideTheAddressOnThe": "Hide the address on the Account and login screens until tapped",
+  "hapticFeedback": "Haptic feedback",
+  "keepScreenAwakeWhilePlaying": "Keep screen awake while playing",
+  "lockToPortrait": "Lock to portrait",
+  "language": "Language",
+  "englishTheOnlyLanguageTranslated": "English — the only language translated so far (Phase 9.8); the picker will grow as more ARB translations are added",
+  "english": "English",
+  "itemsPerList": "Items per list",
+  "howManyEntriesEachBrowse": "How many entries each browse list shows",
+  "newestBookFirstInA": "Newest book first in a series",
+  "otherwiseBooksListInReading": "Otherwise books list in reading order",
+  "showSyncFailedIndicator": "Show sync-failed indicator",
+  "badgeOnThePlayerWhile": "Badge on the player while progress updates are waiting to sync",
+  "importOnDeviceAudioFiles": "Import on-device audio files that never came from the server",
+  "unrestrictedBackgroundPlayback": "Unrestricted background playback",
+  "progressSync": "Progress sync",
+  "retryNow": "Retry now",
+  "always": "Always",
+  "ask": "Ask",
+  "never": "Never",
+  "historyWithCount": "History ({total})",
+  "@historyWithCount": {
+    "placeholders": {
+      "total": {
+        "type": "Object"
+      }
+    }
+  },
+  "noListeningHistoryYet": "No listening history yet.",
+  "yearInReview": "Year in Review",
+  "last7Days": "Last 7 Days",
+  "recentSessions": "Recent Sessions",
+  "inReview": "{year} in Review",
+  "@inReview": {
+    "placeholders": {
+      "year": {
+        "type": "Object"
+      }
+    }
+  },
+  "noListeningActivityYetThis": "No listening activity yet this year.",
+  "listenedIn": "listened in {year}",
+  "@listenedIn": {
+    "placeholders": {
+      "year": {
+        "type": "Object"
+      }
+    }
+  },
+  "topItems": "Top Items",
+  "itemShortId": "Item {id}…",
+  "@itemShortId": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "markedFinished": "Marked finished",
+  "markedNotFinished": "Marked not finished",
+  "durationHoursMinutes": "{hours}h {minutes}m",
+  "@durationHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMinutes": "{minutes}m",
+  "@durationMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHoursDecimal": "{hours}h",
+  "@durationHoursDecimal": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "finished": "Finished",
+  "percentComplete": "{percent}% complete",
+  "@percentComplete": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "percentCompleteTimeLeft": "{percent}% complete · {time} left",
+  "@percentCompleteTimeLeft": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "chaptersCount": "{count, plural, =1{1 chapter} other{{count} chapters}}",
+  "@chaptersCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "allBooksAlreadyDownloaded": "Every book in \"{series}\" is already downloaded.",
+  "@allBooksAlreadyDownloaded": {
+    "placeholders": {
+      "series": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadingBooksFromSeries": "{count, plural, =1{Downloading 1 book from \"{series}\".} other{Downloading {count} books from \"{series}\".}}",
+  "@downloadingBooksFromSeries": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "series": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadingEllipsis": "Downloading…",
+  "episodes": "Episodes",
+  "episodesCount": "{count, plural, =1{1 episode} other{{count} episodes}}",
+  "@episodesCount": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "episodesCountIncomplete": "{count, plural, =1{1 episode} other{{count} episodes}} · {incomplete} incomplete",
+  "@episodesCountIncomplete": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      },
+      "incomplete": {
+        "type": "int"
+      }
+    }
+  },
+  "percentPlayed": "{percent}% played",
+  "@percentPlayed": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "percentPlayedDuration": "{percent}% played · {duration}",
+  "@percentPlayedDuration": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      },
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadedWithSize": "Downloaded · {size}",
+  "@downloadedWithSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "calculatingStorage": "Calculating storage used…",
+  "downloadsUse": "Downloads use {used}",
+  "@downloadsUse": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadsUseWithFree": "Downloads use {used} · {free} free",
+  "@downloadsUseWithFree": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "free": {
+        "type": "String"
+      }
+    }
+  },
+  "extractingPages": "Extracting pages…",
+  "pageOfTotal": "{page} / {total}",
+  "@pageOfTotal": {
+    "placeholders": {
+      "page": {
+        "type": "Object"
+      },
+      "total": {
+        "type": "Object"
+      }
+    }
+  },
+  "chapterNumber": "Chapter {number}",
+  "@chapterNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "sectionPlayback": "Playback",
+  "sectionSleepTimer": "Sleep Timer",
+  "sectionData": "Data",
+  "sectionLibrary": "Library",
+  "sectionUserInterface": "User Interface",
+  "sectionEreader": "Ereader",
+  "sectionAndroidAuto": "Android Auto",
+  "sectionAdvanced": "Advanced",
+  "autoRewindOff": "Off",
+  "secondsShort": "{seconds}s",
+  "@secondsShort": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "progressSyncAllSynced": "Everything is synced",
+  "updatesWaitingToSync": "{count, plural, =1{1 update waiting to sync} other{{count} updates waiting to sync}}",
+  "@updatesWaitingToSync": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "batteryExempt": "Exempt from battery optimization — audio won't be throttled while the phone is locked",
+  "batteryRecommended": "Recommended — prevents Android from throttling audio focus and networking while the phone is locked",
+  "sortTitle": "Title",
+  "sortAuthor": "Author",
+  "sortDateAdded": "Date added",
+  "sortPublishedYear": "Published year",
+  "sortDuration": "Duration",
+  "sortLastPlayed": "Last played",
+  "sortRandom": "Random",
+  "filterGenre": "Genre",
+  "filterTag": "Tag",
+  "filterAuthor": "Author",
+  "filterNarrator": "Narrator",
+  "filterSeries": "Series",
+  "filterLanguage": "Language",
+  "filterProgress": "Progress",
+  "filterEbook": "Ebook",
+  "progressInProgress": "In progress",
+  "progressFinished": "Finished",
+  "progressNotStarted": "Not started",
+  "progressNotFinished": "Not finished",
+  "ebookHas": "Has ebook",
+  "ebookNone": "No ebook",
+  "sectionBooks": "Books",
+  "sectionAuthors": "Authors",
+  "sectionCollections": "Collections",
+  "sectionPlaylists": "Playlists",
+  "themeSystem": "Follow system",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "themeBlack": "Black",
+  "themeSystemShort": "System",
+  "skinGlassModernName": "Glass Modern",
+  "skinGlassModernDescription": "Frosted glass surfaces over a deep dark background, translucent cards.",
+  "skinBookshelfName": "Bookshelf",
+  "skinBookshelfDescription": "Warm wood and paper tones with book-spine styled covers.",
+  "sortAscending": "Ascending",
+  "sortDescending": "Descending",
+  "showEveryBook": "Show every book",
+  "collapseSeriesTooltip": "Collapse series",
+  "listView": "List view",
+  "gridView": "Grid view",
+  "skinSelectedSuffix": "{skin}, selected",
+  "@skinSelectedSuffix": {
+    "placeholders": {
+      "skin": {
+        "type": "String"
+      }
+    }
+  },
+  "tabHome": "Home",
+  "tabSeries": "Series",
+  "tabLibrary": "Library",
+  "liveCellular": "Live (cellular)",
+  "liveMetered": "Live (metered)",
+  "live": "Live",
+  "connecting": "Connecting",
+  "authFailed": "Auth failed",
+  "offline": "Offline",
+  "author": "Author",
+  "collection": "Collection",
+  "playlist": "Playlist",
+  "renameCollection": "Rename collection",
+  "deleteCollectionTitle": "Delete collection?",
+  "deleteCollectionMessage": "\"{name}\" will be deleted for everyone on this server.",
+  "@deleteCollectionMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "renamePlaylist": "Rename playlist",
+  "deletePlaylistTitle": "Delete playlist?",
+  "deletePlaylistMessage": "\"{name}\" will be deleted.",
+  "@deletePlaylistMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "save": "Save",
+  "create": "Create",
+  "narrators": "Narrators",
+  "genres": "Genres",
+  "tags": "Tags",
+  "nothingMatchesFilter": "Nothing matches this filter.",
+  "libraryIsEmpty": "This library is empty.",
+  "pause": "Pause",
+  "sleepTimerTooltipActive": "Sleep timer: {time}",
+  "@sleepTimerTooltipActive": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sleepTimerTooltip": "Sleep timer",
+  "chapterLabel": "Chapter",
+  "bookLabel": "Book",
+  "trackNumber": "Track {number}",
+  "@trackNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "speedInputError": "Enter a number between {min} and {max}.",
+  "@speedInputError": {
+    "placeholders": {
+      "min": {
+        "type": "Object"
+      },
+      "max": {
+        "type": "Object"
+      }
+    }
+  },
+  "hideExactSpeed": "Hide exact speed",
+  "enterExactSpeed": "Enter exact speed",
+  "exactDuration": "Exact duration",
+  "exactDurationHint": "e.g. 45, 1:30 or 1h30m",
+  "hideExactDuration": "Hide exact duration",
+  "enterExactDuration": "Enter exact duration",
+  "sleepInputError": "Enter between {min} and {max}.",
+  "@sleepInputError": {
+    "placeholders": {
+      "min": {
+        "type": "String"
+      },
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "startTimer": "Start timer",
+  "sleepTimerEnded": "Sleep timer ended",
+  "chapterEndsIn": "Chapter ends in {time}",
+  "@chapterEndsIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sleepIn": "Sleep in {time}",
+  "@sleepIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dailyAverage": "Daily average",
+  "bestDay": "Best day",
+  "daysListened": "Days listened",
+  "currentStreak": "Current streak",
+  "thisWeek": "This week",
+  "itemsFinished": "Items finished",
+  "streakDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "@streakDays": {
+    "placeholders": {
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "daysActive": "Days active",
+  "longestStreak": "Longest streak",
+  "streakDaysShort": "{count}d",
+  "@streakDaysShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "logEntrySubtitle": "{tag} · {when}",
+  "@logEntrySubtitle": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      },
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "logEntrySubtitleRepeated": "{tag} · {when} · ×{count}",
+  "@logEntrySubtitleRepeated": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      },
+      "when": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "enterServerAddress": "Enter a server address.",
+  "notAudiobookshelf": "That doesn't look like an Audiobookshelf server.",
+  "serverNotInitialized": "This server has no admin account set up yet — finish setup in a browser first.",
+  "somethingWentWrong": "Something went wrong. Try again.",
+  "couldntReachCheckConnection": "Couldn't reach that server — check the address and your connection.",
+  "couldntConnectCheckServer": "Couldn't connect. Check the address and that the server is online.",
+  "serverRespondedWithError": "Server responded with an error ({code}). Check the address.",
+  "@serverRespondedWithError": {
+    "placeholders": {
+      "code": {
+        "type": "Object"
+      }
+    }
+  },
+  "couldntReachTryAgain": "Couldn't reach that server. Check the address and try again.",
+  "enterUsername": "Enter a username.",
+  "incorrectCredentials": "Incorrect username or password.",
+  "lostConnection": "Lost connection to the server.",
+  "loginFailed": "Login failed. Try again.",
+  "couldntChangePasswordCheckCurrent": "Couldn't change your password. Check your current password.",
+  "passwordChangeNotAllowed": "Your account isn't allowed to change its password.",
+  "tooManyAttempts": "Too many attempts. Wait a minute and try again.",
+  "couldntChangePassword": "Couldn't change your password. Try again.",
+  "pwEnterCurrent": "Enter your current password.",
+  "pwEnterNew": "Enter a new password.",
+  "pwTooShort": "New password must be at least {min} characters.",
+  "@pwTooShort": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "pwSame": "New password must be different from your current one.",
+  "pwMismatch": "New passwords don't match.",
+  "cellularStreamTitle": "Stream over cellular?",
+  "cellularDownloadTitle": "Download over cellular?",
+  "cellularStreamBody": "You're on a mobile connection. Streaming will use your data. Your choice is remembered until the app restarts.",
+  "cellularDownloadBody": "You're on a mobile connection. Downloading will use your data. Your choice is remembered until the app restarts.",
+  "notNow": "Not now",
+  "streamAction": "Stream",
+  "downloadAction": "Download",
+  "cellularStreamBlocked": "Streaming over cellular is off in Settings → Data.",
+  "cellularDownloadBlocked": "Downloading over cellular is off in Settings → Data.",
+  "switchAccountTitle": "Switch account?",
+  "switchAccountWhilePlaying": "Playback will stop. Switch to {server}?",
+  "@switchAccountWhilePlaying": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "switchAction": "Switch",
+  "removeAccountTitle": "Remove {name}?",
+  "@removeAccountTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeAccountMessage": "Signs out of {server} on this device. Downloads from it can be kept or deleted.",
+  "@removeAccountMessage": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "removeAndDeleteDownloads": "Remove and delete downloads",
+  "removeKeepDownloads": "Remove, keep downloads",
+  "accounts": "Accounts",
+  "addServerOrAccount": "Add server or account",
+  "manageAccounts": "Manage accounts",
+  "continueAsAccount": "Continue as {name}",
+  "@continueAsAccount": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "savedAccounts": "Saved accounts",
+  "sectionAccount": "Account",
+  "askBeforeSwitching": "Ask before switching while playing",
+  "askBeforeSwitchingHint": "Switching servers or accounts stops playback",
+  "showOtherServerDownloads": "Show downloads from other servers",
+  "showOtherServerDownloadsHint": "Keep downloaded books from your other servers in the Downloads list",
+  "downloadsFromServer": "Downloads from {server}",
+  "@downloadsFromServer": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "accountOnServer": "{name} on {server}",
+  "@accountOnServer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "addAccountTitle": "Add server or account",
+  "more": "More"
 }

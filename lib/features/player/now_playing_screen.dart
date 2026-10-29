@@ -14,8 +14,12 @@ import '../auth/state/session_state.dart';
 import '../settings/data/app_settings.dart';
 import '../settings/state/settings_providers.dart';
 import 'data/playback_speed.dart';
+import 'data/sleep_timer_duration.dart';
+import 'discard_progress_dialog.dart';
+import 'sync_failed_badge.dart';
 import 'state/playback_controller.dart';
 import 'time_display_mode_selector.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 5.2 (full-screen Now Playing), 5.5 (chapters + jump
 /// forward/back — interval now configurable, Phase 9.3), 5.6 (speed), 5.7
@@ -33,7 +37,13 @@ enum _TrackListMode { chapters, tracks }
 /// Overflow-menu mirror of the sleep-timer/time-display app-bar icons —
 /// both routes end up calling the exact same sheet-opening methods, so
 /// either one works identically.
-enum _OverflowAction { sleepTimer, timeDisplay, markFinished, markNotFinished }
+enum _OverflowAction {
+  sleepTimer,
+  timeDisplay,
+  markFinished,
+  markNotFinished,
+  discardProgress,
+}
 
 class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   _TrackListMode _listMode = _TrackListMode.chapters;
@@ -136,31 +146,32 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         leading: IconButton(
           icon: const Icon(Icons.keyboard_arrow_down),
           iconSize: 32,
-          tooltip: 'Close',
+          tooltip: context.l10n.close,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
+          const SyncFailedBadge(),
           if (queue != null)
             IconButton(
               icon: const Icon(Icons.queue_music),
-              tooltip: 'Queue',
+              tooltip: context.l10n.queue,
               onPressed: () => _showQueueSheet(context),
             ),
           IconButton(
             icon: Icon(
-              sleepRemaining != null
-                  ? Icons.bedtime
-                  : Icons.bedtime_outlined,
+              sleepRemaining != null ? Icons.bedtime : Icons.bedtime_outlined,
             ),
             tooltip: sleepRemaining != null
-                ? 'Sleep timer: ${_formatTime(sleepRemaining.inSeconds.toDouble())}'
-                : 'Sleep timer',
+                ? context.l10n.sleepTimerTooltipActive(
+                    _formatTime(sleepRemaining.inSeconds.toDouble()),
+                  )
+                : context.l10n.sleepTimerTooltip,
             onPressed: () => _showSleepTimerSheet(context, ref, settings),
           ),
           IconButton(
             icon: const Icon(Icons.timer_outlined),
-            tooltip: 'Time display',
+            tooltip: context.l10n.timeDisplayTooltip,
             onPressed: () => _showTimeDisplaySheet(context),
           ),
           PopupMenuButton<_OverflowAction>(
@@ -174,25 +185,40 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   controller.markFinished(true);
                 case _OverflowAction.markNotFinished:
                   controller.markFinished(false);
+                case _OverflowAction.discardProgress:
+                  confirmAndDiscardProgress(
+                    context,
+                    ref,
+                    libraryItemId: item.id,
+                    episodeId: item.episodeId,
+                    title: item.title,
+                  ).then((done) {
+                    if (done && context.mounted)
+                      Navigator.of(context).maybePop();
+                  });
               }
             },
-            itemBuilder: (context) => const [
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: _OverflowAction.sleepTimer,
-                child: Text('Sleep Timer'),
+                child: Text(context.l10n.sleepTimer),
               ),
               PopupMenuItem(
                 value: _OverflowAction.timeDisplay,
-                child: Text('Time Display'),
+                child: Text(context.l10n.timeDisplayMenu),
               ),
               PopupMenuDivider(),
               PopupMenuItem(
                 value: _OverflowAction.markFinished,
-                child: Text('Mark as Finished'),
+                child: Text(context.l10n.markAsFinished),
               ),
               PopupMenuItem(
                 value: _OverflowAction.markNotFinished,
-                child: Text('Mark as Not Finished'),
+                child: Text(context.l10n.markAsNotFinished),
+              ),
+              PopupMenuItem(
+                value: _OverflowAction.discardProgress,
+                child: Text(context.l10n.discardProgressMenu),
               ),
             ],
           ),
@@ -240,6 +266,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               ),
             ),
           ],
+          const _SleepTimerChip(),
           const SizedBox(height: 20),
           Builder(
             builder: (context) {
@@ -251,7 +278,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 children: [
                   if (showChapterTime)
                     _ProgressSection(
-                      label: showBookTime ? 'Chapter' : null,
+                      label: showBookTime ? context.l10n.chapterLabel : null,
                       value: chapterElapsed,
                       max: chapterMax,
                       onSeek: (value) => controller.seekToGlobalPosition(
@@ -264,7 +291,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     const SizedBox(height: 16),
                   if (showBookTime)
                     _ProgressSection(
-                      label: showChapterTime ? 'Book' : null,
+                      label: showChapterTime ? context.l10n.bookLabel : null,
                       value: position.clamp(0, duration),
                       max: duration,
                       onSeek: controller.seekToGlobalPosition,
@@ -300,6 +327,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 ),
               ),
               IconButton(
+                tooltip: context.l10n.rewindSeconds(settings.jumpBackSeconds),
                 iconSize: 36,
                 icon: const Icon(Icons.replay),
                 onPressed: controller.jumpBackward,
@@ -308,6 +336,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               PlaybackLoadingBadge(
                 isLoading: isConnecting,
                 child: IconButton(
+                  tooltip: isPlaying ? context.l10n.pause : context.l10n.play,
                   iconSize: 56,
                   icon: Icon(
                     isPlaying
@@ -326,6 +355,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               ),
               const SizedBox(width: 16),
               IconButton(
+                tooltip: context.l10n.forwardSeconds(
+                  settings.jumpForwardSeconds,
+                ),
                 iconSize: 36,
                 icon: Transform.flip(
                   flipX: true,
@@ -344,7 +376,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                                 ? Icons.bookmark
                                 : Icons.bookmark_border,
                           ),
-                          tooltip: 'Bookmarks',
+                          tooltip: context.l10n.bookmarks,
                           onPressed: () => _showBookmarksSheet(context, item),
                         )
                       : const SizedBox.shrink(),
@@ -363,14 +395,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               title: hasChapters && hasTracks
                   ? Center(
                       child: SegmentedButton<_TrackListMode>(
-                        segments: const [
+                        segments: [
                           ButtonSegment(
                             value: _TrackListMode.chapters,
-                            label: Text('Chapters'),
+                            label: Text(context.l10n.chapters),
                           ),
                           ButtonSegment(
                             value: _TrackListMode.tracks,
-                            label: Text('Tracks'),
+                            label: Text(context.l10n.tracks),
                           ),
                         ],
                         selected: {_listMode},
@@ -379,7 +411,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       ),
                     )
                   : Text(
-                      showChapters ? 'Chapters' : 'Tracks',
+                      showChapters
+                          ? context.l10n.chapters
+                          : context.l10n.tracks,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
               children: [
@@ -400,7 +434,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     return ListTile(
                       dense: true,
                       selected: entry.key == currentTrackIndex,
-                      title: Text(track.title ?? 'Track ${entry.key + 1}'),
+                      title: Text(
+                        track.title ?? context.l10n.trackNumber(entry.key + 1),
+                      ),
                       trailing: Text(_formatTime(track.startOffset)),
                       onTap: () =>
                           controller.seekToGlobalPosition(track.startOffset),
@@ -427,14 +463,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   void _showTimeDisplaySheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => const SafeArea(
+      builder: (context) => SafeArea(
         child: Padding(
           padding: EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Time Display'),
+              Text(context.l10n.timeDisplayMenu),
               SizedBox(height: 12),
               TimeDisplayModeSelector(),
             ],
@@ -451,41 +487,24 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   ) {
     final controller = ref.read(playbackControllerProvider.notifier);
     final isActive = ref.read(sleepTimerRemainingProvider) != null;
+    final hasChapters =
+        ref.read(currentPlaybackItemProvider)?.chapters.isNotEmpty ?? false;
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Sleep Timer'),
-            ),
-            for (final minutes in {
-              5,
-              15,
-              30,
-              45,
-              60,
-              settings.sleepTimerDefaultMinutes,
-            }.toList()..sort())
-              ListTile(
-                title: Text('$minutes minutes'),
-                onTap: () {
-                  controller.startSleepTimer(Duration(minutes: minutes));
-                  Navigator.pop(context);
-                },
-              ),
-            if (isActive)
-              ListTile(
-                leading: const Icon(Icons.cancel_outlined),
-                title: const Text('Cancel timer'),
-                onTap: () {
-                  controller.cancelSleepTimer();
-                  Navigator.pop(context);
-                },
-              ),
-          ],
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        // Lifts the sheet above the keyboard while the value is typed.
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: _SleepTimerSheet(
+          initialMinutes: settings.sleepTimerDefaultMinutes,
+          isActive: isActive,
+          hasChapters: hasChapters,
+          onStart: (minutes) =>
+              controller.startSleepTimer(Duration(minutes: minutes)),
+          onEndOfChapter: controller.startSleepTimerAtChapterEnd,
+          onCancel: controller.cancelSleepTimer,
         ),
       ),
     );
@@ -501,19 +520,23 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         builder: (sheetContext, ref, _) {
           final queue = ref.watch(playQueueProvider);
           final current = ref.watch(currentPlaybackItemProvider);
-          if (queue == null) return const SizedBox(height: 120, child: Center(child: Text('Queue finished.')));
+          if (queue == null)
+            return SizedBox(
+              height: 120,
+              child: Center(child: Text(context.l10n.queueFinished)),
+            );
           return SizedBox(
             height: MediaQuery.sizeOf(sheetContext).height * 0.6,
             child: Column(
               children: [
                 ListTile(
-                  title: Text('Queue: ${queue.name}'),
+                  title: Text(context.l10n.queueNamed(queue.name)),
                   trailing: TextButton(
                     onPressed: () {
                       ref.read(playQueueProvider.notifier).state = null;
                       Navigator.of(sheetContext).pop();
                     },
-                    child: const Text('Clear'),
+                    child: Text(context.l10n.clear),
                   ),
                 ),
                 Expanded(
@@ -523,8 +546,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       final items = [...queue.items];
                       if (b > a) b -= 1;
                       items.insert(b, items.removeAt(a));
-                      ref.read(playQueueProvider.notifier).state =
-                          queue.copyWith(items: items);
+                      ref.read(playQueueProvider.notifier).state = queue
+                          .copyWith(items: items);
                     },
                     itemBuilder: (context, i) {
                       final it = queue.items[i];
@@ -532,8 +555,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       return ListTile(
                         key: ValueKey('${it.downloadId}#$i'),
                         selected: isCurrent,
-                        leading: Icon(isCurrent ? Icons.equalizer : Icons.music_note),
-                        title: Text(it.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        leading: Icon(
+                          isCurrent ? Icons.equalizer : Icons.music_note,
+                        ),
+                        title: Text(
+                          it.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         onTap: isCurrent
                             ? null
                             : () => ref
@@ -542,12 +571,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         trailing: Padding(
                           padding: const EdgeInsets.only(right: 32),
                           child: IconButton(
-                            tooltip: 'Remove from queue',
+                            tooltip: context.l10n.removeFromQueue,
                             icon: const Icon(Icons.close),
                             onPressed: isCurrent
                                 ? null
-                                : () => ref.read(playQueueProvider.notifier).state =
-                                      queue.copyWith(
+                                : () =>
+                                      ref
+                                          .read(playQueueProvider.notifier)
+                                          .state = queue.copyWith(
                                         items: [...queue.items]..removeAt(i),
                                       ),
                           ),
@@ -577,9 +608,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
+                Padding(
                   padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text('Bookmarks'),
+                  child: Text(context.l10n.bookmarks),
                 ),
                 if (bookmarksAsync.isLoading && bookmarks.isEmpty)
                   const Padding(
@@ -587,12 +618,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     child: Center(child: CircularProgressIndicator()),
                   )
                 else if (bookmarks.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Text('No bookmarks yet'),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Text(context.l10n.noBookmarksYet),
                   )
                 else
                   ConstrainedBox(
@@ -612,7 +640,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                           },
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline),
-                            tooltip: 'Delete bookmark',
+                            tooltip: context.l10n.deleteBookmarkTooltip,
                             onPressed: () =>
                                 _deleteBookmark(context, item, bookmark),
                           ),
@@ -622,7 +650,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   ),
                 ListTile(
                   leading: const Icon(Icons.add),
-                  title: const Text('Add bookmark at current position'),
+                  title: Text(context.l10n.addBookmarkAtCurrentPosition),
                   onTap: () => _addBookmark(context, item),
                 ),
               ],
@@ -636,28 +664,31 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   /// PLAN.md Phase 5.8. Mirrors the reference app: defaults the note to a
   /// formatted current date/time so a listener can always just tap Add
   /// without typing anything, but lets them override it first.
-  Future<void> _addBookmark(BuildContext context, LibraryItemDetail item) async {
+  Future<void> _addBookmark(
+    BuildContext context,
+    LibraryItemDetail item,
+  ) async {
     final position = ref.read(playbackPositionProvider).valueOrNull ?? 0.0;
     final defaultTitle = DateFormat.yMMMd().add_Hm().format(DateTime.now());
     final textController = TextEditingController(text: defaultTitle);
     final title = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Bookmark'),
+        title: Text(context.l10n.addBookmark),
         content: TextField(
           controller: textController,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Note'),
+          decoration: InputDecoration(labelText: context.l10n.note),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.of(dialogContext).pop(textController.text),
-            child: const Text('Add'),
+            child: Text(context.l10n.add),
           ),
         ],
       ),
@@ -676,7 +707,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Failed to add bookmark')));
+      ).showSnackBar(SnackBar(content: Text(context.l10n.failedToAddBookmark)));
     }
   }
 
@@ -688,16 +719,16 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete bookmark?'),
-        content: Text('This removes "${bookmark.title}" from the server.'),
+        title: Text(context.l10n.deleteBookmarkTitle),
+        content: Text(context.l10n.thisRemovesFromTheServer(bookmark.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.l10n.delete),
           ),
         ],
       ),
@@ -711,7 +742,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to delete bookmark')),
+        SnackBar(content: Text(context.l10n.failedToDeleteBookmark)),
       );
     }
   }
@@ -909,8 +940,10 @@ class _SpeedSheetState extends State<_SpeedSheet> {
     final parsed = parsePlaybackSpeed(_inputController.text);
     if (parsed == null) {
       setState(
-        () => _inputError =
-            'Enter a number between $minPlaybackSpeed and $maxPlaybackSpeed.',
+        () => _inputError = context.l10n.speedInputError(
+          minPlaybackSpeed,
+          maxPlaybackSpeed,
+        ),
       );
       return;
     }
@@ -942,7 +975,10 @@ class _SpeedSheetState extends State<_SpeedSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Playback Speed', style: theme.textTheme.titleMedium),
+            Text(
+              context.l10n.playbackSpeed,
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             // Matching [Expanded]s either side keep the speed itself dead
             // centre; a plain centred Row would centre the text *and* the
@@ -961,8 +997,8 @@ class _SpeedSheetState extends State<_SpeedSheet> {
                     child: IconButton(
                       onPressed: _toggleExactInput,
                       tooltip: _showExactInput
-                          ? 'Hide exact speed'
-                          : 'Enter exact speed',
+                          ? context.l10n.hideExactSpeed
+                          : context.l10n.enterExactSpeed,
                       isSelected: _showExactInput,
                       icon: const Icon(Icons.edit_outlined),
                     ),
@@ -983,9 +1019,7 @@ class _SpeedSheetState extends State<_SpeedSheet> {
                       onPressed: stepPlaybackSpeed(_speed, delta) == _speed
                           ? null
                           : () => _apply(stepPlaybackSpeed(_speed, delta)),
-                      child: Text(
-                        '${delta > 0 ? '+' : '−'}${delta.abs()}',
-                      ),
+                      child: Text('${delta > 0 ? '+' : '−'}${delta.abs()}'),
                     ),
                   ),
                 ],
@@ -1008,7 +1042,7 @@ class _SpeedSheetState extends State<_SpeedSheet> {
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _applyTypedValue(),
                       decoration: InputDecoration(
-                        labelText: 'Exact speed',
+                        labelText: context.l10n.exactSpeed,
                         hintText: formatPlaybackSpeed(_speed),
                         errorText: _inputError,
                         border: const OutlineInputBorder(),
@@ -1020,7 +1054,7 @@ class _SpeedSheetState extends State<_SpeedSheet> {
                     padding: const EdgeInsets.only(top: 4),
                     child: FilledButton(
                       onPressed: _applyTypedValue,
-                      child: const Text('Set'),
+                      child: Text(context.l10n.setLabel),
                     ),
                   ),
                 ],
@@ -1042,10 +1076,261 @@ class _SpeedSheetState extends State<_SpeedSheet> {
             const SizedBox(height: 8),
             TextButton(
               onPressed: _speed == 1.0 ? null : () => _apply(1.0),
-              child: const Text('Reset to 1x'),
+              child: Text(context.l10n.resetTo1x),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Sleep-timer picker, modelled on [_SpeedSheet]: steppers, a typed value
+/// and presets. Unlike speed, nothing applies until "Start timer" -- a timer
+/// that began on every tweak would be running before it was set.
+class _SleepTimerSheet extends StatefulWidget {
+  const _SleepTimerSheet({
+    required this.initialMinutes,
+    required this.isActive,
+    required this.hasChapters,
+    required this.onStart,
+    required this.onEndOfChapter,
+    required this.onCancel,
+  });
+
+  final int initialMinutes;
+  final bool isActive;
+  final bool hasChapters;
+  final ValueChanged<int> onStart;
+  final VoidCallback onEndOfChapter;
+  final VoidCallback onCancel;
+
+  @override
+  State<_SleepTimerSheet> createState() => _SleepTimerSheetState();
+}
+
+class _SleepTimerSheetState extends State<_SleepTimerSheet> {
+  late int _minutes = normalizeSleepMinutes(widget.initialMinutes);
+  final _inputController = TextEditingController();
+  String? _inputError;
+  bool _showExactInput = false;
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
+
+  void _set(int minutes) => setState(() {
+    _minutes = minutes;
+    _inputError = null;
+  });
+
+  void _applyTypedValue() {
+    final parsed = parseSleepMinutes(_inputController.text);
+    if (parsed == null) {
+      setState(
+        () => _inputError = context.l10n.sleepInputError(
+          formatSleepMinutes(minSleepMinutes),
+          formatSleepMinutes(maxSleepMinutes),
+        ),
+      );
+      return;
+    }
+    _inputController.clear();
+    FocusScope.of(context).unfocus();
+    _set(parsed);
+    setState(() => _showExactInput = false);
+  }
+
+  void _toggleExactInput() {
+    setState(() {
+      _showExactInput = !_showExactInput;
+      if (!_showExactInput) {
+        _inputController.clear();
+        _inputError = null;
+      }
+    });
+    if (!_showExactInput) FocusScope.of(context).unfocus();
+  }
+
+  void _finish(VoidCallback action) {
+    action();
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const deltas = [-15, -5, -1, 1, 5, 15];
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(context.l10n.sleepTimer, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Expanded(child: SizedBox.shrink()),
+                Text(
+                  formatSleepMinutes(_minutes),
+                  style: theme.textTheme.displaySmall,
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: _toggleExactInput,
+                      tooltip: _showExactInput
+                          ? context.l10n.hideExactDuration
+                          : context.l10n.enterExactDuration,
+                      isSelected: _showExactInput,
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final delta in deltas)
+                  OutlinedButton(
+                    onPressed: stepSleepMinutes(_minutes, delta) == _minutes
+                        ? null
+                        : () => _set(stepSleepMinutes(_minutes, delta)),
+                    child: Text('${delta > 0 ? '+' : '\u2212'}${delta.abs()}'),
+                  ),
+              ],
+            ),
+            if (_showExactInput) ...[
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController,
+                      autofocus: true,
+                      keyboardType: TextInputType.text,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _applyTypedValue(),
+                      decoration: InputDecoration(
+                        labelText: context.l10n.exactDuration,
+                        hintText: context.l10n.exactDurationHint,
+                        errorText: _inputError,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: FilledButton(
+                      onPressed: _applyTypedValue,
+                      child: Text(context.l10n.setLabel),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              children: [
+                for (final preset in {
+                  ...sleepTimerPresets,
+                  widget.initialMinutes,
+                }.toList()..sort())
+                  ChoiceChip(
+                    label: Text(formatSleepMinutes(preset)),
+                    selected: _minutes == preset,
+                    onSelected: (_) => _set(preset),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _finish(() => widget.onStart(_minutes)),
+                icon: const Icon(Icons.bedtime_outlined),
+                label: Text(context.l10n.startTimer),
+              ),
+            ),
+            if (widget.hasChapters)
+              TextButton.icon(
+                onPressed: () => _finish(widget.onEndOfChapter),
+                icon: const Icon(Icons.bookmark_outline),
+                label: Text(context.l10n.endOfChapter),
+              ),
+            if (widget.isActive)
+              TextButton.icon(
+                onPressed: () => _finish(widget.onCancel),
+                icon: const Icon(Icons.cancel_outlined),
+                label: Text(context.l10n.cancelTimer),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Countdown with quick "+N min" / restart controls (QOL_PLAN B5).
+class _SleepTimerChip extends ConsumerWidget {
+  const _SleepTimerChip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final remaining = ref.watch(sleepTimerRemainingProvider);
+    final fired = ref.watch(sleepTimerFiredProvider);
+    final endOfChapter = ref.watch(sleepTimerEndOfChapterProvider);
+    if (remaining == null && !fired) return const SizedBox.shrink();
+    final settings =
+        ref.watch(appSettingsProvider).valueOrNull ?? const AppSettings();
+    final controller = ref.read(playbackControllerProvider.notifier);
+    final s = remaining?.inSeconds ?? 0;
+    final clock = '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        children: [
+          Chip(
+            avatar: const Icon(Icons.bedtime_outlined, size: 18),
+            label: Text(
+              fired
+                  ? context.l10n.sleepTimerEnded
+                  : endOfChapter
+                  ? context.l10n.chapterEndsIn(clock)
+                  : context.l10n.sleepIn(clock),
+            ),
+          ),
+          if (fired)
+            ActionChip(
+              label: Text(context.l10n.restart),
+              onPressed: controller.restartSleepTimer,
+            ),
+          ActionChip(
+            label: Text(context.l10n.min(settings.sleepExtendMinutes)),
+            onPressed: controller.extendSleepTimer,
+          ),
+          if (fired)
+            IconButton(
+              tooltip: context.l10n.dismiss,
+              icon: const Icon(Icons.close, size: 18),
+              onPressed: controller.cancelSleepTimer,
+            ),
+        ],
       ),
     );
   }
