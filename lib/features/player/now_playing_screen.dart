@@ -14,6 +14,7 @@ import '../auth/state/session_state.dart';
 import '../settings/data/app_settings.dart';
 import '../settings/state/settings_providers.dart';
 import 'data/playback_speed.dart';
+import 'data/sleep_timer_duration.dart';
 import 'state/playback_controller.dart';
 import 'time_display_mode_selector.dart';
 
@@ -149,9 +150,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             ),
           IconButton(
             icon: Icon(
-              sleepRemaining != null
-                  ? Icons.bedtime
-                  : Icons.bedtime_outlined,
+              sleepRemaining != null ? Icons.bedtime : Icons.bedtime_outlined,
             ),
             tooltip: sleepRemaining != null
                 ? 'Sleep timer: ${_formatTime(sleepRemaining.inSeconds.toDouble())}'
@@ -453,39 +452,18 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     final isActive = ref.read(sleepTimerRemainingProvider) != null;
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Sleep Timer'),
-            ),
-            for (final minutes in {
-              5,
-              15,
-              30,
-              45,
-              60,
-              settings.sleepTimerDefaultMinutes,
-            }.toList()..sort())
-              ListTile(
-                title: Text('$minutes minutes'),
-                onTap: () {
-                  controller.startSleepTimer(Duration(minutes: minutes));
-                  Navigator.pop(context);
-                },
-              ),
-            if (isActive)
-              ListTile(
-                leading: const Icon(Icons.cancel_outlined),
-                title: const Text('Cancel timer'),
-                onTap: () {
-                  controller.cancelSleepTimer();
-                  Navigator.pop(context);
-                },
-              ),
-          ],
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        // Lifts the sheet above the keyboard while the value is typed.
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: _SleepTimerSheet(
+          initialMinutes: settings.sleepTimerDefaultMinutes,
+          isActive: isActive,
+          onStart: (minutes) =>
+              controller.startSleepTimer(Duration(minutes: minutes)),
+          onCancel: controller.cancelSleepTimer,
         ),
       ),
     );
@@ -501,7 +479,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         builder: (sheetContext, ref, _) {
           final queue = ref.watch(playQueueProvider);
           final current = ref.watch(currentPlaybackItemProvider);
-          if (queue == null) return const SizedBox(height: 120, child: Center(child: Text('Queue finished.')));
+          if (queue == null)
+            return const SizedBox(
+              height: 120,
+              child: Center(child: Text('Queue finished.')),
+            );
           return SizedBox(
             height: MediaQuery.sizeOf(sheetContext).height * 0.6,
             child: Column(
@@ -523,8 +505,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       final items = [...queue.items];
                       if (b > a) b -= 1;
                       items.insert(b, items.removeAt(a));
-                      ref.read(playQueueProvider.notifier).state =
-                          queue.copyWith(items: items);
+                      ref.read(playQueueProvider.notifier).state = queue
+                          .copyWith(items: items);
                     },
                     itemBuilder: (context, i) {
                       final it = queue.items[i];
@@ -532,8 +514,14 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       return ListTile(
                         key: ValueKey('${it.downloadId}#$i'),
                         selected: isCurrent,
-                        leading: Icon(isCurrent ? Icons.equalizer : Icons.music_note),
-                        title: Text(it.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        leading: Icon(
+                          isCurrent ? Icons.equalizer : Icons.music_note,
+                        ),
+                        title: Text(
+                          it.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         onTap: isCurrent
                             ? null
                             : () => ref
@@ -546,8 +534,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             icon: const Icon(Icons.close),
                             onPressed: isCurrent
                                 ? null
-                                : () => ref.read(playQueueProvider.notifier).state =
-                                      queue.copyWith(
+                                : () =>
+                                      ref
+                                          .read(playQueueProvider.notifier)
+                                          .state = queue.copyWith(
                                         items: [...queue.items]..removeAt(i),
                                       ),
                           ),
@@ -588,10 +578,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                   )
                 else if (bookmarks.isEmpty)
                   const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Text('No bookmarks yet'),
                   )
                 else
@@ -636,7 +623,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   /// PLAN.md Phase 5.8. Mirrors the reference app: defaults the note to a
   /// formatted current date/time so a listener can always just tap Add
   /// without typing anything, but lets them override it first.
-  Future<void> _addBookmark(BuildContext context, LibraryItemDetail item) async {
+  Future<void> _addBookmark(
+    BuildContext context,
+    LibraryItemDetail item,
+  ) async {
     final position = ref.read(playbackPositionProvider).valueOrNull ?? 0.0;
     final defaultTitle = DateFormat.yMMMd().add_Hm().format(DateTime.now());
     final textController = TextEditingController(text: defaultTitle);
@@ -983,9 +973,7 @@ class _SpeedSheetState extends State<_SpeedSheet> {
                       onPressed: stepPlaybackSpeed(_speed, delta) == _speed
                           ? null
                           : () => _apply(stepPlaybackSpeed(_speed, delta)),
-                      child: Text(
-                        '${delta > 0 ? '+' : '−'}${delta.abs()}',
-                      ),
+                      child: Text('${delta > 0 ? '+' : '−'}${delta.abs()}'),
                     ),
                   ),
                 ],
@@ -1044,6 +1032,192 @@ class _SpeedSheetState extends State<_SpeedSheet> {
               onPressed: _speed == 1.0 ? null : () => _apply(1.0),
               child: const Text('Reset to 1x'),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Sleep-timer picker, modelled on [_SpeedSheet]: steppers, a typed value
+/// and presets. Unlike speed, nothing applies until "Start timer" -- a timer
+/// that began on every tweak would be running before it was set.
+class _SleepTimerSheet extends StatefulWidget {
+  const _SleepTimerSheet({
+    required this.initialMinutes,
+    required this.isActive,
+    required this.onStart,
+    required this.onCancel,
+  });
+
+  final int initialMinutes;
+  final bool isActive;
+  final ValueChanged<int> onStart;
+  final VoidCallback onCancel;
+
+  @override
+  State<_SleepTimerSheet> createState() => _SleepTimerSheetState();
+}
+
+class _SleepTimerSheetState extends State<_SleepTimerSheet> {
+  late int _minutes = normalizeSleepMinutes(widget.initialMinutes);
+  final _inputController = TextEditingController();
+  String? _inputError;
+  bool _showExactInput = false;
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
+
+  void _set(int minutes) => setState(() {
+    _minutes = minutes;
+    _inputError = null;
+  });
+
+  void _applyTypedValue() {
+    final parsed = parseSleepMinutes(_inputController.text);
+    if (parsed == null) {
+      setState(
+        () => _inputError =
+            'Enter between ${formatSleepMinutes(minSleepMinutes)} and ${formatSleepMinutes(maxSleepMinutes)}.',
+      );
+      return;
+    }
+    _inputController.clear();
+    FocusScope.of(context).unfocus();
+    _set(parsed);
+    setState(() => _showExactInput = false);
+  }
+
+  void _toggleExactInput() {
+    setState(() {
+      _showExactInput = !_showExactInput;
+      if (!_showExactInput) {
+        _inputController.clear();
+        _inputError = null;
+      }
+    });
+    if (!_showExactInput) FocusScope.of(context).unfocus();
+  }
+
+  void _finish(VoidCallback action) {
+    action();
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const deltas = [-15, -5, -1, 1, 5, 15];
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Sleep Timer', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Expanded(child: SizedBox.shrink()),
+                Text(
+                  formatSleepMinutes(_minutes),
+                  style: theme.textTheme.displaySmall,
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      onPressed: _toggleExactInput,
+                      tooltip: _showExactInput
+                          ? 'Hide exact duration'
+                          : 'Enter exact duration',
+                      isSelected: _showExactInput,
+                      icon: const Icon(Icons.edit_outlined),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final delta in deltas)
+                  OutlinedButton(
+                    onPressed: stepSleepMinutes(_minutes, delta) == _minutes
+                        ? null
+                        : () => _set(stepSleepMinutes(_minutes, delta)),
+                    child: Text('${delta > 0 ? '+' : '\u2212'}${delta.abs()}'),
+                  ),
+              ],
+            ),
+            if (_showExactInput) ...[
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController,
+                      autofocus: true,
+                      keyboardType: TextInputType.text,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _applyTypedValue(),
+                      decoration: InputDecoration(
+                        labelText: 'Exact duration',
+                        hintText: 'e.g. 45, 1:30 or 1h30m',
+                        errorText: _inputError,
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: FilledButton(
+                      onPressed: _applyTypedValue,
+                      child: const Text('Set'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 16),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              children: [
+                for (final preset in {
+                  ...sleepTimerPresets,
+                  widget.initialMinutes,
+                }.toList()..sort())
+                  ChoiceChip(
+                    label: Text(formatSleepMinutes(preset)),
+                    selected: _minutes == preset,
+                    onSelected: (_) => _set(preset),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => _finish(() => widget.onStart(_minutes)),
+                icon: const Icon(Icons.bedtime_outlined),
+                label: Text('Start timer'),
+              ),
+            ),
+            if (widget.isActive)
+              TextButton.icon(
+                onPressed: () => _finish(widget.onCancel),
+                icon: const Icon(Icons.cancel_outlined),
+                label: Text('Cancel timer'),
+              ),
           ],
         ),
       ),
