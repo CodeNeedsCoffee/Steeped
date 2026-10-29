@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/logging/log_repository.dart';
 import '../../core/storage/app_database.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 9.6: a real, working debug log — not a stub screen. Reads
 /// live from drift (persists across restarts), hooked into real failure
@@ -19,21 +20,21 @@ class LogsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Logs'),
+        title: Text(context.l10n.logs),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Clear logs',
+            tooltip: context.l10n.clearLogs,
             onPressed: () => ref.read(logRepositoryProvider).clear(),
           ),
         ],
       ),
       body: logsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Failed to load: $error')),
+        error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
         data: (logs) {
           if (logs.isEmpty) {
-            return const Center(child: Text('No log entries yet.'));
+            return Center(child: Text(context.l10n.noLogEntriesYet));
           }
           return ListView.builder(
             itemCount: logs.length,
@@ -54,11 +55,19 @@ class LogsScreen extends ConsumerWidget {
                   },
                 ),
                 title: Text(entry.message),
+                // Collapsed repeats would otherwise look like a single
+                // occurrence, hiding that something failed in a loop.
                 subtitle: Text(
-                  '${entry.tag} · ${DateFormat.yMd().add_Hms().format(entry.timestamp)}'
-                  // Collapsed repeats would otherwise look like a single
-                  // occurrence, hiding that something failed in a loop.
-                  '${entry.repeatCount > 1 ? ' · ×${entry.repeatCount}' : ''}',
+                  entry.repeatCount > 1
+                      ? context.l10n.logEntrySubtitleRepeated(
+                          entry.tag,
+                          DateFormat.yMd().add_Hms().format(entry.timestamp),
+                          entry.repeatCount,
+                        )
+                      : context.l10n.logEntrySubtitle(
+                          entry.tag,
+                          DateFormat.yMd().add_Hms().format(entry.timestamp),
+                        ),
                 ),
               );
             },

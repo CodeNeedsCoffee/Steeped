@@ -117,10 +117,15 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
   /// skip buttons) always jumped a hardcoded 30s regardless of what the
   /// user configured, while the in-app buttons already respected it. Same
   /// "handler can't reach Riverpod on its own" reason as [contentTree].
-  int jumpIntervalSeconds = 30;
+  int jumpBackSeconds = 30;
+  int jumpForwardSeconds = 30;
+
+  /// Whether the lock-screen/notification expose a seek bar
+  /// (`AppSettings.allowSeekOnMediaControls`).
+  bool allowSeekOnMediaControls = true;
 
   /// The last speed the user picked, persisted via `AppSettings` and kept
-  /// in sync by [PlaybackController] the same way as [jumpIntervalSeconds]
+  /// in sync by [PlaybackController] the same way as [jumpForwardSeconds]
   /// -- without this, every freshly loaded item started back at 1.0x
   /// because a new `AudioPlayer`/session has no memory of a prior choice.
   double playbackSpeed = 1.0;
@@ -139,6 +144,14 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
     Map<String, dynamic>? extras,
   ]) async {
     await contentTree?.play(mediaId);
+  }
+
+  @override
+  Future<void> playFromSearch(
+    String query, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    await contentTree?.playFromSearch(query);
   }
 
   AudioPlayer get player => _player;
@@ -186,7 +199,10 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
     // `initialIndex`/`initialPosition` instead makes the native prepare
     // call start there directly, so track 0/position 0 is never reported at
     // all -- nothing to flash.
-    final (initialIndex, initialPosition) = startPosition > 0 && _tracks.isNotEmpty
+    final (
+      initialIndex,
+      initialPosition,
+    ) = startPosition > 0 && _tracks.isNotEmpty
         ? _trackAndOffsetFor(startPosition)
         : (0, Duration.zero);
     await _player.setAudioSources(
@@ -206,10 +222,7 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
       0,
       double.infinity,
     );
-    return (
-      targetIndex,
-      Duration(milliseconds: (offsetWithin * 1000).round()),
-    );
+    return (targetIndex, Duration(milliseconds: (offsetWithin * 1000).round()));
   }
 
   Future<void> seekToGlobalPosition(double seconds) async {
@@ -250,14 +263,17 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> seek(Duration position) => _player.seek(position);
 
+  /// Player volume 0..1; used by the sleep timer's fade-out.
+  Future<void> setVolume(double volume) => _player.setVolume(volume);
+
   @override
   Future<void> setSpeed(double speed) => _player.setSpeed(speed);
 
   @override
-  Future<void> fastForward() => jumpBy(jumpIntervalSeconds.toDouble());
+  Future<void> fastForward() => jumpBy(jumpForwardSeconds.toDouble());
 
   @override
-  Future<void> rewind() => jumpBy(-jumpIntervalSeconds.toDouble());
+  Future<void> rewind() => jumpBy(-jumpBackSeconds.toDouble());
 
   /// Replay-style icons (evan's request, 2026-09-24) in place of
   /// `audio_service`'s built-in `MediaControl.rewind`/`.fastForward`
@@ -301,7 +317,9 @@ class SteepedAudioHandler extends BaseAudioHandler with SeekHandler {
           MediaControl.stop,
           _fastForwardControl,
         ],
-        systemActions: const {MediaAction.seek},
+        systemActions: allowSeekOnMediaControls
+            ? const {MediaAction.seek}
+            : const <MediaAction>{},
         androidCompactActionIndices: const [0, 1, 3],
         processingState:
             const {

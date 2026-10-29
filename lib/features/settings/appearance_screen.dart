@@ -5,6 +5,8 @@ import '../../core/theme/skin.dart';
 import '../../core/theme/skin_registry.dart';
 import 'data/app_settings.dart';
 import 'state/settings_providers.dart';
+import '../../l10n/l10n.dart';
+import '../../l10n/enum_labels.dart';
 
 /// PLAN.md Phase 2.6: switch skins live — tapping a skin applies it
 /// immediately (this whole screen re-themes along with everything else,
@@ -21,21 +23,45 @@ class AppearanceScreen extends ConsumerWidget {
     final controller = ref.read(appSettingsProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Appearance')),
-      body: ListView.separated(
+      appBar: AppBar(title: Text(context.l10n.appearance)),
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        itemCount: availableSkins.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final skin = availableSkins[index];
-          final selected = skin.id.name == settings.skinId;
-          return _SkinCard(
-            skin: skin,
-            selected: selected,
-            onTap: () =>
-                controller.save(settings.copyWith(skinId: skin.id.name)),
-          );
-        },
+        children: [
+          Text(context.l10n.theme, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          SegmentedButton<ThemeVariant>(
+            showSelectedIcon: false,
+            segments: [
+              for (final v in ThemeVariant.values)
+                ButtonSegment(
+                  value: v,
+                  label: Text(
+                    v == ThemeVariant.system
+                        ? context.l10n.themeSystemShort
+                        : v.localized(context.l10n),
+                  ),
+                ),
+            ],
+            selected: {ThemeVariant.parse(settings.themeVariant)},
+            onSelectionChanged: (s) =>
+                controller.save(settings.copyWith(themeVariant: s.first.name)),
+          ),
+          const SizedBox(height: 20),
+          Text(context.l10n.skin, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          for (final skin in availableSkins) ...[
+            _SkinCard(
+              skin: skin,
+              variant: ThemeVariant.parse(
+                settings.themeVariant,
+              ).resolve(MediaQuery.platformBrightnessOf(context)),
+              selected: skin.id.name == settings.skinId,
+              onTap: () =>
+                  controller.save(settings.copyWith(skinId: skin.id.name)),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ],
       ),
     );
   }
@@ -44,11 +70,13 @@ class AppearanceScreen extends ConsumerWidget {
 class _SkinCard extends StatelessWidget {
   const _SkinCard({
     required this.skin,
+    required this.variant,
     required this.selected,
     required this.onTap,
   });
 
   final Skin skin;
+  final ThemeVariant variant;
   final bool selected;
   final VoidCallback onTap;
 
@@ -58,12 +86,14 @@ class _SkinCard extends StatelessWidget {
     // Preview swatches use the *skin's own* theme colors, not the current
     // app theme — so evan can see what a skin looks like before it's
     // active, not just after switching to it.
-    final previewScheme = skin.buildTheme().colorScheme;
+    final previewScheme = skin.buildTheme(variant).colorScheme;
 
     return Semantics(
       button: true,
       selected: selected,
-      label: '${skin.displayName}${selected ? ', selected' : ''}',
+      label: selected
+          ? context.l10n.skinSelectedSuffix(skin.id.localized(context.l10n))
+          : skin.id.localized(context.l10n),
       child: Material(
         color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
@@ -80,10 +110,13 @@ class _SkinCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(skin.displayName, style: theme.textTheme.titleMedium),
+                      Text(
+                        skin.id.localized(context.l10n),
+                        style: theme.textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 4),
                       Text(
-                        skin.description,
+                        skin.id.description(context.l10n),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -92,9 +125,7 @@ class _SkinCard extends StatelessWidget {
                   ),
                 ),
                 Icon(
-                  selected
-                      ? Icons.check_circle
-                      : Icons.radio_button_unchecked,
+                  selected ? Icons.check_circle : Icons.radio_button_unchecked,
                   color: selected
                       ? theme.colorScheme.primary
                       : theme.colorScheme.outline,

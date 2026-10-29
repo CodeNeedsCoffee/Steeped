@@ -7,9 +7,12 @@ import '../../features/downloads/state/download_controller.dart';
 import '../../features/library/state/library_providers.dart';
 import '../../features/localmedia/state/local_media_providers.dart';
 import '../../features/player/state/playback_controller.dart';
+import '../../features/settings/data/app_settings.dart';
+import '../../features/settings/state/settings_providers.dart';
 import '../../models/library_item.dart';
 import '../../models/podcast_episode.dart';
 import '../network/cover_image_url.dart';
+import 'voice_search.dart';
 
 /// PLAN.md Phase 10.1: one source of truth mapping app data onto a
 /// browsable node tree — the shared foundation both Android Auto (now) and
@@ -37,6 +40,8 @@ class CarContentTree {
   static const _librariesId = 'libraries';
   static const _libraryPrefix = 'library:';
   static const _podcastPrefix = 'podcast:';
+  static const _seriesListPrefix = 'series-list:';
+  static const _seriesPrefix = 'series:';
 
   Future<List<MediaItem>> getChildren(String parentMediaId) async {
     if (parentMediaId == rootId) return _rootChildren();
@@ -50,6 +55,17 @@ class CarContentTree {
       return _libraryItemsChildren(
         parentMediaId.substring(_libraryPrefix.length),
       );
+    }
+    if (parentMediaId.startsWith(_seriesListPrefix)) {
+      return _seriesListChildren(
+        parentMediaId.substring(_seriesListPrefix.length),
+      );
+    }
+    if (parentMediaId.startsWith(_seriesPrefix)) {
+      final rest = parentMediaId.substring(_seriesPrefix.length);
+      final sep = rest.indexOf(':');
+      if (sep == -1) return const [];
+      return _seriesBooksChildren(rest.substring(0, sep), rest.substring(sep + 1));
     }
     if (parentMediaId.startsWith(_podcastPrefix)) {
       return _podcastEpisodesChildren(
@@ -246,16 +262,124 @@ class CarContentTree {
         .toList();
   }
 
+  AppSettings get _settings =>
+      _container.read(appSettingsProvider).valueOrNull ?? const AppSettings();
+
   Future<List<MediaItem>> _libraryItemsChildren(String libraryId) async {
     final session = _session();
     if (session == null) return const [];
     final (serverUrl, token) = session;
     final page = await _container
         .read(libraryRepositoryProvider)
-        .fetchLibraryItems(libraryId, page: 0, limit: 40);
-    return page.items
-        .map((i) => _mediaItemForLibraryItem(i, serverUrl, token))
-        .toList();
+        .fetchLibraryItems(
+          libraryId,
+          page: 0,
+          limit: _settings.autoBrowseLimit,
+        );
+    final libraries = await _container.read(librariesProvider.future);
+    final isBookLibrary = libraries.any(
+      (l) => l.id == libraryId && l.mediaType == 'book',
+    );
+    return [
+      if (isBookLibrary)
+        MediaItem(
+          id: '$_seriesListPrefix$libraryId',
+          title: 'Series',
+          playable: false,
+        ),
+      ...page.items.map((i) => _mediaItemForLibraryItem(i, serverUrl, token)),
+    ];
+  }
+
+  Future<List<MediaItem>> _seriesListChildren(String libraryId) async {
+    final page = await _container
+        .read(libraryRepositoryProvider)
+        .fetchSeries(libraryId, page: 0, limit: _settings.autoBrowseLimit);
+    return [
+      for (final s in page.series)
+        MediaItem(
+          id: '$_seriesPrefix$libraryId:${s.id}',
+          title: s.name,
+          playable: false,
+        ),
+    ];
+  }
+
+  Future<List<MediaItem>> _seriesBooksChildren(
+    String libraryId,
+    String seriesId,
+  ) async {
+    final session = _session();
+    if (session == null) return const [];
+    final (serverUrl, token) = session;
+    final repo = _container.read(libraryRepositoryProvider);
+    // The series endpoint embeds each series' books in reading order.
+    for (var page = 0; page < 10; page++) {
+      final result = await repo.fetchSeries(libraryId, page: page, limit: 100);
+      for (final s in result.series) {
+        if (s.id != seriesId) continue;
+        final books = _settings.autoSeriesNewestFirst
+            ? s.books.reversed.toList()
+            : s.books;
+        return [
+          for (final b in books.take(_settings.autoBrowseLimit))
+            _mediaItemForLibraryItem(b, serverUrl, token),
+        ];
+      }
+      if ((page + 1) * 100 >= result.total) break;
+    }
+    return const [];
+  }
+
+  /// "Hey Google, play <book>". Downloaded books are matched first so voice
+  /// works offline; otherwise the library search decides. An empty query
+  /// ("play audiobooks") resumes the newest continue-listening entry.
+  Future<void> playFromSearch(String query) async {
+    final controller = _container.read(playbackControllerProvider.notifier);
+    final q = cleanVoiceQuery(query);
+
+    if (q.isNotEmpty) {
+      final downloads = await _container
+          .read(downloadRepositoryProvider)
+          .watchDownloads()
+          .first;
+      final localMatch = pickVoiceMatch(query, [
+        for (final d in downloads.where((d) => d.status == 'complete'))
+          VoiceCandidate(id: d.itemId, title: d.title, author: d.authorNames),
+      ]);
+      if (localMatch != null) {
+        await play(localMatch);
+        return;
+      }
+    }
+
+    if (_session() == null) return;
+    final libraryId = await _resolveLibraryId();
+    if (libraryId == null) return;
+    if (q.isEmpty) {
+      final shelves = await _container.read(
+        personalizedShelvesProvider(libraryId).future,
+      );
+      for (final shelf in shelves) {
+        if (shelf.id == 'continue-listening' && shelf.items.isNotEmpty) {
+          await controller.playItem(shelf.items.first.id);
+          return;
+        }
+      }
+      return;
+    }
+    final results = await _container
+        .read(libraryRepositoryProvider)
+        .search(libraryId, q);
+    final match = pickVoiceMatch(query, [
+      for (final b in results.books.where((b) => b.mediaType == 'book'))
+        VoiceCandidate(
+          id: b.id,
+          title: b.title,
+          author: b.authorOrPublisherName,
+        ),
+    ]);
+    if (match != null) await controller.playItem(match);
   }
 
   Future<List<MediaItem>> _podcastEpisodesChildren(String podcastId) async {

@@ -29,21 +29,37 @@ class TokenRefreshCoordinator {
   final AuthRepository authRepository;
   final SessionStorage sessionStorage;
 
-  Future<AuthUser>? _inFlight;
+  /// One in-flight refresh per profile: two accounts never share a refresh
+  /// token, and one account's refresh never blocks another's.
+  final Map<String, Future<AuthUser>> _inFlight = {};
 
   /// Refreshes the session and persists the result, coalescing concurrent
   /// callers into a single network call. Every caller in flight when a
   /// refresh starts shares its exact outcome — success or failure — so no
   /// two callers ever race the server with the same soon-to-be-stale
   /// refresh token.
-  Future<AuthUser> refresh({required String serverUrl}) {
-    return _inFlight ??= _doRefresh(
+  ///
+  /// [profileId] defaults to the active profile *at call time*; the result is
+  /// written back to that same profile even if the user switches accounts
+  /// before the network call returns.
+  Future<AuthUser> refresh({
+    required String serverUrl,
+    String? profileId,
+  }) async {
+    final id = profileId ?? await sessionStorage.readActiveProfileId();
+    if (id == null) throw StateError('No active server profile');
+    return _inFlight[id] ??= _doRefresh(
       serverUrl,
-    ).whenComplete(() => _inFlight = null);
+      id,
+    ).whenComplete(() {
+      _inFlight.remove(id);
+    });
   }
 
-  Future<AuthUser> _doRefresh(String serverUrl) async {
-    final refreshToken = await sessionStorage.readRefreshToken();
+  Future<AuthUser> _doRefresh(String serverUrl, String profileId) async {
+    final refreshToken = await sessionStorage.readRefreshToken(
+      profileId: profileId,
+    );
     if (refreshToken == null) {
       throw StateError('No refresh token available');
     }
@@ -54,6 +70,7 @@ class TokenRefreshCoordinator {
     await sessionStorage.saveRefreshedTokens(
       accessToken: result.user.accessToken,
       refreshToken: result.user.refreshToken ?? refreshToken,
+      profileId: profileId,
     );
     return result.user;
   }

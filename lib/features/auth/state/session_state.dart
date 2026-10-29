@@ -17,8 +17,15 @@ class SessionUnauthenticated extends SessionState {
 }
 
 class SessionAuthenticated extends SessionState {
-  const SessionAuthenticated({required this.serverUrl, required this.user});
+  const SessionAuthenticated({
+    required this.serverUrl,
+    required this.user,
+    required this.profileId,
+  });
 
   final String serverUrl;
   final AuthUser user;
+
+  /// Which saved server profile (QOL_PLAN E2) this session belongs to.
+  final String profileId;
 }

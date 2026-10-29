@@ -7,11 +7,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/logging/log_repository.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/storage/app_database.dart';
+import '../../auth/state/session_controller.dart';
 import '../data/pending_sync_repository.dart';
 import 'playback_controller.dart';
 
 final pendingSyncRepositoryProvider = Provider<PendingSyncRepository>((ref) {
-  return PendingSyncRepository(ref.watch(appDatabaseProvider));
+  return PendingSyncRepository(
+    ref.watch(appDatabaseProvider),
+    profileId: ref.watch(activeProfileIdProvider) ?? '',
+  );
 });
 
 /// Count of not-yet-uploaded progress syncs — available for a future "N

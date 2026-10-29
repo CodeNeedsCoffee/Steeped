@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/network/cellular_gate.dart' show CellularAction;
 import '../../core/network/cover_image_url.dart';
 import '../../core/theme/app_skin_style.dart';
 import '../../core/theme/app_theme.dart';
@@ -9,9 +11,12 @@ import '../../widgets/glass_surface.dart';
 import '../../widgets/playback_loading_badge.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../settings/data/app_settings.dart';
 import '../settings/state/settings_providers.dart';
 import 'now_playing_navigation.dart';
 import 'state/playback_controller.dart';
+import 'sync_failed_badge.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 5.2: persistent bottom bar. Drop this in as a Scaffold's
 /// `bottomNavigationBar` on any authenticated screen — it collapses to
@@ -33,7 +38,15 @@ class MiniPlayer extends ConsumerWidget {
     // authenticated screen.
     ref.listen(cellularBlockNoticeProvider, (previous, next) {
       if (next == null) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(next)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            next == CellularAction.stream
+                ? context.l10n.cellularStreamBlocked
+                : context.l10n.cellularDownloadBlocked,
+          ),
+        ),
+      );
       Future.microtask(
         () => ref.read(cellularBlockNoticeProvider.notifier).state = null,
       );
@@ -41,6 +54,8 @@ class MiniPlayer extends ConsumerWidget {
 
     final item = ref.watch(currentPlaybackItemProvider);
     if (item == null) return const SizedBox.shrink();
+    final settings =
+        ref.watch(appSettingsProvider).valueOrNull ?? const AppSettings();
 
     final session = ref.watch(sessionControllerProvider);
     final isPlaying = ref.watch(isPlayingProvider).valueOrNull ?? false;
@@ -85,7 +100,7 @@ class MiniPlayer extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.keyboard_arrow_up),
               iconSize: 36,
-              tooltip: 'Expand',
+              tooltip: context.l10n.expand,
               onPressed: () => openNowPlaying(context, ref),
             ),
             if (serverUrl != null)
@@ -111,16 +126,18 @@ class MiniPlayer extends ConsumerWidget {
                 style: theme.textTheme.bodyMedium,
               ),
             ),
+            const SyncFailedBadge(),
             IconButton(
               icon: const Icon(Icons.replay),
               iconSize: 28,
               visualDensity: VisualDensity.compact,
-              tooltip: 'Rewind',
+              tooltip: context.l10n.rewindSeconds(settings.jumpBackSeconds),
               onPressed: controller.jumpBackward,
             ),
             PlaybackLoadingBadge(
               isLoading: isLoading,
               child: IconButton(
+                tooltip: isPlaying ? context.l10n.pause : context.l10n.play,
                 icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
                 iconSize: 36,
                 onPressed: isLoading
@@ -135,7 +152,7 @@ class MiniPlayer extends ConsumerWidget {
               ),
               iconSize: 28,
               visualDensity: VisualDensity.compact,
-              tooltip: 'Fast forward',
+              tooltip: context.l10n.forwardSeconds(settings.jumpForwardSeconds),
               onPressed: controller.jumpForward,
             ),
           ],
@@ -152,7 +169,7 @@ class MiniPlayer extends ConsumerWidget {
                 value: progress,
                 minHeight: 2,
                 color: scheme.primary,
-                backgroundColor: Colors.white.withValues(alpha: 0.10),
+                backgroundColor: scheme.onSurface.withValues(alpha: 0.10),
               ),
             ],
           )
@@ -176,7 +193,7 @@ class MiniPlayer extends ConsumerWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(radii.lg),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.24),
+                      color: scheme.onSurface.withValues(alpha: 0.24),
                     ),
                   ),
                   child: GlassSurface(color: glassFill, child: content),

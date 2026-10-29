@@ -8,11 +8,14 @@ import '../../../core/network/retry.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../models/library.dart';
 import '../../../models/library_browse.dart';
+import '../../../models/library_item.dart';
 import '../../../models/library_query.dart';
 import '../../../models/library_item_detail.dart';
 import '../../../models/personalized_shelf.dart';
 import '../../../models/search_results.dart';
+import '../../auth/state/session_controller.dart';
 import '../../downloads/state/download_controller.dart';
+import '../../settings/state/settings_providers.dart';
 import '../data/library_cache_repository.dart';
 import '../data/library_query_store.dart';
 import '../data/recent_searches_store.dart';
@@ -25,7 +28,10 @@ final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
 });
 
 final libraryCacheRepositoryProvider = Provider<LibraryCacheRepository>((ref) {
-  return LibraryCacheRepository(ref.watch(appDatabaseProvider));
+  return LibraryCacheRepository(
+    ref.watch(appDatabaseProvider),
+    profileId: ref.watch(activeProfileIdProvider) ?? '',
+  );
 });
 
 /// The last successfully-fetched library list. Only consulted when
@@ -96,6 +102,15 @@ final personalizedShelvesProvider = FutureProvider.autoDispose
             .fetchPersonalizedShelves(libraryId),
       );
     });
+
+final seriesBooksProvider = FutureProvider.autoDispose
+    .family<List<LibraryItem>, (String, String)>(
+      (ref, key) => withNetworkRetry(
+        () => ref
+            .watch(libraryRepositoryProvider)
+            .fetchItemsInSeries(key.$1, key.$2),
+      ),
+    );
 
 final itemDetailProvider = FutureProvider.autoDispose
     .family<LibraryItemDetail, String>((ref, itemId) async {
@@ -187,13 +202,23 @@ final playlistDetailProvider = FutureProvider.autoDispose
 class LibraryItemsController extends FamilyNotifier<LibraryItemsState, String> {
   late LibraryRepository _repository;
   late String _libraryId;
-  late LibraryQuery _query;
+  late ({String sort, bool desc, String? filter}) _query;
+  late bool _collapseSeries;
 
   @override
   LibraryItemsState build(String libraryId) {
     _repository = ref.watch(libraryRepositoryProvider);
     _libraryId = libraryId;
-    _query = ref.watch(libraryQueryProvider(libraryId));
+    // Only what changes the server query: view mode and the remembered
+    // section must not reload the list.
+    _query = ref.watch(
+      libraryQueryProvider(libraryId).select(
+        (q) => (sort: q.sort.param, desc: q.desc, filter: q.filterParam),
+      ),
+    );
+    _collapseSeries = ref.watch(
+      appSettingsProvider.select((s) => s.valueOrNull?.collapseSeries ?? false),
+    );
     Future.microtask(loadFirstPage);
     return const LibraryItemsState.initial();
   }
@@ -205,9 +230,10 @@ class LibraryItemsController extends FamilyNotifier<LibraryItemsState, String> {
         () => _repository.fetchLibraryItems(
           _libraryId,
           page: 0,
-          filter: _query.filterParam,
-          sort: _query.sort.param,
+          filter: _query.filter,
+          sort: _query.sort,
           desc: _query.desc,
+          collapseSeries: _collapseSeries,
         ),
       );
       state = LibraryItemsState(
@@ -231,9 +257,10 @@ class LibraryItemsController extends FamilyNotifier<LibraryItemsState, String> {
         () => _repository.fetchLibraryItems(
           _libraryId,
           page: nextPage,
-          filter: _query.filterParam,
-          sort: _query.sort.param,
+          filter: _query.filter,
+          sort: _query.sort,
           desc: _query.desc,
+          collapseSeries: _collapseSeries,
         ),
       );
       state = state.copyWith(
@@ -368,7 +395,10 @@ final searchControllerProvider = NotifierProvider.autoDispose
     );
 
 final recentSearchesStoreProvider = Provider<RecentSearchesStore>(
-  (ref) => RecentSearchesStore(ref.watch(appDatabaseProvider)),
+  (ref) => RecentSearchesStore(
+    ref.watch(appDatabaseProvider),
+    profileId: ref.watch(activeProfileIdProvider) ?? '',
+  ),
 );
 
 class RecentSearchesController extends Notifier<List<String>> {
@@ -376,8 +406,11 @@ class RecentSearchesController extends Notifier<List<String>> {
   List<String> build() {
     var disposed = false;
     ref.onDispose(() => disposed = true);
+    // Watching the store makes the list reload when the active account
+    // changes (each profile has its own history).
+    final store = ref.watch(recentSearchesStoreProvider);
     Future.microtask(() async {
-      final saved = await ref.read(recentSearchesStoreProvider).load();
+      final saved = await store.load();
       if (!disposed) state = saved;
     });
     return const [];

@@ -81,12 +81,16 @@ class _FakeSessionStorage extends SessionStorage {
   String? lastSavedRefreshToken;
 
   @override
-  Future<String?> readRefreshToken() async => _refreshToken;
+  Future<String?> readActiveProfileId() async => 'profile-1';
+
+  @override
+  Future<String?> readRefreshToken({String? profileId}) async => _refreshToken;
 
   @override
   Future<void> saveRefreshedTokens({
     required String? accessToken,
     required String? refreshToken,
+    String? profileId,
   }) async {
     saveCount++;
     lastSavedAccessToken = accessToken;

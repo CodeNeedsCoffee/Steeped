@@ -8,7 +8,16 @@ import '../../widgets/playback_loading_badge.dart';
 import '../player/mini_player.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
+import '../../core/network/connectivity_service.dart';
+import '../auth/data/server_profile_repository.dart';
+import '../auth/state/profile_switcher.dart' show hostOfServerUrl;
+import '../auth/state/session_controller.dart';
+import '../settings/data/app_settings.dart';
+import '../settings/state/settings_providers.dart';
+import '../../core/storage/app_database.dart' show DownloadedItem;
+import 'download_groups.dart';
 import 'state/download_controller.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 6.5: downloads screen — in-progress + completed list,
 /// delete/manage. Download queue is implicit (`background_downloader`
@@ -23,19 +32,18 @@ class DownloadsScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete all downloads?'),
-        content: const Text(
-          'This removes every downloaded book and episode from this device. '
-          'They remain on the server and can be downloaded again.',
+        title: Text(context.l10n.deleteAllDownloadsTitle),
+        content: Text(
+          context.l10n.thisRemovesEveryDownloadedBook,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete All'),
+            child: Text(context.l10n.deleteAll),
           ),
         ],
       ),
@@ -54,14 +62,14 @@ class DownloadsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Downloads'),
+        title: Text(context.l10n.downloads),
         actions: [
           downloadsAsync.maybeWhen(
             data: (downloads) => downloads.isEmpty
                 ? const SizedBox.shrink()
                 : IconButton(
                     icon: const Icon(Icons.delete_sweep_outlined),
-                    tooltip: 'Delete all downloads',
+                    tooltip: context.l10n.deleteAllDownloadsTooltip,
                     onPressed: () => _confirmDeleteAll(context, ref),
                   ),
             orElse: () => const SizedBox.shrink(),
@@ -70,25 +78,70 @@ class DownloadsScreen extends ConsumerWidget {
       ),
       body: downloadsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Failed to load: $error')),
+        error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
         data: (downloads) {
           if (downloads.isEmpty) {
-            return const Center(child: Text('No downloads yet.'));
+            return Center(child: Text(context.l10n.noDownloadsYet));
           }
           final freeBytes = freeSpaceAsync.valueOrNull;
           final isLowStorage =
               freeBytes != null && freeBytes < lowStorageThresholdBytes;
+          final settings = ref.watch(appSettingsProvider).valueOrNull ??
+              const AppSettings();
+          final offline =
+              ref.watch(networkKindProvider).valueOrNull == NetworkKind.none;
+          final profiles =
+              ref.watch(serverProfilesProvider).valueOrNull ?? const [];
+          final groups = groupDownloads(
+            downloads,
+            activeProfileId: ref.watch(activeProfileIdProvider),
+            offline: offline,
+            showOtherServers: settings.showOtherServerDownloads,
+          );
+          final showHeaders = groups.length > 1 || groups.any((g) => !g.isActive);
+
+          // Flat list: summary, then per group an optional header + its items.
+          final rows = <Object>[
+            const _SummaryRow(),
+            for (final g in groups) ...[
+              if (showHeaders) g,
+              ...g.items,
+            ],
+          ];
+          if (rows.length == 1) {
+            return Center(child: Text(context.l10n.noDownloadsYet));
+          }
           return ListView.builder(
-            itemCount: downloads.length + 1,
+            itemCount: rows.length,
             itemBuilder: (context, index) {
-              if (index == 0) {
+              final row = rows[index];
+              if (row is _SummaryRow) {
                 return _StorageSummary(
                   totalUsed: totalSizeAsync.valueOrNull,
                   freeBytes: freeBytes,
                   isLowStorage: isLowStorage,
                 );
               }
-              final item = downloads[index - 1];
+              if (row is DownloadGroup) {
+                final profile = profiles
+                    .where((p) => p.id == row.profileId)
+                    .firstOrNull;
+                final host = hostOfServerUrl(row.serverUrl);
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+                  child: Text(
+                    row.isActive
+                        ? context.l10n.downloadsFromServer(host)
+                        : profile != null
+                        ? context.l10n.accountOnServer(profile.username, host)
+                        : context.l10n.downloadsFromServer(host),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                );
+              }
+              final item = row as DownloadedItem;
               final isComplete = item.status == 'complete';
               final itemProgress = progress[item.itemId];
               final sizeAsync = ref.watch(
@@ -108,12 +161,14 @@ class DownloadsScreen extends ConsumerWidget {
                 subtitle: isComplete
                     ? Text(
                         sizeAsync.maybeWhen(
-                          data: (bytes) => 'Downloaded · ${formatBytes(bytes)}',
-                          orElse: () => 'Downloaded',
+                          data: (bytes) =>
+                              context.l10n.downloadedWithSize(formatBytes(bytes)),
+                          orElse: () => context.l10n.downloaded,
                         ),
                       )
                     : LinearProgressIndicator(value: itemProgress),
                 trailing: IconButton(
+                  tooltip: context.l10n.deleteDownload,
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => ref
                       .read(downloadControllerProvider.notifier)
@@ -168,6 +223,10 @@ class DownloadedItemCover extends StatelessWidget {
   }
 }
 
+class _SummaryRow {
+  const _SummaryRow();
+}
+
 class _StorageSummary extends StatelessWidget {
   const _StorageSummary({
     required this.totalUsed,
@@ -189,9 +248,13 @@ class _StorageSummary extends StatelessWidget {
         children: [
           Text(
             totalUsed == null
-                ? 'Calculating storage used…'
-                : 'Downloads use ${formatBytes(totalUsed!)}'
-                      '${freeBytes != null ? ' · ${formatBytes(freeBytes!)} free' : ''}',
+                ? context.l10n.calculatingStorage
+                : freeBytes != null
+                ? context.l10n.downloadsUseWithFree(
+                    formatBytes(totalUsed!),
+                    formatBytes(freeBytes!),
+                  )
+                : context.l10n.downloadsUse(formatBytes(totalUsed!)),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -213,8 +276,7 @@ class _StorageSummary extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Storage is running low. Delete a download to free '
-                      'up space.',
+                      context.l10n.storageIsRunningLowDelete,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onErrorContainer,
                       ),

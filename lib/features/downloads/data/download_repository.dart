@@ -19,9 +19,13 @@ import '../../../models/podcast_episode.dart';
 /// playback genuinely work with zero connectivity, not just "play from
 /// cache while still checking the server."
 class DownloadRepository {
-  DownloadRepository(this._db);
+  DownloadRepository(this._db, {this.profileId = ''});
 
   final AppDatabase _db;
+
+  /// QOL_PLAN E2: the server profile new downloads are tagged with (the
+  /// active account when the download starts).
+  final String profileId;
 
   static String groupFor(String downloadId) => 'download-$downloadId';
   // The downloadId can be a composite `podcastId::episodeId` for episodes
@@ -131,6 +135,7 @@ class DownloadRepository {
             progressCurrentTime: Value(progressCurrentTime),
             progressIsFinished: Value(progressIsFinished),
             libraryId: Value(libraryId),
+            profileId: Value(profileId),
           ),
         );
 
@@ -399,6 +404,25 @@ class DownloadRepository {
   /// PLAN.md Phase 6.10: bulk-delete every downloaded item.
   Future<void> deleteAllDownloads() async {
     final items = await _db.select(_db.downloadedItems).get();
+    for (final item in items) {
+      await deleteDownload(item.itemId);
+    }
+  }
+
+  /// The profile a download belongs to ('' for legacy rows), or null if
+  /// there is no such download.
+  Future<String?> profileIdOf(String downloadId) async {
+    final row = await (_db.select(
+      _db.downloadedItems,
+    )..where((i) => i.itemId.equals(downloadId))).getSingleOrNull();
+    return row?.profileId;
+  }
+
+  /// Deletes every download (files included) that belongs to [profileId].
+  Future<void> deleteDownloadsForProfile(String profileId) async {
+    final items = await (_db.select(
+      _db.downloadedItems,
+    )..where((i) => i.profileId.equals(profileId))).get();
     for (final item in items) {
       await deleteDownload(item.itemId);
     }

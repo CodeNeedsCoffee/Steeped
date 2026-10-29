@@ -6,10 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/logging/log_repository.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/network/socket_service.dart';
+import '../../../core/storage/app_database.dart';
 import '../../../core/storage/session_storage.dart';
 import '../../../models/server_status.dart';
 import '../../settings/data/account_repository.dart';
 import '../data/auth_repository.dart';
+import '../data/profile_migrator.dart';
+import '../data/server_profile_repository.dart';
 import '../data/token_refresh_coordinator.dart';
 import 'session_expired_signal.dart';
 import 'session_state.dart';
@@ -22,12 +25,14 @@ class SessionController extends Notifier<SessionState> {
   late final AuthRepository _repository;
   late final SessionStorage _storage;
   late final TokenRefreshCoordinator _coordinator;
+  late final ServerProfileRepository _profiles;
 
   @override
   SessionState build() {
     _repository = ref.watch(authRepositoryProvider);
     _storage = ref.watch(sessionStorageProvider);
     _coordinator = ref.watch(tokenRefreshCoordinatorProvider);
+    _profiles = ref.watch(serverProfileRepositoryProvider);
 
     // AuthInterceptor fires this when a background token refresh fails on
     // some unrelated API call; react by forcing the user back to login.
@@ -42,13 +47,30 @@ class SessionController extends Notifier<SessionState> {
   }
 
   Future<void> _bootstrap() async {
-    final serverUrl = await _storage.readServerUrl();
+    // QOL_PLAN E2.1: moves a pre-profile single session into profile #1
+    // (no-op once done, or when there's no session).
+    final profileId = await ProfileMigrator(
+      db: ref.read(appDatabaseProvider),
+      storage: _storage,
+      profiles: _profiles,
+    ).migrateIfNeeded();
+    if (profileId == null) {
+      state = const SessionUnauthenticated();
+      return;
+    }
+    await _bootstrapProfile(profileId);
+  }
+
+  /// Restores the session of [profileId] (already the active profile in
+  /// storage) -- shared by app start and account switching.
+  Future<void> _bootstrapProfile(String profileId) async {
+    final serverUrl = await _storage.readServerUrl(profileId: profileId);
     if (serverUrl == null) {
       state = const SessionUnauthenticated();
       return;
     }
 
-    final refreshToken = await _storage.readRefreshToken();
+    final refreshToken = await _storage.readRefreshToken(profileId: profileId);
     if (refreshToken != null) {
       // 2.26.0+ server: proactively refresh to confirm the session is
       // still valid and get current user/permissions data. Goes through
@@ -56,9 +78,21 @@ class SessionController extends Notifier<SessionState> {
       // SocketService's own reactive refreshes over the same refresh token
       // — see TokenRefreshCoordinator's doc comment.
       try {
-        final user = await _coordinator.refresh(serverUrl: serverUrl);
-        await _storage.save(serverUrl: serverUrl, user: user);
-        state = SessionAuthenticated(serverUrl: serverUrl, user: user);
+        final user = await _coordinator.refresh(
+          serverUrl: serverUrl,
+          profileId: profileId,
+        );
+        await _storage.save(
+          serverUrl: serverUrl,
+          user: user,
+          profileId: profileId,
+        );
+        await _profiles.touch(profileId);
+        state = SessionAuthenticated(
+          serverUrl: serverUrl,
+          user: user,
+          profileId: profileId,
+        );
       } on StateError catch (e) {
         // The coordinator found no refresh token in storage by the time it
         // actually ran — same conclusion as a server-rejected refresh.
@@ -69,7 +103,7 @@ class SessionController extends Notifier<SessionState> {
               'session',
               'Startup token refresh rejected by server: $e',
             );
-        await _storage.clear();
+        await _storage.clear(profileId: profileId);
         state = const SessionUnauthenticated();
         return;
       } on DioException catch (e) {
@@ -91,7 +125,7 @@ class SessionController extends Notifier<SessionState> {
                 'session',
                 'Startup token refresh rejected by server: $e',
               );
-          await _storage.clear();
+          await _storage.clear(profileId: profileId);
           state = const SessionUnauthenticated();
           return;
         }
@@ -102,11 +136,12 @@ class SessionController extends Notifier<SessionState> {
               'session',
               'Startup token refresh unreachable, using cached session: $e',
             );
-        final cachedUser = await _storage.readCachedUser();
+        final cachedUser = await _storage.readCachedUser(profileId: profileId);
         if (cachedUser?.effectiveToken != null) {
           state = SessionAuthenticated(
             serverUrl: serverUrl,
             user: cachedUser!,
+            profileId: profileId,
           );
         } else {
           state = const SessionUnauthenticated();
@@ -117,9 +152,14 @@ class SessionController extends Notifier<SessionState> {
 
     // Legacy-token server (< 2.26.0): no refresh endpoint exists, so trust
     // the cached session until a 401 actually occurs.
-    final cachedUser = await _storage.readCachedUser();
+    final cachedUser = await _storage.readCachedUser(profileId: profileId);
     if (cachedUser?.effectiveToken != null) {
-      state = SessionAuthenticated(serverUrl: serverUrl, user: cachedUser!);
+      await _profiles.touch(profileId);
+      state = SessionAuthenticated(
+        serverUrl: serverUrl,
+        user: cachedUser!,
+        profileId: profileId,
+      );
     } else {
       state = const SessionUnauthenticated();
     }
@@ -134,23 +174,98 @@ class SessionController extends Notifier<SessionState> {
     return (url, status);
   }
 
+  /// Signs in and makes the account the active profile. Signing in to a
+  /// server+user the app already knows reuses that profile (and so its
+  /// downloads); anything else is a new profile alongside the existing ones.
+  ///
+  /// [beforeActivate] runs once the credentials are accepted but before the
+  /// new account takes over, so a caller adding an account can stop
+  /// playback while the previous account is still the active one.
   Future<void> login({
     required String serverUrl,
     required String username,
     required String password,
+    Future<void> Function()? beforeActivate,
   }) async {
     final result = await _repository.login(
       serverUrl: serverUrl,
       username: username,
       password: password,
     );
-    await _storage.save(serverUrl: serverUrl, user: result.user);
-    state = SessionAuthenticated(serverUrl: serverUrl, user: result.user);
+    await beforeActivate?.call();
+    final existing = await _profiles.findByServerAndUser(
+      serverUrl,
+      result.user.username,
+    );
+    final id = existing?.id ?? ServerProfileRepository.newId();
+    await _storage.setActiveProfileId(id);
+    await _storage.save(serverUrl: serverUrl, user: result.user, profileId: id);
+    await _profiles.upsert(
+      id: id,
+      serverUrl: serverUrl,
+      username: result.user.username,
+      userId: result.user.id,
+      displayName: result.user.username,
+    );
+    state = SessionAuthenticated(
+      serverUrl: serverUrl,
+      user: result.user,
+      profileId: id,
+    );
   }
 
+  /// Makes [profileId] the active account and restores its session. Callers
+  /// stop playback and reset account-scoped UI state first (see
+  /// `ProfileSwitcher`). Passing through [SessionBootstrapping] unwinds the
+  /// current screens, so the router rebuilds from the new account's home.
+  Future<void> switchTo(String profileId) async {
+    final current = state;
+    if (current is SessionAuthenticated && current.profileId == profileId) {
+      return;
+    }
+    state = const SessionBootstrapping();
+    await _storage.setActiveProfileId(profileId);
+    await _bootstrapProfile(profileId);
+  }
+
+  /// Signs out of the active account only: its tokens and profile entry go,
+  /// every other account is untouched. Its downloads stay on the device.
+  /// Falls back to the most recently used other account, if any.
   Future<void> logout() async {
-    await _storage.clear();
-    state = const SessionUnauthenticated();
+    final current = state;
+    if (current is! SessionAuthenticated) {
+      await _storage.clear();
+      state = const SessionUnauthenticated();
+      return;
+    }
+    await removeProfile(current.profileId);
+  }
+
+  /// Forgets [profileId]: credentials, queued progress and caches. Downloads
+  /// are kept here; callers that also want them gone delete them first (see
+  /// `ProfileSwitcher.removeProfile`). If it was the active account, the next
+  /// most recently used signed-in account takes over.
+  Future<void> removeProfile(String profileId) async {
+    final current = state;
+    final wasActive =
+        current is SessionAuthenticated && current.profileId == profileId;
+    await _storage.clear(profileId: profileId);
+    await _profiles.delete(profileId);
+    if (!wasActive) return;
+
+    String? next;
+    for (final p in await _profiles.all()) {
+      if (await _storage.hasCredentials(p.id)) {
+        next = p.id;
+        break;
+      }
+    }
+    if (next == null) {
+      await _storage.setActiveProfileId(null);
+      state = const SessionUnauthenticated();
+    } else {
+      await switchTo(next);
+    }
   }
 
   /// Bug found 2026-08-03 (reported by evan: streamed playback appeared to
@@ -176,6 +291,7 @@ class SessionController extends Notifier<SessionState> {
         accessToken: accessToken,
         refreshToken: refreshToken,
       ),
+      profileId: current.profileId,
     );
     // Pokes an existing `authFailed` socket to retry with this freshly
     // rotated token — see SocketService.reauthenticateIfNeeded for why
@@ -222,3 +338,9 @@ class SessionController extends Notifier<SessionState> {
 
 final sessionControllerProvider =
     NotifierProvider<SessionController, SessionState>(SessionController.new);
+
+/// The active server profile's id, or null while signed out.
+final activeProfileIdProvider = Provider<String?>((ref) {
+  final session = ref.watch(sessionControllerProvider);
+  return session is SessionAuthenticated ? session.profileId : null;
+});

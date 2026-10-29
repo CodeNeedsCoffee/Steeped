@@ -2,18 +2,55 @@
 /// via the same `KeyValueEntries` JSON-blob pattern as [EreaderSettings].
 /// Only settings that actually do something are here — no placeholder
 /// toggles wired to nothing.
+/// How a cellular (or metered) connection is treated for streaming and
+/// downloads. [ask] prompts once per session per action.
+enum CellularPolicy {
+  always,
+  ask,
+  never;
+
+  static CellularPolicy parse(Object? raw, {required CellularPolicy fallback}) {
+    for (final p in values) {
+      if (p.name == raw) return p;
+    }
+    return fallback;
+  }
+}
+
 class AppSettings {
   const AppSettings({
-    this.jumpIntervalSeconds = 30,
+    this.jumpBackSeconds = 30,
+    this.jumpForwardSeconds = 30,
     this.playbackSpeed = 1.0,
     this.scaleElapsedTimeBySpeed = false,
-    this.allowCellularStreaming = true,
-    this.allowCellularDownloads = true,
+    this.cellularStreaming = CellularPolicy.always,
+    this.cellularDownloads = CellularPolicy.always,
+    this.treatMeteredAsCellular = false,
+    this.showNetworkType = true,
+    this.confirmSwitchWhilePlaying = true,
+    this.showOtherServerDownloads = true,
+    this.maskServerAddress = false,
+    this.allowSeekOnMediaControls = true,
     this.hapticFeedbackEnabled = true,
     this.keepScreenAwake = false,
     this.lockPortrait = false,
     this.sleepTimerDefaultMinutes = 30,
+    this.rememberLibrarySection = true,
+    this.collapseSeries = false,
+    this.autoBrowseLimit = 40,
+    this.autoSeriesNewestFirst = false,
+    this.showSyncIndicator = true,
+    this.autoRewindSeconds = 0,
+    this.autoRewindScale = false,
+    this.sleepFadeOut = true,
+    this.sleepFadeSeconds = 10,
+    this.sleepChime = true,
+    this.sleepExtendMinutes = 5,
+    this.sleepAutoWindow = false,
+    this.sleepWindowStartMinutes = 1320,
+    this.sleepWindowEndMinutes = 360,
     this.skinId = 'glassModern',
+    this.themeVariant = 'dark',
     this.showTracksTab = false,
     this.showChapterTime = false,
     this.showBookTime = true,
@@ -21,18 +58,57 @@ class AppSettings {
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
     return AppSettings(
-      jumpIntervalSeconds: json['jumpIntervalSeconds'] as int? ?? 30,
+      // Pre-split installs stored one `jumpIntervalSeconds`; both sides fall
+      // back to it so nobody's configured value resets.
+      jumpBackSeconds:
+          json['jumpBackSeconds'] as int? ??
+          json['jumpIntervalSeconds'] as int? ??
+          30,
+      jumpForwardSeconds:
+          json['jumpForwardSeconds'] as int? ??
+          json['jumpIntervalSeconds'] as int? ??
+          30,
       playbackSpeed: (json['playbackSpeed'] as num?)?.toDouble() ?? 1.0,
       scaleElapsedTimeBySpeed:
           json['scaleElapsedTimeBySpeed'] as bool? ?? false,
-      allowCellularStreaming: json['allowCellularStreaming'] as bool? ?? true,
-      allowCellularDownloads: json['allowCellularDownloads'] as bool? ?? true,
+      // Old installs stored bools: true -> always, false -> never.
+      cellularStreaming: _policyFrom(
+        json['cellularStreaming'],
+        json['allowCellularStreaming'],
+      ),
+      cellularDownloads: _policyFrom(
+        json['cellularDownloads'],
+        json['allowCellularDownloads'],
+      ),
+      treatMeteredAsCellular: json['treatMeteredAsCellular'] as bool? ?? false,
+      showNetworkType: json['showNetworkType'] as bool? ?? true,
+      confirmSwitchWhilePlaying:
+          json['confirmSwitchWhilePlaying'] as bool? ?? true,
+      showOtherServerDownloads:
+          json['showOtherServerDownloads'] as bool? ?? true,
+      maskServerAddress: json['maskServerAddress'] as bool? ?? false,
+      allowSeekOnMediaControls:
+          json['allowSeekOnMediaControls'] as bool? ?? true,
       hapticFeedbackEnabled: json['hapticFeedbackEnabled'] as bool? ?? true,
       keepScreenAwake: json['keepScreenAwake'] as bool? ?? false,
       lockPortrait: json['lockPortrait'] as bool? ?? false,
-      sleepTimerDefaultMinutes:
-          json['sleepTimerDefaultMinutes'] as int? ?? 30,
+      sleepTimerDefaultMinutes: json['sleepTimerDefaultMinutes'] as int? ?? 30,
+      rememberLibrarySection: json['rememberLibrarySection'] as bool? ?? true,
+      collapseSeries: json['collapseSeries'] as bool? ?? false,
+      autoBrowseLimit: json['autoBrowseLimit'] as int? ?? 40,
+      autoSeriesNewestFirst: json['autoSeriesNewestFirst'] as bool? ?? false,
+      showSyncIndicator: json['showSyncIndicator'] as bool? ?? true,
+      autoRewindSeconds: json['autoRewindSeconds'] as int? ?? 0,
+      autoRewindScale: json['autoRewindScale'] as bool? ?? false,
+      sleepFadeOut: json['sleepFadeOut'] as bool? ?? true,
+      sleepFadeSeconds: json['sleepFadeSeconds'] as int? ?? 10,
+      sleepChime: json['sleepChime'] as bool? ?? true,
+      sleepExtendMinutes: json['sleepExtendMinutes'] as int? ?? 5,
+      sleepAutoWindow: json['sleepAutoWindow'] as bool? ?? false,
+      sleepWindowStartMinutes: json['sleepWindowStartMinutes'] as int? ?? 1320,
+      sleepWindowEndMinutes: json['sleepWindowEndMinutes'] as int? ?? 360,
       skinId: json['skinId'] as String? ?? 'glassModern',
+      themeVariant: json['themeVariant'] as String? ?? 'dark',
       showTracksTab: json['showTracksTab'] as bool? ?? false,
       // Default true/false respectively — matches the screen's original
       // (pre-toggle) look of a single book-relative time row, so upgrading
@@ -42,8 +118,20 @@ class AppSettings {
     );
   }
 
-  /// Playback: jump-forward/back interval, applied in [PlaybackController].
-  final int jumpIntervalSeconds;
+  static CellularPolicy _policyFrom(Object? raw, Object? legacyBool) {
+    if (raw != null) {
+      return CellularPolicy.parse(raw, fallback: CellularPolicy.always);
+    }
+    if (legacyBool is bool) {
+      return legacyBool ? CellularPolicy.always : CellularPolicy.never;
+    }
+    return CellularPolicy.always;
+  }
+
+  /// Playback: jump-back / jump-forward lengths, applied in
+  /// [PlaybackController] and the lock-screen skip buttons.
+  final int jumpBackSeconds;
+  final int jumpForwardSeconds;
 
   /// Playback: last speed the user picked, re-applied to every newly
   /// loaded item so it survives closing and reopening the app.
@@ -53,10 +141,26 @@ class AppSettings {
   /// playback speed on Now Playing — closes the gap noted in PLAN.md 5.6.
   final bool scaleElapsedTimeBySpeed;
 
-  /// Data: whether streaming/downloading is allowed on a metered
-  /// connection, checked via `connectivity_plus` before each starts.
-  final bool allowCellularStreaming;
-  final bool allowCellularDownloads;
+  /// Data: what to do when streaming/downloading would use cellular,
+  /// checked via `connectivity_plus` before each starts.
+  final CellularPolicy cellularStreaming;
+  final CellularPolicy cellularDownloads;
+
+  /// Data: apply the cellular policy to metered Wi-Fi (a phone hotspot) too.
+  /// User Interface: label the Live badge with the network type.
+  final bool treatMeteredAsCellular;
+  final bool showNetworkType;
+
+  /// Account: ask before switching servers/accounts while something is
+  /// playing; list downloads that came from other servers too.
+  final bool confirmSwitchWhilePlaying;
+  final bool showOtherServerDownloads;
+
+  /// Account: shows the server address as dots until tapped.
+  final bool maskServerAddress;
+
+  /// Playback: whether lock-screen/notification controls expose a seek bar.
+  final bool allowSeekOnMediaControls;
 
   /// User Interface: haptic feedback on key transport actions.
   final bool hapticFeedbackEnabled;
@@ -70,11 +174,46 @@ class AppSettings {
   /// Sleep Timer: default duration offered when starting a timer.
   final int sleepTimerDefaultMinutes;
 
+  /// Library: reopen the last Books/Authors/Collections/Playlists section;
+  /// fold each series into a single tile in the Books grid.
+  final bool rememberLibrarySection;
+  final bool collapseSeries;
+
+  /// Android Auto: how many entries a browse list holds, and whether a
+  /// series lists its newest book first.
+  final int autoBrowseLimit;
+  final bool autoSeriesNewestFirst;
+
+  /// Advanced: show the badge for progress updates still waiting to sync.
+  final bool showSyncIndicator;
+
+  /// Playback: seconds to rewind on resume (0 = off); optionally scaled up
+  /// after long pauses.
+  final int autoRewindSeconds;
+  final bool autoRewindScale;
+
+  /// Sleep Timer: fade the volume over the last [sleepFadeSeconds], play a
+  /// chime 30 seconds before the pause, how far "+" extends, and an
+  /// automatic timer when playback starts inside a daily window (minutes
+  /// since midnight; the window may cross midnight).
+  final bool sleepFadeOut;
+  final int sleepFadeSeconds;
+  final bool sleepChime;
+  final int sleepExtendMinutes;
+  final bool sleepAutoWindow;
+  final int sleepWindowStartMinutes;
+  final int sleepWindowEndMinutes;
+
   /// Appearance (PLAN.md Phase 2.4/2.6): the active [Skin.id.name]. Stored
   /// as a string (not the enum directly) so an unrecognized value from an
   /// older/newer app version just falls back to the default in
   /// `skinByName` rather than failing to decode the whole settings blob.
   final String skinId;
+
+  /// Appearance: the `ThemeVariant` name (system/light/dark/black). Kept as
+  /// a string for the same unrecognised-value reason as [skinId]; the
+  /// default is today's dark look.
+  final String themeVariant;
 
   /// User Interface: shows the Chapters/Tracks toggle on Now Playing (a
   /// multi-file book's raw audio-file list, separate from its chapter
@@ -93,52 +232,122 @@ class AppSettings {
   final bool showBookTime;
 
   Map<String, dynamic> toJson() => {
-    'jumpIntervalSeconds': jumpIntervalSeconds,
+    'jumpBackSeconds': jumpBackSeconds,
+    'jumpForwardSeconds': jumpForwardSeconds,
     'playbackSpeed': playbackSpeed,
     'scaleElapsedTimeBySpeed': scaleElapsedTimeBySpeed,
-    'allowCellularStreaming': allowCellularStreaming,
-    'allowCellularDownloads': allowCellularDownloads,
+    'cellularStreaming': cellularStreaming.name,
+    'cellularDownloads': cellularDownloads.name,
+    'treatMeteredAsCellular': treatMeteredAsCellular,
+    'showNetworkType': showNetworkType,
+    'confirmSwitchWhilePlaying': confirmSwitchWhilePlaying,
+    'showOtherServerDownloads': showOtherServerDownloads,
+    'maskServerAddress': maskServerAddress,
+    'allowSeekOnMediaControls': allowSeekOnMediaControls,
     'hapticFeedbackEnabled': hapticFeedbackEnabled,
     'keepScreenAwake': keepScreenAwake,
     'lockPortrait': lockPortrait,
     'sleepTimerDefaultMinutes': sleepTimerDefaultMinutes,
+    'rememberLibrarySection': rememberLibrarySection,
+    'collapseSeries': collapseSeries,
+    'autoBrowseLimit': autoBrowseLimit,
+    'autoSeriesNewestFirst': autoSeriesNewestFirst,
+    'showSyncIndicator': showSyncIndicator,
+    'autoRewindSeconds': autoRewindSeconds,
+    'autoRewindScale': autoRewindScale,
+    'sleepFadeOut': sleepFadeOut,
+    'sleepFadeSeconds': sleepFadeSeconds,
+    'sleepChime': sleepChime,
+    'sleepExtendMinutes': sleepExtendMinutes,
+    'sleepAutoWindow': sleepAutoWindow,
+    'sleepWindowStartMinutes': sleepWindowStartMinutes,
+    'sleepWindowEndMinutes': sleepWindowEndMinutes,
     'skinId': skinId,
+    'themeVariant': themeVariant,
     'showTracksTab': showTracksTab,
     'showChapterTime': showChapterTime,
     'showBookTime': showBookTime,
   };
 
   AppSettings copyWith({
-    int? jumpIntervalSeconds,
+    int? jumpBackSeconds,
+    int? jumpForwardSeconds,
     double? playbackSpeed,
     bool? scaleElapsedTimeBySpeed,
-    bool? allowCellularStreaming,
-    bool? allowCellularDownloads,
+    CellularPolicy? cellularStreaming,
+    CellularPolicy? cellularDownloads,
+    bool? treatMeteredAsCellular,
+    bool? showNetworkType,
+    bool? confirmSwitchWhilePlaying,
+    bool? showOtherServerDownloads,
+    bool? maskServerAddress,
+    bool? allowSeekOnMediaControls,
     bool? hapticFeedbackEnabled,
     bool? keepScreenAwake,
     bool? lockPortrait,
     int? sleepTimerDefaultMinutes,
+    bool? rememberLibrarySection,
+    bool? collapseSeries,
+    int? autoBrowseLimit,
+    bool? autoSeriesNewestFirst,
+    bool? showSyncIndicator,
+    int? autoRewindSeconds,
+    bool? autoRewindScale,
+    bool? sleepFadeOut,
+    int? sleepFadeSeconds,
+    bool? sleepChime,
+    int? sleepExtendMinutes,
+    bool? sleepAutoWindow,
+    int? sleepWindowStartMinutes,
+    int? sleepWindowEndMinutes,
     String? skinId,
+    String? themeVariant,
     bool? showTracksTab,
     bool? showChapterTime,
     bool? showBookTime,
   }) {
     return AppSettings(
-      jumpIntervalSeconds: jumpIntervalSeconds ?? this.jumpIntervalSeconds,
+      jumpBackSeconds: jumpBackSeconds ?? this.jumpBackSeconds,
+      jumpForwardSeconds: jumpForwardSeconds ?? this.jumpForwardSeconds,
       playbackSpeed: playbackSpeed ?? this.playbackSpeed,
       scaleElapsedTimeBySpeed:
           scaleElapsedTimeBySpeed ?? this.scaleElapsedTimeBySpeed,
-      allowCellularStreaming:
-          allowCellularStreaming ?? this.allowCellularStreaming,
-      allowCellularDownloads:
-          allowCellularDownloads ?? this.allowCellularDownloads,
+      cellularStreaming: cellularStreaming ?? this.cellularStreaming,
+      cellularDownloads: cellularDownloads ?? this.cellularDownloads,
+      treatMeteredAsCellular:
+          treatMeteredAsCellular ?? this.treatMeteredAsCellular,
+      showNetworkType: showNetworkType ?? this.showNetworkType,
+      confirmSwitchWhilePlaying:
+          confirmSwitchWhilePlaying ?? this.confirmSwitchWhilePlaying,
+      showOtherServerDownloads:
+          showOtherServerDownloads ?? this.showOtherServerDownloads,
+      maskServerAddress: maskServerAddress ?? this.maskServerAddress,
+      allowSeekOnMediaControls:
+          allowSeekOnMediaControls ?? this.allowSeekOnMediaControls,
       hapticFeedbackEnabled:
           hapticFeedbackEnabled ?? this.hapticFeedbackEnabled,
       keepScreenAwake: keepScreenAwake ?? this.keepScreenAwake,
       lockPortrait: lockPortrait ?? this.lockPortrait,
       sleepTimerDefaultMinutes:
           sleepTimerDefaultMinutes ?? this.sleepTimerDefaultMinutes,
+      rememberLibrarySection:
+          rememberLibrarySection ?? this.rememberLibrarySection,
+      collapseSeries: collapseSeries ?? this.collapseSeries,
+      autoBrowseLimit: autoBrowseLimit ?? this.autoBrowseLimit,
+      autoSeriesNewestFirst:
+          autoSeriesNewestFirst ?? this.autoSeriesNewestFirst,
+      showSyncIndicator: showSyncIndicator ?? this.showSyncIndicator,
+      autoRewindSeconds: autoRewindSeconds ?? this.autoRewindSeconds,
+      autoRewindScale: autoRewindScale ?? this.autoRewindScale,
+      sleepFadeOut: sleepFadeOut ?? this.sleepFadeOut,
+      sleepFadeSeconds: sleepFadeSeconds ?? this.sleepFadeSeconds,
+      sleepChime: sleepChime ?? this.sleepChime,
+      sleepExtendMinutes: sleepExtendMinutes ?? this.sleepExtendMinutes,
+      sleepAutoWindow: sleepAutoWindow ?? this.sleepAutoWindow,
+      sleepWindowStartMinutes: sleepWindowStartMinutes ?? this.sleepWindowStartMinutes,
+      sleepWindowEndMinutes: sleepWindowEndMinutes ?? this.sleepWindowEndMinutes,
       skinId: skinId ?? this.skinId,
+      themeVariant: themeVariant ?? this.themeVariant,
       showTracksTab: showTracksTab ?? this.showTracksTab,
       showChapterTime: showChapterTime ?? this.showChapterTime,
       showBookTime: showBookTime ?? this.showBookTime,

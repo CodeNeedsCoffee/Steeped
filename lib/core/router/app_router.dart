@@ -30,17 +30,16 @@ import '../../features/stats/history_screen.dart';
 import '../../features/stats/stats_screen.dart';
 import '../../features/stats/year_in_review_screen.dart';
 import 'go_router_refresh_notifier.dart';
+import 'root_navigator_key.dart';
 import 'splash_screen.dart';
 
 /// PLAN.md Phase 1.4 (routes) + Phase 3 (real auth-gated redirects, added
 /// once [SessionController] existed to check).
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
-    refreshListenable: GoRouterRefreshNotifier(
-      ref,
-      sessionControllerProvider,
-    ),
+    refreshListenable: GoRouterRefreshNotifier(ref, sessionControllerProvider),
     redirect: (context, state) {
       final session = ref.read(sessionControllerProvider);
       final location = state.matchedLocation;
@@ -54,6 +53,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           }
           return '/connect-server';
         case SessionAuthenticated():
+          // `/add-server*` is the signed-in "Add server or account" flow.
           if (location == '/' ||
               location == '/connect-server' ||
               location == '/login') {
@@ -74,14 +74,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             LoginScreen(serverUrl: state.extra as String),
       ),
       GoRoute(
+        path: '/add-server',
+        builder: (context, state) => const ConnectServerScreen(addMode: true),
+      ),
+      GoRoute(
+        path: '/add-server/login',
+        builder: (context, state) =>
+            LoginScreen(serverUrl: state.extra as String, addMode: true),
+      ),
+      GoRoute(
         path: '/home',
         builder: (context, state) => const HomeShellScreen(),
       ),
       GoRoute(
         path: '/library/:libraryId',
-        builder: (context, state) => LibraryGridScreen(
-          libraryId: state.pathParameters['libraryId']!,
-        ),
+        builder: (context, state) =>
+            LibraryGridScreen(libraryId: state.pathParameters['libraryId']!),
       ),
       GoRoute(
         path: '/item/:itemId',
@@ -107,8 +115,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/series/:seriesId',
-        builder: (context, state) =>
-            SeriesDetailScreen(series: state.extra as LibrarySeries),
+        builder: (context, state) => state.extra is LibrarySeries
+            ? SeriesDetailScreen(series: state.extra as LibrarySeries)
+            : SeriesLoaderScreen(
+                seriesId: state.pathParameters['seriesId']!,
+                libraryId: state.uri.queryParameters['library'],
+                name: state.uri.queryParameters['name'] ?? 'Series',
+              ),
       ),
       GoRoute(
         path: '/search/:libraryId',
@@ -127,12 +140,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           child: const NowPlayingScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 1),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              ),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             );
           },
@@ -140,9 +157,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/library/:libraryId/recent-episodes',
-        builder: (context, state) => RecentEpisodesScreen(
-          libraryId: state.pathParameters['libraryId']!,
-        ),
+        builder: (context, state) =>
+            RecentEpisodesScreen(libraryId: state.pathParameters['libraryId']!),
       ),
       GoRoute(
         path: '/reader/epub/:itemId',
@@ -183,10 +199,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/account/password',
         builder: (context, state) => const ChangePasswordScreen(),
       ),
-      GoRoute(
-        path: '/stats',
-        builder: (context, state) => const StatsScreen(),
-      ),
+      GoRoute(path: '/stats', builder: (context, state) => const StatsScreen()),
       GoRoute(
         path: '/stats/year-in-review',
         builder: (context, state) => const YearInReviewScreen(),

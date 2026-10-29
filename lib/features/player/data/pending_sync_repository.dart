@@ -7,9 +7,16 @@ import '../../../core/storage/app_database.dart';
 /// reconnect rather than only "the next periodic tick while the app happens
 /// to still be open."
 class PendingSyncRepository {
-  PendingSyncRepository(this._db);
+  PendingSyncRepository(this._db, {this.profileId = ''});
 
   final AppDatabase _db;
+
+  /// QOL_PLAN E2: the active server profile. Queued progress is tagged with
+  /// the profile that owns the item and only uploaded while that profile is
+  /// active, since the upload goes to that profile's server. The sync key
+  /// stays per item (ids are server-unique UUIDs), which also keeps rows
+  /// written before profiles existed addressable.
+  final String profileId;
 
   static String _keyFor(String libraryItemId, String? episodeId) =>
       episodeId == null ? libraryItemId : '$libraryItemId::$episodeId';
@@ -20,6 +27,7 @@ class PendingSyncRepository {
     required double currentTime,
     required double duration,
     bool? isFinished,
+    String? profileId,
   }) {
     return _db
         .into(_db.pendingProgressSyncs)
@@ -31,6 +39,7 @@ class PendingSyncRepository {
             currentTime: currentTime,
             duration: duration,
             isFinished: Value(isFinished),
+            profileId: Value(profileId ?? this.profileId),
           ),
         );
   }
@@ -42,8 +51,11 @@ class PendingSyncRepository {
         .go();
   }
 
+  /// Queued syncs that belong to the active profile.
   Future<List<PendingProgressSync>> pending() {
-    return _db.select(_db.pendingProgressSyncs).get();
+    return (_db.select(
+      _db.pendingProgressSyncs,
+    )..where((t) => t.profileId.equals(profileId))).get();
   }
 
   /// The still-unflushed sync (if any) for one item/episode — lets a caller
@@ -57,8 +69,8 @@ class PendingSyncRepository {
   }
 
   Stream<int> watchPendingCount() {
-    return _db
-        .select(_db.pendingProgressSyncs)
+    return (_db.select(_db.pendingProgressSyncs)
+          ..where((t) => t.profileId.equals(profileId)))
         .watch()
         .map((rows) => rows.length);
   }

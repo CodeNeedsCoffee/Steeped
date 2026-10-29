@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../settings/data/app_settings.dart';
 import '../settings/state/settings_providers.dart';
+import '../../l10n/l10n.dart';
 
 enum _TimeDisplayMode { chapter, book }
 
@@ -31,12 +32,12 @@ class TimeDisplayModeSelector extends ConsumerWidget {
 
     return SegmentedButton<_TimeDisplayMode>(
       multiSelectionEnabled: true,
-      segments: const [
+      segments: [
         ButtonSegment(
           value: _TimeDisplayMode.chapter,
-          label: Text('Chapter'),
+          label: Text(context.l10n.chapter),
         ),
-        ButtonSegment(value: _TimeDisplayMode.book, label: Text('Book')),
+        ButtonSegment(value: _TimeDisplayMode.book, label: Text(context.l10n.book)),
       ],
       selected: selected,
       onSelectionChanged: (s) {

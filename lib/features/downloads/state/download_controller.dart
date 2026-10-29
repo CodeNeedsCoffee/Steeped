@@ -4,7 +4,7 @@ import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/logging/log_repository.dart';
-import '../../../core/network/connectivity_service.dart';
+import '../../../core/network/cellular_gate.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/storage/device_storage.dart';
 import '../../../models/library_item_detail.dart';
@@ -13,8 +13,6 @@ import '../../auth/data/token_refresh_coordinator.dart';
 import '../../auth/state/session_controller.dart';
 import '../../auth/state/session_state.dart';
 import '../../library/state/library_providers.dart';
-import '../../settings/data/app_settings.dart';
-import '../../settings/state/settings_providers.dart';
 import '../data/download_repository.dart';
 
 /// Below this much free device space, the Downloads screen shows a
@@ -22,7 +20,10 @@ import '../data/download_repository.dart';
 const lowStorageThresholdBytes = 500 * 1024 * 1024;
 
 final downloadRepositoryProvider = Provider<DownloadRepository>((ref) {
-  return DownloadRepository(ref.watch(appDatabaseProvider));
+  return DownloadRepository(
+    ref.watch(appDatabaseProvider),
+    profileId: ref.watch(activeProfileIdProvider) ?? '',
+  );
 });
 
 /// Drives the Downloads screen.
@@ -118,7 +119,8 @@ class DownloadController extends Notifier<void> {
 
   bool _isAuthFailure(TaskStatusUpdate update) {
     final exception = update.exception;
-    final code = update.responseStatusCode ??
+    final code =
+        update.responseStatusCode ??
         (exception is TaskHttpException ? exception.httpResponseCode : null);
     return code == 401 || code == 403;
   }
@@ -196,18 +198,8 @@ class DownloadController extends Notifier<void> {
   }
 
   /// PLAN.md Phase 9.3 (Data/cellular controls).
-  Future<bool> _blockedByCellularSetting() async {
-    final settings =
-        ref.read(appSettingsProvider).valueOrNull ?? const AppSettings();
-    if (settings.allowCellularDownloads) return false;
-    final onCellular = await isOnCellularConnection(
-      ref.read(connectivityProvider),
-    );
-    if (!onCellular) return false;
-    ref.read(cellularBlockNoticeProvider.notifier).state =
-        'Downloading over cellular is off in Settings → Data.';
-    return true;
-  }
+  Future<bool> _blockedByCellularSetting() =>
+      cellularBlocks(ref, CellularAction.download);
 
   Future<void> download({
     required LibraryItemDetail item,

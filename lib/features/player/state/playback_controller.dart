@@ -4,13 +4,14 @@ import 'package:audio_service/audio_service.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:just_audio/just_audio.dart' show PlayerException;
+import 'package:just_audio/just_audio.dart' show AudioPlayer, PlayerException;
 
 import '../../../core/audio/audio_handler_provider.dart';
 import '../../../core/audio/steeped_audio_handler.dart';
 import '../../../core/logging/log_repository.dart';
 import '../../../core/network/audio_stream_url.dart';
 import '../../../core/network/connectivity_service.dart';
+import '../../../core/network/cellular_gate.dart';
 import '../../../core/network/cover_image_url.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../models/audio_track.dart';
@@ -28,6 +29,7 @@ import '../../settings/data/app_settings.dart';
 import '../../settings/state/settings_providers.dart';
 import '../data/bookmark_repository.dart';
 import '../data/progress_repository.dart';
+import '../data/sleep_timer_logic.dart';
 import 'pending_sync_controller.dart';
 
 final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
@@ -93,6 +95,14 @@ final playbackSpeedProvider = StreamProvider<double>((ref) {
 /// none is running. A real, working (if basic) timer — manual duration
 /// only; end-of-chapter/shake-to-reset/fade-out are still deferred.
 final sleepTimerRemainingProvider = StateProvider<Duration?>((ref) => null);
+
+/// True while the running sleep timer stops at the end of the current
+/// chapter rather than after a fixed duration.
+final sleepTimerEndOfChapterProvider = StateProvider<bool>((ref) => false);
+
+/// True after a sleep timer has fired and until it is restarted or
+/// dismissed; Now Playing offers restart/extend while this is set.
+final sleepTimerFiredProvider = StateProvider<bool>((ref) => false);
 
 /// PLAN.md Phase 5.9: syncs progress every 15s while playing (no
 /// metered/unmetered throttling like the reference app does — deferred,
@@ -197,7 +207,10 @@ class PlaybackController extends Notifier<void> {
     // freshly loaded item starts at (SteepedAudioHandler can't watch
     // Riverpod providers itself), in sync with settings.
     ref.listen(appSettingsProvider, (_, next) {
-      _handler.jumpIntervalSeconds = next.valueOrNull?.jumpIntervalSeconds ?? 30;
+      final v = next.valueOrNull ?? const AppSettings();
+      _handler.jumpBackSeconds = v.jumpBackSeconds;
+      _handler.jumpForwardSeconds = v.jumpForwardSeconds;
+      _handler.allowSeekOnMediaControls = v.allowSeekOnMediaControls;
       _handler.playbackSpeed = next.valueOrNull?.playbackSpeed ?? 1.0;
     }, fireImmediately: true);
     ref.onDispose(() {
@@ -207,26 +220,192 @@ class PlaybackController extends Notifier<void> {
     });
   }
 
+  // --- Sleep timer -------------------------------------------------------
+
+  static const _sleepTick = Duration(milliseconds: 250);
+  static const _chimeLead = Duration(seconds: 30);
+
+  DateTime? _sleepDeadline;
+  double? _sleepChapterEnd;
+  Duration _lastSleepDuration = const Duration(minutes: 30);
+  bool _chimePlayed = false;
+  bool _fadeApplied = false;
+
+  AppSettings get _settings =>
+      ref.read(appSettingsProvider).valueOrNull ?? const AppSettings();
+
   void startSleepTimer(Duration duration) {
-    _sleepCountdown?.cancel();
-    var remaining = duration;
-    ref.read(sleepTimerRemainingProvider.notifier).state = remaining;
-    _sleepCountdown = Timer.periodic(const Duration(seconds: 1), (timer) {
-      remaining -= const Duration(seconds: 1);
-      if (remaining <= Duration.zero) {
-        timer.cancel();
-        ref.read(sleepTimerRemainingProvider.notifier).state = null;
-        pause();
-      } else {
-        ref.read(sleepTimerRemainingProvider.notifier).state = remaining;
-      }
-    });
+    _stopSleepEngine(restoreVolume: true);
+    _lastSleepDuration = duration;
+    _sleepDeadline = DateTime.now().add(duration);
+    _beginSleepEngine(duration);
   }
 
+  /// Pauses when the current chapter ends (a no-op without chapter data).
+  void startSleepTimerAtChapterEnd() {
+    final item = ref.read(currentPlaybackItemProvider);
+    final end = item == null
+        ? null
+        : chapterEndAt(_handler.globalPositionSeconds, item.chapters);
+    if (end == null) return;
+    _stopSleepEngine(restoreVolume: true);
+    _sleepChapterEnd = end;
+    ref.read(sleepTimerEndOfChapterProvider.notifier).state = true;
+    _beginSleepEngine(_chapterRemaining() ?? Duration.zero);
+  }
+
+  /// Adds [by] (default: the "extend" setting) to the running timer, or
+  /// restarts the last duration if the timer has already fired. An
+  /// end-of-chapter timer becomes a plain duration timer.
+  void extendSleepTimer([Duration? by]) {
+    final extra = by ?? Duration(minutes: _settings.sleepExtendMinutes);
+    final current = ref.read(sleepTimerRemainingProvider);
+    if (current == null) {
+      startSleepTimer(extra);
+      return;
+    }
+    startSleepTimer(current + extra);
+  }
+
+  /// After a fire: run the previous duration again.
+  void restartSleepTimer() => startSleepTimer(_lastSleepDuration);
+
   void cancelSleepTimer() {
+    _stopSleepEngine(restoreVolume: true);
+    ref.read(sleepTimerFiredProvider.notifier).state = false;
+  }
+
+  void _beginSleepEngine(Duration initialRemaining) {
+    ref.read(sleepTimerFiredProvider.notifier).state = false;
+    ref.read(sleepTimerRemainingProvider.notifier).state = initialRemaining;
+    _chimePlayed = initialRemaining <= _chimeLead;
+    _sleepCountdown = Timer.periodic(_sleepTick, (_) => _sleepTickFired());
+  }
+
+  void _stopSleepEngine({required bool restoreVolume}) {
     _sleepCountdown?.cancel();
     _sleepCountdown = null;
+    _sleepDeadline = null;
+    _sleepChapterEnd = null;
     ref.read(sleepTimerRemainingProvider.notifier).state = null;
+    ref.read(sleepTimerEndOfChapterProvider.notifier).state = false;
+    if (restoreVolume && _fadeApplied) {
+      _fadeApplied = false;
+      unawaited(_handler.setVolume(1.0));
+    }
+  }
+
+  Duration? _chapterRemaining() {
+    final end = _sleepChapterEnd;
+    if (end == null) return null;
+    final speed = _handler.player.speed;
+    final left = end - _handler.globalPositionSeconds;
+    if (left <= 0) return Duration.zero;
+    return Duration(
+      milliseconds: (left / (speed <= 0 ? 1.0 : speed) * 1000).round(),
+    );
+  }
+
+  void _sleepTickFired() {
+    final Duration remaining;
+    if (_sleepChapterEnd != null) {
+      remaining = _chapterRemaining() ?? Duration.zero;
+    } else {
+      final deadline = _sleepDeadline;
+      if (deadline == null) return;
+      final left = deadline.difference(DateTime.now());
+      remaining = left < Duration.zero ? Duration.zero : left;
+    }
+
+    final settings = _settings;
+    if (remaining <= Duration.zero) {
+      unawaited(_fireSleepTimer());
+      return;
+    }
+    if (settings.sleepChime && !_chimePlayed && remaining <= _chimeLead) {
+      _chimePlayed = true;
+      unawaited(_playChime());
+    }
+    if (settings.sleepFadeOut && _handler.player.playing) {
+      final volume = fadeVolume(
+        remaining,
+        Duration(seconds: settings.sleepFadeSeconds),
+      );
+      if (volume < 1.0 || _fadeApplied) {
+        _fadeApplied = true;
+        unawaited(_handler.setVolume(volume));
+      }
+    }
+    final shown = Duration(seconds: (remaining.inMilliseconds / 1000).ceil());
+    final notifier = ref.read(sleepTimerRemainingProvider.notifier);
+    if (notifier.state != shown) notifier.state = shown;
+  }
+
+  Future<void> _fireSleepTimer() async {
+    _stopSleepEngine(restoreVolume: false);
+    await pause();
+    if (_fadeApplied) {
+      _fadeApplied = false;
+      await _handler.setVolume(1.0);
+    }
+    ref.read(sleepTimerFiredProvider.notifier).state = true;
+  }
+
+  Future<void> _playChime() async {
+    final player = AudioPlayer(
+      handleInterruptions: false,
+      handleAudioSessionActivation: false,
+    );
+    try {
+      await player.setAsset('assets/audio/sleep_chime.wav');
+      await player.play();
+    } catch (_) {
+      // No audio device (Linux/CI) or asset trouble: the chime is a nicety.
+    } finally {
+      await player.dispose();
+    }
+  }
+
+  /// Starts the default-length timer when playback begins inside the
+  /// configured daily window and nothing is already running.
+  void _maybeAutoStartSleepTimer() {
+    final settings = _settings;
+    if (!settings.sleepAutoWindow) return;
+    if (ref.read(sleepTimerRemainingProvider) != null) return;
+    final now = DateTime.now();
+    if (!isInAutoSleepWindow(
+      now.hour * 60 + now.minute,
+      settings.sleepWindowStartMinutes,
+      settings.sleepWindowEndMinutes,
+    )) {
+      return;
+    }
+    startSleepTimer(Duration(minutes: settings.sleepTimerDefaultMinutes));
+  }
+
+  // --- Auto-rewind -------------------------------------------------------
+
+  DateTime? _rewindPausedAt;
+  String? _rewindItemId;
+
+  Future<void> _applyAutoRewind() async {
+    final pausedAt = _rewindPausedAt;
+    _rewindPausedAt = null;
+    if (pausedAt == null || _recoveryInFlight) return;
+    // A different book was loaded since the pause: this is a fresh start.
+    if (ref.read(currentPlaybackItemProvider)?.downloadId != _rewindItemId) {
+      return;
+    }
+    final settings = _settings;
+    final rewind = autoRewindFor(
+      pausedFor: DateTime.now().difference(pausedAt),
+      baseSeconds: settings.autoRewindSeconds,
+      scaleUp: settings.autoRewindScale,
+    );
+    if (rewind == Duration.zero) return;
+    await _handler.seekToGlobalPosition(
+      rewoundPosition(_handler.globalPositionSeconds, rewind),
+    );
   }
 
   SteepedAudioHandler get _handler => ref.read(audioHandlerProvider);
@@ -238,8 +417,14 @@ class PlaybackController extends Notifier<void> {
     if (item == null) return;
     if (state.playing) {
       _startSyncTimer(item);
+      unawaited(_applyAutoRewind());
+      _maybeAutoStartSleepTimer();
     } else {
       _pausedAt = DateTime.now();
+      if (!_recoveryInFlight) {
+        _rewindPausedAt = _pausedAt;
+        _rewindItemId = item.downloadId;
+      }
       if (_recoveryInFlight) _recoveryPauseRequested = true;
       _syncTimer?.cancel();
       _syncTimer = null;
@@ -306,7 +491,11 @@ class PlaybackController extends Notifier<void> {
       unawaited(
         ref
             .read(logRepositoryProvider)
-            .log('error', 'playback', 'Failed to start playback for $itemId: $e'),
+            .log(
+              'error',
+              'playback',
+              'Failed to start playback for $itemId: $e',
+            ),
       );
       rethrow;
     } finally {
@@ -445,18 +634,8 @@ class PlaybackController extends Notifier<void> {
 
   /// PLAN.md Phase 9.3 (Data/cellular controls). Only gates *streaming* —
   /// downloaded/offline playback never touches the network regardless.
-  Future<bool> _blockedByCellularSetting() async {
-    final settings =
-        ref.read(appSettingsProvider).valueOrNull ?? const AppSettings();
-    if (settings.allowCellularStreaming) return false;
-    final onCellular = await isOnCellularConnection(
-      ref.read(connectivityProvider),
-    );
-    if (!onCellular) return false;
-    ref.read(cellularBlockNoticeProvider.notifier).state =
-        'Streaming over cellular is off in Settings → Data.';
-    return true;
-  }
+  Future<bool> _blockedByCellularSetting() =>
+      cellularBlocks(ref, CellularAction.stream);
 
   /// Bug fix 2026-08-05 (evan: streamed playback resumed ~15 minutes behind
   /// after the app died mid-outage). `fetchItemDetail`'s `progress` only
@@ -811,10 +990,9 @@ class PlaybackController extends Notifier<void> {
       // turns that hang into an ordinary failure the existing `catch`
       // below already knows how to retry.
       final refreshedSession =
-          await _refreshSessionToken(session).timeout(
-            const Duration(seconds: 20),
-            onTimeout: () => null,
-          ) ??
+          await _refreshSessionToken(
+            session,
+          ).timeout(const Duration(seconds: 20), onTimeout: () => null) ??
           session;
       await _handler
           .loadItem(
@@ -907,6 +1085,19 @@ class PlaybackController extends Notifier<void> {
         );
   }
 
+  String get _activeProfile => ref.read(activeProfileIdProvider) ?? '';
+
+  /// QOL_PLAN E2: which server profile owns [item]'s progress. A downloaded
+  /// copy belongs to the profile it was downloaded under (it can be playing
+  /// offline while a different account is active); anything streamed
+  /// belongs to the active profile.
+  Future<String> _ownerProfileOf(LibraryItemDetail item) async {
+    final downloaded = await ref
+        .read(downloadRepositoryProvider)
+        .profileIdOf(item.downloadId);
+    return downloaded ?? _activeProfile;
+  }
+
   Future<void> _sync(LibraryItemDetail item) async {
     final currentTime = _handler.globalPositionSeconds;
     if (item.isLocalOnly) {
@@ -916,6 +1107,15 @@ class PlaybackController extends Notifier<void> {
       return;
     }
     await _updateLocalProgressCache(item.downloadId, currentTime, false);
+
+    // A download from another account: the active server isn't where this
+    // progress goes, so park it against its own profile until that account
+    // is active again.
+    final owner = await _ownerProfileOf(item);
+    if (owner != _activeProfile) {
+      await _enqueueFailedSync(item, currentTime, owner);
+      return;
+    }
 
     // Nothing to gain from a DNS lookup and a connect timeout we already know
     // will fail; queue it and move on. This is the `Failed host lookup` case
@@ -952,14 +1152,20 @@ class PlaybackController extends Notifier<void> {
     }
   }
 
-  Future<void> _enqueueFailedSync(LibraryItemDetail item, double currentTime) {
-    return ref
+  Future<void> _enqueueFailedSync(
+    LibraryItemDetail item,
+    double currentTime, [
+    String? ownerProfile,
+  ]) async {
+    final owner = ownerProfile ?? await _ownerProfileOf(item);
+    await ref
         .read(pendingSyncRepositoryProvider)
         .enqueue(
           libraryItemId: item.id,
           episodeId: item.episodeId,
           currentTime: currentTime,
           duration: item.duration ?? 0,
+          profileId: owner,
         );
   }
 
@@ -1052,6 +1258,21 @@ class PlaybackController extends Notifier<void> {
       return;
     }
     await _updateLocalProgressCache(item.downloadId, currentTime, true);
+    final owner = await _ownerProfileOf(item);
+    if (owner != _activeProfile) {
+      await ref
+          .read(pendingSyncRepositoryProvider)
+          .enqueue(
+            libraryItemId: item.id,
+            episodeId: item.episodeId,
+            currentTime: currentTime,
+            duration: item.duration ?? 0,
+            isFinished: true,
+            profileId: owner,
+          );
+      await _advanceQueue(item);
+      return;
+    }
     try {
       await ref
           .read(progressRepositoryProvider)
@@ -1072,6 +1293,7 @@ class PlaybackController extends Notifier<void> {
             currentTime: currentTime,
             duration: item.duration ?? 0,
             isFinished: true,
+            profileId: owner,
           );
     }
     await _advanceQueue(item);
@@ -1148,7 +1370,9 @@ class PlaybackController extends Notifier<void> {
     if (item == null || item.isLocalOnly) return;
     final session = ref.read(sessionControllerProvider);
     if (session is! SessionAuthenticated) return;
-    if (await ref.read(downloadRepositoryProvider).isDownloaded(item.downloadId)) {
+    if (await ref
+        .read(downloadRepositoryProvider)
+        .isDownloaded(item.downloadId)) {
       return;
     }
 
@@ -1165,13 +1389,15 @@ class PlaybackController extends Notifier<void> {
 
   /// PLAN.md Phase 9.3: jump interval is now configurable in Settings →
   /// Playback (was fixed at 30s per the PLAN.md 5.5 note).
-  Future<void> jumpForward() => _handler.jumpBy(_jumpIntervalSeconds.toDouble());
+  Future<void> jumpForward() => _handler.jumpBy(
+    (ref.read(appSettingsProvider).valueOrNull?.jumpForwardSeconds ?? 30)
+        .toDouble(),
+  );
 
-  Future<void> jumpBackward() =>
-      _handler.jumpBy(-_jumpIntervalSeconds.toDouble());
-
-  int get _jumpIntervalSeconds =>
-      ref.read(appSettingsProvider).valueOrNull?.jumpIntervalSeconds ?? 30;
+  Future<void> jumpBackward() => _handler.jumpBy(
+    -(ref.read(appSettingsProvider).valueOrNull?.jumpBackSeconds ?? 30)
+        .toDouble(),
+  );
 
   Future<void> seekToGlobalPosition(double seconds) =>
       _handler.seekToGlobalPosition(seconds);
@@ -1179,7 +1405,7 @@ class PlaybackController extends Notifier<void> {
   /// Persists the choice to `AppSettings` so it survives closing and
   /// reopening the app -- `_handler`'s own `playbackSpeed` field then gets
   /// kept in sync by the `ref.listen(appSettingsProvider, ...)` in [build],
-  /// the same round-trip `jumpIntervalSeconds` already uses.
+  /// the same round-trip the jump lengths already uses.
   Future<void> setSpeed(double speed) async {
     await _handler.setSpeed(speed);
     final current = ref.read(appSettingsProvider).valueOrNull;
@@ -1201,6 +1427,20 @@ class PlaybackController extends Notifier<void> {
       return;
     }
     await _updateLocalProgressCache(item.downloadId, currentTime, finished);
+    final owner = await _ownerProfileOf(item);
+    if (owner != _activeProfile) {
+      await ref
+          .read(pendingSyncRepositoryProvider)
+          .enqueue(
+            libraryItemId: item.id,
+            episodeId: item.episodeId,
+            currentTime: currentTime,
+            duration: item.duration ?? 0,
+            isFinished: finished,
+            profileId: owner,
+          );
+      return;
+    }
     try {
       await ref
           .read(progressRepositoryProvider)
@@ -1221,8 +1461,40 @@ class PlaybackController extends Notifier<void> {
             currentTime: currentTime,
             duration: item.duration ?? 0,
             isFinished: finished,
+            profileId: owner,
           );
     }
+  }
+
+  /// QOL_PLAN C1. Throws if the server can't be reached (a delete can't be
+  /// queued like a progress write, so the caller reports it).
+  Future<void> discardProgress({
+    required String libraryItemId,
+    String? episodeId,
+  }) async {
+    final downloadId = episodeId == null
+        ? libraryItemId
+        : '$libraryItemId::$episodeId';
+    final current = ref.read(currentPlaybackItemProvider);
+    if (current != null && current.downloadId == downloadId) {
+      // Drop the loaded item first so the pause listener can't sync the old
+      // position back to the server right after it's deleted.
+      _syncTimer?.cancel();
+      _syncTimer = null;
+      ref.read(currentPlaybackItemProvider.notifier).state = null;
+      await _handler.stop();
+    }
+    if (current != null && current.isLocalOnly && current.id == libraryItemId) {
+      await ref.read(localMediaRepositoryProvider).updateProgress(libraryItemId, 0);
+      return;
+    }
+    await ref
+        .read(progressRepositoryProvider)
+        .discardProgress(libraryItemId: libraryItemId, episodeId: episodeId);
+    await ref
+        .read(pendingSyncRepositoryProvider)
+        .remove(libraryItemId, episodeId);
+    await _updateLocalProgressCache(downloadId, 0, false);
   }
 
   Future<void> closePlayer() async {

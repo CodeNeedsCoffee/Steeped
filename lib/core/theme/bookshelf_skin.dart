@@ -14,25 +14,31 @@ class BookshelfSkin extends Skin {
   SkinId get id => SkinId.bookshelf;
 
   @override
-  String get displayName => 'Bookshelf';
-
-  @override
-  String get description =>
-      'Warm wood and paper tones with book-spine styled covers.';
-
-  @override
-  ThemeData buildTheme() {
+  ThemeData buildTheme([ThemeVariant variant = ThemeVariant.dark]) {
     const seedColor = Color(0xFFB07D4F); // warm wood brown
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: seedColor,
-      brightness: Brightness.dark,
-    ).copyWith(
-      surface: const Color(0xFF241A12),
-      surfaceContainerHighest: const Color(0xFF3A2A1B),
-    );
+    final isLight = variant == ThemeVariant.light;
+    final isBlack = variant == ThemeVariant.black;
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: seedColor,
+          brightness: isLight ? Brightness.light : Brightness.dark,
+        ).copyWith(
+          surface: switch (variant) {
+            ThemeVariant.light => const Color(0xFFF6EEDF), // paper
+            ThemeVariant.black => const Color(0xFF0B0805),
+            _ => const Color(0xFF241A12),
+          },
+          surfaceContainerHighest: switch (variant) {
+            ThemeVariant.light => const Color(0xFFE8D9BE),
+            ThemeVariant.black => const Color(0xFF241A12),
+            _ => const Color(0xFF3A2A1B),
+          },
+        );
+    final cardColor = colorScheme.surfaceContainerHighest;
 
     return ThemeData(
       useMaterial3: true,
+      brightness: colorScheme.brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: colorScheme.surface,
       extensions: const [
@@ -44,17 +50,24 @@ class BookshelfSkin extends Skin {
           coverStyle: CoverStyle.bookSpine,
         ),
       ],
-      appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1B130D),
+      appBarTheme: AppBarTheme(
+        backgroundColor: switch (variant) {
+          ThemeVariant.light => const Color(0xFFDCC7A0),
+          ThemeVariant.black => const Color(0xFF000000),
+          _ => const Color(0xFF1B130D),
+        },
+        foregroundColor: isLight ? const Color(0xFF2A1F14) : null,
         elevation: 2,
       ),
       cardTheme: CardThemeData(
-        color: const Color(0xFF3A2A1B),
-        elevation: 3,
+        color: cardColor,
+        elevation: isBlack ? 0 : 3,
         shadowColor: Colors.black.withValues(alpha: 0.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       ),
-      dividerTheme: const DividerThemeData(color: Color(0xFF4A3624)),
+      dividerTheme: DividerThemeData(
+        color: isLight ? const Color(0xFFCDB894) : const Color(0xFF4A3624),
+      ),
     );
   }
 }

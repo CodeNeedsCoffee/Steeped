@@ -4,30 +4,23 @@
 /// accident.
 const int minPasswordLength = 8;
 
+enum PasswordProblem { currentEmpty, newEmpty, tooShort, sameAsCurrent, mismatch }
+
 /// Client-side checks run before `PATCH /api/me/password` is called.
-/// Returns the message to show, or null when the input is submittable.
+/// Returns what's wrong, or null when the input is submittable; the screen
+/// turns the problem into localized text.
 ///
 /// Kept as a plain function rather than living inside the screen's State so
 /// the rules can be unit-tested without pumping a widget.
-String? validatePasswordChange({
+PasswordProblem? validatePasswordChange({
   required String currentPassword,
   required String newPassword,
   required String confirmPassword,
 }) {
-  if (currentPassword.isEmpty) {
-    return 'Enter your current password.';
-  }
-  if (newPassword.isEmpty) {
-    return 'Enter a new password.';
-  }
-  if (newPassword.length < minPasswordLength) {
-    return 'New password must be at least $minPasswordLength characters.';
-  }
-  if (newPassword == currentPassword) {
-    return 'New password must be different from your current one.';
-  }
-  if (newPassword != confirmPassword) {
-    return "New passwords don't match.";
-  }
+  if (currentPassword.isEmpty) return PasswordProblem.currentEmpty;
+  if (newPassword.isEmpty) return PasswordProblem.newEmpty;
+  if (newPassword.length < minPasswordLength) return PasswordProblem.tooShort;
+  if (newPassword == currentPassword) return PasswordProblem.sameAsCurrent;
+  if (newPassword != confirmPassword) return PasswordProblem.mismatch;
   return null;
 }

@@ -1,13 +1,19 @@
 import 'dart:convert';
 
 import '../../../core/storage/app_database.dart';
+import '../../auth/data/server_profile_repository.dart' show profileScopedKey;
 
 /// LIBRARY_PLAN.md L5: the last few search terms, kept on the device.
 class RecentSearchesStore {
-  RecentSearchesStore(this._db);
+  RecentSearchesStore(this._db, {this.profileId = ''});
 
   final AppDatabase _db;
-  static const _key = 'recent_searches';
+
+  /// QOL_PLAN E2: search history is per server profile.
+  final String profileId;
+  String get _key => profileId.isEmpty
+      ? 'recent_searches'
+      : profileScopedKey(profileId, 'recent_searches');
   static const maxEntries = 10;
 
   Future<List<String>> load() async {

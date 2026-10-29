@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../../core/storage/app_database.dart';
+import '../../auth/data/server_profile_repository.dart' show profileScopedKey;
 import '../../../models/library.dart';
 
 /// Last-known library list, persisted so a cold start with no connectivity
@@ -8,10 +9,16 @@ import '../../../models/library.dart';
 /// instead of dead-ending on the `librariesProvider` failure. Same
 /// KV-blob shape as [AppSettingsRepository].
 class LibraryCacheRepository {
-  LibraryCacheRepository(this._db);
+  LibraryCacheRepository(this._db, {this.profileId = ''});
 
   final AppDatabase _db;
-  static const _key = 'cached_libraries';
+
+  /// QOL_PLAN E2: each server profile caches its own library list. An empty
+  /// id uses the original unscoped key.
+  final String profileId;
+  String get _key => profileId.isEmpty
+      ? 'cached_libraries'
+      : profileScopedKey(profileId, 'cached_libraries');
 
   Future<List<Library>> load() async {
     final row =

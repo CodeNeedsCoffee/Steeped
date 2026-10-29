@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/cellular_gate.dart' show CellularAction;
+
 import '../../../core/storage/app_database.dart';
 import '../data/app_settings.dart';
 import '../data/app_settings_repository.dart';
@@ -30,4 +32,6 @@ final appSettingsProvider =
 /// authenticated screen) watches this and surfaces a snackbar, so the
 /// dozen+ places a play/download can be triggered from don't each need
 /// their own error-handling wiring.
-final cellularBlockNoticeProvider = StateProvider<String?>((ref) => null);
+final cellularBlockNoticeProvider = StateProvider<CellularAction?>(
+  (ref) => null,
+);

@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/library_query.dart';
+import '../settings/data/app_settings.dart';
+import '../settings/state/settings_providers.dart';
 import 'state/library_providers.dart';
+import '../../l10n/l10n.dart';
+import '../../l10n/enum_labels.dart';
 
 /// LIBRARY_PLAN.md L4: sort menu, filter sheet, grid/list toggle and the
 /// active-filter chip, shown above the Books grid.
@@ -15,6 +19,8 @@ class LibraryToolbar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final query = ref.watch(libraryQueryProvider(libraryId));
     final controller = ref.read(libraryQueryProvider(libraryId).notifier);
+    final collapseSeries =
+        ref.watch(appSettingsProvider).valueOrNull?.collapseSeries ?? false;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
       child: Column(
@@ -22,7 +28,7 @@ class LibraryToolbar extends ConsumerWidget {
           Row(
             children: [
               PopupMenuButton<LibrarySort>(
-                tooltip: 'Sort',
+                tooltip: context.l10n.sort,
                 onSelected: (s) => controller.update(
                   s == query.sort
                       ? query.copyWith(desc: !query.desc)
@@ -33,7 +39,7 @@ class LibraryToolbar extends ConsumerWidget {
                     CheckedPopupMenuItem(
                       value: s,
                       checked: s == query.sort,
-                      child: Text(s.label),
+                      child: Text(s.localized(context.l10n)),
                     ),
                 ],
                 child: Padding(
@@ -46,13 +52,15 @@ class LibraryToolbar extends ConsumerWidget {
                     children: [
                       const Icon(Icons.sort, size: 20),
                       const SizedBox(width: 6),
-                      Text(query.sort.label),
+                      Text(query.sort.localized(context.l10n)),
                     ],
                   ),
                 ),
               ),
               IconButton(
-                tooltip: query.desc ? 'Descending' : 'Ascending',
+                tooltip: query.desc
+                    ? context.l10n.sortDescending
+                    : context.l10n.sortAscending,
                 icon: Icon(
                   query.desc ? Icons.arrow_downward : Icons.arrow_upward,
                   size: 20,
@@ -62,16 +70,33 @@ class LibraryToolbar extends ConsumerWidget {
               ),
               const Spacer(),
               IconButton(
-                tooltip: 'Filter',
+                tooltip: context.l10n.filter,
                 icon: Icon(
                   query.hasFilter ? Icons.filter_alt : Icons.filter_alt_outlined,
                 ),
                 onPressed: () => showLibraryFilterSheet(context, libraryId),
               ),
               IconButton(
+                tooltip: collapseSeries
+                    ? context.l10n.showEveryBook
+                    : context.l10n.collapseSeriesTooltip,
+                icon: Icon(
+                  collapseSeries
+                      ? Icons.library_books
+                      : Icons.library_books_outlined,
+                ),
+                onPressed: () => ref
+                    .read(appSettingsProvider.notifier)
+                    .save(
+                      (ref.read(appSettingsProvider).valueOrNull ??
+                              const AppSettings())
+                          .copyWith(collapseSeries: !collapseSeries),
+                    ),
+              ),
+              IconButton(
                 tooltip: query.viewMode == LibraryViewMode.grid
-                    ? 'List view'
-                    : 'Grid view',
+                    ? context.l10n.listView
+                    : context.l10n.gridView,
                 icon: Icon(
                   query.viewMode == LibraryViewMode.grid
                       ? Icons.view_list
@@ -95,12 +120,12 @@ class LibraryToolbar extends ConsumerWidget {
                 children: [
                   InputChip(
                     label: Text(
-                      '${query.filterGroup!.label}: ${query.filterLabel}',
+                      '${query.filterGroup!.localized(context.l10n)}: ${query.filterLabel}',
                     ),
                     onDeleted: () => controller.update(query.withoutFilter()),
                   ),
                   ActionChip(
-                    label: const Text('Clear all'),
+                    label: Text(context.l10n.clearAll),
                     onPressed: () => controller.update(query.withoutFilter()),
                   ),
                 ],
@@ -141,16 +166,16 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
       height: height,
       child: dataAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load filters: $e')),
+        error: (e, _) => Center(child: Text(context.l10n.couldNotLoadFilters(e))),
         data: (data) {
           final options = _optionsFor(data);
           if (_group == null) {
             return ListView(
               children: [
-                const ListTile(title: Text('Filter by')),
+                ListTile(title: Text(context.l10n.filterBy)),
                 for (final g in LibraryFilterGroup.values)
                   ListTile(
-                    title: Text(g.label),
+                    title: Text(g.localized(context.l10n)),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => setState(() => _group = g),
                   ),
@@ -161,14 +186,15 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
             children: [
               ListTile(
                 leading: IconButton(
+                  tooltip: context.l10n.back,
                   icon: const Icon(Icons.arrow_back),
                   onPressed: () => setState(() => _group = null),
                 ),
-                title: Text(_group!.label),
+                title: Text(_group!.localized(context.l10n)),
               ),
               Expanded(
                 child: options.isEmpty
-                    ? const Center(child: Text('Nothing to filter on.'))
+                    ? Center(child: Text(context.l10n.nothingToFilterOn))
                     : ListView(
                         children: [
                           for (final o in options)
@@ -218,8 +244,12 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
       LibraryFilterGroup.authors => idNames(d.authors),
       LibraryFilterGroup.series => idNames(d.series),
       LibraryFilterGroup.progress => [
-        for (final e in progressFilterValues.entries)
-          (value: e.key, label: e.value),
+        for (final v in progressFilterValues)
+          (value: v, label: progressFilterLabel(context.l10n, v)),
+      ],
+      LibraryFilterGroup.ebooks => [
+        for (final v in ebookFilterValues)
+          (value: v, label: ebookFilterLabel(context.l10n, v)),
       ],
       null => const [],
     };

@@ -85,4 +85,28 @@ class ProgressRepository {
     if (isFinished != null) data['isFinished'] = isFinished;
     await _patchProgress('/api/me/progress/$libraryItemId', data);
   }
+
+  /// QOL_PLAN C1: forget all progress for an item/episode. The server's
+  /// `DELETE /api/me/progress/:id` takes the *media progress* id (not the
+  /// library item id), so it's looked up first; a 404 on the lookup means
+  /// there's nothing to discard.
+  Future<void> discardProgress({
+    required String libraryItemId,
+    String? episodeId,
+  }) async {
+    final path = episodeId == null
+        ? '/api/me/progress/$libraryItemId'
+        : '/api/me/progress/$libraryItemId/$episodeId';
+    final String progressId;
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(path);
+      final id = res.data?['id'] as String?;
+      if (id == null) return;
+      progressId = id;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return;
+      rethrow;
+    }
+    await _dio.delete<void>('/api/me/progress/$progressId');
+  }
 }

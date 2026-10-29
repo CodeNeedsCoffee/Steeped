@@ -29,9 +29,14 @@ final dioProvider = Provider<Dio>((ref) {
     AuthInterceptor(
       sessionStorage: ref.watch(sessionStorageProvider),
       tokenRefreshCoordinator: ref.watch(tokenRefreshCoordinatorProvider),
-      onSessionExpired: () async {
-        await ref.read(sessionStorageProvider).clear();
-        ref.read(sessionExpiredSignalProvider.notifier).fire();
+      // Signs out just the account whose request failed; a different
+      // account that happens to be active (or saved) is left alone.
+      onSessionExpired: (profileId) async {
+        final storage = ref.read(sessionStorageProvider);
+        await storage.clear(profileId: profileId);
+        if (profileId == null || profileId == await storage.readActiveProfileId()) {
+          ref.read(sessionExpiredSignalProvider.notifier).fire();
+        }
       },
       onTokensRefreshed: ({required accessToken, required refreshToken}) {
         ref

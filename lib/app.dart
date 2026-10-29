@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
+import 'core/theme/skin.dart';
 import 'core/theme/skin_registry.dart';
 import 'features/settings/data/app_settings.dart';
 import 'features/settings/state/settings_providers.dart';
-import 'l10n/gen/app_localizations.dart';
+import 'l10n/l10n.dart';
 
 class SteepedApp extends ConsumerWidget {
   const SteepedApp({super.key});
@@ -26,10 +27,25 @@ class SteepedApp extends ConsumerWidget {
     // AppSettings — same "just needs to be read here" pattern lockPortrait
     // already uses above.
     final skin = skinByName(settings.skinId);
+    // QOL_PLAN F1: with "Follow system", `theme`/`darkTheme` + `themeMode`
+    // let the OS flip light and dark without a rebuild of the settings.
+    final variant = ThemeVariant.parse(settings.themeVariant);
     return MaterialApp.router(
-      title: 'Steeped',
+      onGenerateTitle: (context) => context.l10n.appName,
       debugShowCheckedModeBanner: false,
-      theme: skin.buildTheme(),
+      theme: skin.buildTheme(
+        variant == ThemeVariant.system || variant == ThemeVariant.light
+            ? ThemeVariant.light
+            : variant,
+      ),
+      darkTheme: skin.buildTheme(
+        variant == ThemeVariant.black ? ThemeVariant.black : ThemeVariant.dark,
+      ),
+      themeMode: switch (variant) {
+        ThemeVariant.system => ThemeMode.system,
+        ThemeVariant.light => ThemeMode.light,
+        _ => ThemeMode.dark,
+      },
       routerConfig: router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

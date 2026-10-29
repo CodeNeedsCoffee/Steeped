@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/state/session_controller.dart';
 import 'data/password_validation.dart';
+import '../../l10n/l10n.dart';
 
 /// Changes the signed-in user's password via `PATCH /api/me/password`.
 /// Mirrors [LoginScreen]'s form structure (controllers disposed here, one
@@ -44,7 +45,15 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       confirmPassword: _confirmController.text,
     );
     if (validationError != null) {
-      setState(() => _errorMessage = validationError);
+      setState(
+        () => _errorMessage = switch (validationError) {
+          PasswordProblem.currentEmpty => context.l10n.pwEnterCurrent,
+          PasswordProblem.newEmpty => context.l10n.pwEnterNew,
+          PasswordProblem.tooShort => context.l10n.pwTooShort(minPasswordLength),
+          PasswordProblem.sameAsCurrent => context.l10n.pwSame,
+          PasswordProblem.mismatch => context.l10n.pwMismatch,
+        },
+      );
       return;
     }
 
@@ -62,13 +71,13 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password changed.')),
+        SnackBar(content: Text(context.l10n.passwordChanged)),
       );
       context.pop();
     } on DioException catch (e) {
       setState(() => _errorMessage = _messageFor(e));
     } catch (_) {
-      setState(() => _errorMessage = 'Something went wrong. Try again.');
+      setState(() => _errorMessage = context.l10n.somethingWentWrong);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -82,25 +91,25 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       // over anything this app could guess.
       final body = e.response?.data;
       if (body is String && body.trim().isNotEmpty) return body.trim();
-      return "Couldn't change your password. Check your current password.";
+      return context.l10n.couldntChangePasswordCheckCurrent;
     }
     if (status == 403) {
-      return "Your account isn't allowed to change its password.";
+      return context.l10n.passwordChangeNotAllowed;
     }
     if (status == 429) {
-      return 'Too many attempts. Wait a minute and try again.';
+      return context.l10n.tooManyAttempts;
     }
     if (e.type == DioExceptionType.connectionError ||
         e.type == DioExceptionType.connectionTimeout) {
-      return 'Lost connection to the server.';
+      return context.l10n.lostConnection;
     }
-    return "Couldn't change your password. Try again.";
+    return context.l10n.couldntChangePassword;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Change Password')),
+      appBar: AppBar(title: Text(context.l10n.changePassword)),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -109,8 +118,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             obscureText: true,
             enabled: !_isSubmitting,
             autofillHints: const [AutofillHints.password],
-            decoration: const InputDecoration(
-              labelText: 'Current password',
+            decoration: InputDecoration(
+              labelText: context.l10n.currentPassword,
               border: OutlineInputBorder(),
             ),
           ),
@@ -121,8 +130,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             enabled: !_isSubmitting,
             autofillHints: const [AutofillHints.newPassword],
             decoration: InputDecoration(
-              labelText: 'New password',
-              helperText: 'At least $minPasswordLength characters',
+              labelText: context.l10n.newPassword,
+              helperText: context.l10n.atLeastCharacters(minPasswordLength),
               border: const OutlineInputBorder(),
             ),
           ),
@@ -133,8 +142,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
             enabled: !_isSubmitting,
             autofillHints: const [AutofillHints.newPassword],
             onSubmitted: (_) => _isSubmitting ? null : _submit(),
-            decoration: const InputDecoration(
-              labelText: 'Confirm new password',
+            decoration: InputDecoration(
+              labelText: context.l10n.confirmNewPassword,
               border: OutlineInputBorder(),
             ),
           ),
@@ -148,8 +157,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Changing your password signs you out on your other '
-                  'devices. This one stays signed in.',
+                  context.l10n.changingYourPasswordSignsYou,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
@@ -171,7 +179,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     width: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Change Password'),
+                : Text(context.l10n.changePassword),
           ),
         ],
       ),

@@ -9,9 +9,12 @@ import '../../core/theme/skin_registry.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../ebook/ereader_settings_panel.dart';
+import '../player/state/pending_sync_controller.dart';
 import '../player/time_display_mode_selector.dart';
 import 'data/app_settings.dart';
 import 'state/settings_providers.dart';
+import '../../l10n/l10n.dart';
+import '../../l10n/enum_labels.dart';
 
 /// PLAN.md Phase 9.3: settings taxonomy matching the reference app —
 /// Playback, Data, User Interface, Ereader, Sleep Timer, Advanced. Every
@@ -37,94 +40,145 @@ class SettingsScreen extends ConsumerWidget {
         (session.user.type == 'root' || session.user.type == 'admin');
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(context.l10n.settings)),
       body: ListView(
         children: [
           ListTile(
             leading: const Icon(Icons.person_outline),
-            title: const Text('Account'),
+            title: Text(context.l10n.account),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/account'),
           ),
           ListTile(
             leading: const Icon(Icons.palette_outlined),
-            title: const Text('Appearance'),
-            subtitle: Text(skinByName(settings.skinId).displayName),
+            title: Text(context.l10n.appearance),
+            subtitle: Text(skinByName(settings.skinId).id.localized(context.l10n)),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/appearance'),
           ),
           ListTile(
             leading: const Icon(Icons.bar_chart_outlined),
-            title: const Text('Stats'),
+            title: Text(context.l10n.stats),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/stats'),
           ),
           ListTile(
             leading: const Icon(Icons.history),
-            title: const Text('History'),
+            title: Text(context.l10n.history),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/history'),
           ),
           if (isAdmin)
             ListTile(
               leading: const Icon(Icons.rss_feed),
-              title: const Text('RSS Feeds'),
-              subtitle: const Text('Admin — not yet implemented'),
+              title: Text(context.l10n.rssFeeds),
+              subtitle: Text(context.l10n.adminNotYetImplemented),
               enabled: false,
             ),
 
-          const _SectionHeader('Playback'),
+          _SectionHeader(context.l10n.sectionPlayback),
           ListTile(
-            title: const Text('Jump interval'),
+            title: Text(context.l10n.jumpBack),
             subtitle: Slider(
-              value: settings.jumpIntervalSeconds.toDouble(),
-              min: 10,
-              max: 60,
-              divisions: 10,
-              label: '${settings.jumpIntervalSeconds}s',
+              value: settings.jumpBackSeconds.toDouble(),
+              min: 5,
+              max: 120,
+              divisions: 23,
+              label: '${settings.jumpBackSeconds}s',
               onChanged: (v) => controller.save(
-                settings.copyWith(jumpIntervalSeconds: v.round()),
+                settings.copyWith(jumpBackSeconds: v.round()),
+              ),
+            ),
+          ),
+          ListTile(
+            title: Text(context.l10n.jumpForward),
+            subtitle: Slider(
+              value: settings.jumpForwardSeconds.toDouble(),
+              min: 5,
+              max: 120,
+              divisions: 23,
+              label: '${settings.jumpForwardSeconds}s',
+              onChanged: (v) => controller.save(
+                settings.copyWith(jumpForwardSeconds: v.round()),
               ),
             ),
           ),
           SwitchListTile(
-            title: const Text('Scale elapsed time by speed'),
-            subtitle: const Text(
-              'Show Now Playing\'s time as real-world minutes at your current speed',
+            title: Text(context.l10n.allowSeekingOnLockScreen),
+            subtitle: Text(
+              context.l10n.showADraggableProgressBar,
             ),
-            value: settings.scaleElapsedTimeBySpeed,
-            onChanged: (v) => controller.save(
-              settings.copyWith(scaleElapsedTimeBySpeed: v),
+            value: settings.allowSeekOnMediaControls,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(allowSeekOnMediaControls: v)),
+          ),
+          ListTile(
+            title: Text(context.l10n.autoRewindOnResume),
+            subtitle: Text(context.l10n.stepBackALittleWhen),
+            trailing: DropdownButton<int>(
+              value: const [0, 3, 5, 10, 15, 30].contains(
+                    settings.autoRewindSeconds,
+                  )
+                  ? settings.autoRewindSeconds
+                  : 0,
+              underline: const SizedBox.shrink(),
+              onChanged: (v) {
+                if (v != null) {
+                  controller.save(settings.copyWith(autoRewindSeconds: v));
+                }
+              },
+              items: [
+                for (final v in const [0, 3, 5, 10, 15, 30])
+                  DropdownMenuItem(value: v, child: Text(
+                      v == 0
+                          ? context.l10n.autoRewindOff
+                          : context.l10n.secondsShort(v),
+                    )),
+              ],
             ),
           ),
+          if (settings.autoRewindSeconds > 0)
+            SwitchListTile(
+              title: Text(context.l10n.rewindFurtherAfterLongPauses),
+              subtitle: Text(context.l10n.autoRewindScaleHint),
+              value: settings.autoRewindScale,
+              onChanged: (v) =>
+                  controller.save(settings.copyWith(autoRewindScale: v)),
+            ),
           SwitchListTile(
-            title: const Text('Show Tracks tab'),
-            subtitle: const Text(
-              'On Now Playing, add a toggle to switch between chapters and '
-              'a multi-file book\'s raw audio-file tracks',
+            title: Text(context.l10n.scaleElapsedTimeBySpeed),
+            subtitle: Text(
+              context.l10n.showNowPlayingSTime,
+            ),
+            value: settings.scaleElapsedTimeBySpeed,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(scaleElapsedTimeBySpeed: v)),
+          ),
+          SwitchListTile(
+            title: Text(context.l10n.showTracksTab),
+            subtitle: Text(
+              context.l10n.onNowPlayingAddA,
             ),
             value: settings.showTracksTab,
             onChanged: (v) =>
                 controller.save(settings.copyWith(showTracksTab: v)),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: Text(
-                    'Time display',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
+                Text(context.l10n.timeDisplayTooltip, style: TextStyle(fontSize: 16)),
                 TimeDisplayModeSelector(),
               ],
             ),
           ),
 
-          const _SectionHeader('Sleep Timer'),
+          _SectionHeader(context.l10n.sectionSleepTimer),
           ListTile(
-            title: const Text('Default duration'),
+            title: Text(context.l10n.defaultDuration),
             subtitle: Slider(
               value: settings.sleepTimerDefaultMinutes.toDouble(),
               min: 5,
@@ -136,66 +190,234 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
-
-          const _SectionHeader('Data'),
-          SwitchListTile(
-            title: const Text('Stream over cellular'),
-            value: settings.allowCellularStreaming,
-            onChanged: (v) =>
-                controller.save(settings.copyWith(allowCellularStreaming: v)),
+          ListTile(
+            title: Text(context.l10n.extendBy),
+            subtitle: Slider(
+              value: settings.sleepExtendMinutes.toDouble(),
+              min: 1,
+              max: 30,
+              divisions: 29,
+              label: '${settings.sleepExtendMinutes}m',
+              onChanged: (v) => controller.save(
+                settings.copyWith(sleepExtendMinutes: v.round()),
+              ),
+            ),
           ),
           SwitchListTile(
-            title: const Text('Download over cellular'),
-            value: settings.allowCellularDownloads,
+            title: Text(context.l10n.fadeOutBeforePausing),
+            value: settings.sleepFadeOut,
             onChanged: (v) =>
-                controller.save(settings.copyWith(allowCellularDownloads: v)),
+                controller.save(settings.copyWith(sleepFadeOut: v)),
+          ),
+          if (settings.sleepFadeOut)
+            ListTile(
+              title: Text(context.l10n.fadeLength),
+              subtitle: Slider(
+                value: settings.sleepFadeSeconds.toDouble(),
+                min: 3,
+                max: 30,
+                divisions: 27,
+                label: '${settings.sleepFadeSeconds}s',
+                onChanged: (v) => controller.save(
+                  settings.copyWith(sleepFadeSeconds: v.round()),
+                ),
+              ),
+            ),
+          SwitchListTile(
+            title: Text(context.l10n.sleepChimeBeforePausing),
+            value: settings.sleepChime,
+            onChanged: (v) => controller.save(settings.copyWith(sleepChime: v)),
+          ),
+          SwitchListTile(
+            title: Text(context.l10n.startAutomaticallyAtNight),
+            subtitle: Text(
+              context.l10n.beginTheDefaultTimerWhen,
+            ),
+            value: settings.sleepAutoWindow,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(sleepAutoWindow: v)),
+          ),
+          if (settings.sleepAutoWindow) ...[
+            _TimeOfDayTile(
+              title: 'Window starts',
+              minutes: settings.sleepWindowStartMinutes,
+              onChanged: (m) => controller.save(
+                settings.copyWith(sleepWindowStartMinutes: m),
+              ),
+            ),
+            _TimeOfDayTile(
+              title: 'Window ends',
+              minutes: settings.sleepWindowEndMinutes,
+              onChanged: (m) =>
+                  controller.save(settings.copyWith(sleepWindowEndMinutes: m)),
+            ),
+          ],
+
+          _SectionHeader(context.l10n.sectionData),
+          _CellularPolicyTile(
+            title: 'Stream over cellular',
+            value: settings.cellularStreaming,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(cellularStreaming: v)),
+          ),
+          _CellularPolicyTile(
+            title: 'Download over cellular',
+            value: settings.cellularDownloads,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(cellularDownloads: v)),
           ),
 
-          const _SectionHeader('User Interface'),
+          if (Platform.isAndroid)
+            SwitchListTile(
+              title: Text(context.l10n.treatMeteredWiFiLike),
+              subtitle: Text(
+                context.l10n.applyTheChoicesAboveTo,
+              ),
+              value: settings.treatMeteredAsCellular,
+              onChanged: (v) =>
+                  controller.save(settings.copyWith(treatMeteredAsCellular: v)),
+            ),
+
+          _SectionHeader(context.l10n.sectionLibrary),
           SwitchListTile(
-            title: const Text('Haptic feedback'),
+            title: Text(context.l10n.rememberLibrarySection),
+            subtitle: Text(
+              context.l10n.reopenOnBooksAuthorsCollections,
+            ),
+            value: settings.rememberLibrarySection,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(rememberLibrarySection: v)),
+          ),
+          SwitchListTile(
+            title: Text(context.l10n.collapseSeries),
+            subtitle: Text(
+              context.l10n.showEachSeriesAsA,
+            ),
+            value: settings.collapseSeries,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(collapseSeries: v)),
+          ),
+
+          _SectionHeader(context.l10n.sectionAccount),
+          SwitchListTile(
+            title: Text(context.l10n.maskServerAddress),
+            subtitle: Text(
+              context.l10n.hideTheAddressOnThe,
+            ),
+            value: settings.maskServerAddress,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(maskServerAddress: v)),
+          ),
+          SwitchListTile(
+            title: Text(context.l10n.askBeforeSwitching),
+            subtitle: Text(context.l10n.askBeforeSwitchingHint),
+            value: settings.confirmSwitchWhilePlaying,
+            onChanged: (v) => controller.save(
+              settings.copyWith(confirmSwitchWhilePlaying: v),
+            ),
+          ),
+          SwitchListTile(
+            title: Text(context.l10n.showOtherServerDownloads),
+            subtitle: Text(context.l10n.showOtherServerDownloadsHint),
+            value: settings.showOtherServerDownloads,
+            onChanged: (v) => controller.save(
+              settings.copyWith(showOtherServerDownloads: v),
+            ),
+          ),
+
+          _SectionHeader(context.l10n.sectionUserInterface),
+          if (Platform.isAndroid)
+            SwitchListTile(
+              title: Text(context.l10n.showNetworkTypeOnThe),
+              subtitle: Text(context.l10n.forExampleLiveMetered),
+              value: settings.showNetworkType,
+              onChanged: (v) =>
+                  controller.save(settings.copyWith(showNetworkType: v)),
+            ),
+          SwitchListTile(
+            title: Text(context.l10n.hapticFeedback),
             value: settings.hapticFeedbackEnabled,
             onChanged: (v) =>
                 controller.save(settings.copyWith(hapticFeedbackEnabled: v)),
           ),
           SwitchListTile(
-            title: const Text('Keep screen awake while playing'),
+            title: Text(context.l10n.keepScreenAwakeWhilePlaying),
             value: settings.keepScreenAwake,
             onChanged: (v) =>
                 controller.save(settings.copyWith(keepScreenAwake: v)),
           ),
           SwitchListTile(
-            title: const Text('Lock to portrait'),
+            title: Text(context.l10n.lockToPortrait),
             value: settings.lockPortrait,
             onChanged: (v) =>
                 controller.save(settings.copyWith(lockPortrait: v)),
           ),
-          const ListTile(
-            title: Text('Language'),
+          ListTile(
+            title: Text(context.l10n.language),
             subtitle: Text(
-              'English — the only language translated so far (Phase 9.8); '
-              'the picker will grow as more ARB translations are added',
+              context.l10n.englishTheOnlyLanguageTranslated,
             ),
-            trailing: Text('English'),
+            trailing: Text(context.l10n.english),
           ),
 
-          const _SectionHeader('Ereader'),
+          _SectionHeader(context.l10n.sectionEreader),
           const EreaderSettingsPanel(),
 
-          const _SectionHeader('Advanced'),
+          if (Platform.isAndroid) ...[
+            _SectionHeader(context.l10n.sectionAndroidAuto),
+            ListTile(
+              title: Text(context.l10n.itemsPerList),
+              subtitle: Text(context.l10n.howManyEntriesEachBrowse),
+              trailing: DropdownButton<int>(
+                value: const [20, 40, 100].contains(settings.autoBrowseLimit)
+                    ? settings.autoBrowseLimit
+                    : 40,
+                underline: const SizedBox.shrink(),
+                onChanged: (v) {
+                  if (v != null) {
+                    controller.save(settings.copyWith(autoBrowseLimit: v));
+                  }
+                },
+                items: const [
+                  DropdownMenuItem(value: 20, child: Text('20')),
+                  DropdownMenuItem(value: 40, child: Text('40')),
+                  DropdownMenuItem(value: 100, child: Text('100')),
+                ],
+              ),
+            ),
+            SwitchListTile(
+              title: Text(context.l10n.newestBookFirstInA),
+              subtitle: Text(context.l10n.otherwiseBooksListInReading),
+              value: settings.autoSeriesNewestFirst,
+              onChanged: (v) =>
+                  controller.save(settings.copyWith(autoSeriesNewestFirst: v)),
+            ),
+          ],
+
+          _SectionHeader(context.l10n.sectionAdvanced),
+          const _PendingSyncTile(),
+          SwitchListTile(
+            title: Text(context.l10n.showSyncFailedIndicator),
+            subtitle: Text(
+              context.l10n.badgeOnThePlayerWhile,
+            ),
+            value: settings.showSyncIndicator,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(showSyncIndicator: v)),
+          ),
           if (Platform.isAndroid) const _BatteryOptimizationTile(),
           ListTile(
             leading: const Icon(Icons.folder_outlined),
-            title: const Text('Local Media'),
-            subtitle: const Text(
-              'Import on-device audio files that never came from the server',
+            title: Text(context.l10n.localMedia),
+            subtitle: Text(
+              context.l10n.importOnDeviceAudioFiles,
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/local-media'),
           ),
           ListTile(
             leading: const Icon(Icons.article_outlined),
-            title: const Text('Logs'),
+            title: Text(context.l10n.logs),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/logs'),
           ),
@@ -266,13 +488,11 @@ class _BatteryOptimizationTileState extends State<_BatteryOptimizationTile>
     final granted = _status?.isGranted ?? false;
     return ListTile(
       leading: const Icon(Icons.battery_charging_full_outlined),
-      title: const Text('Unrestricted background playback'),
+      title: Text(context.l10n.unrestrictedBackgroundPlayback),
       subtitle: Text(
         granted
-            ? 'Exempt from battery optimization — audio won\'t be throttled '
-                  'while the phone is locked'
-            : 'Recommended — prevents Android from throttling audio focus '
-                  'and networking while the phone is locked',
+            ? context.l10n.batteryExempt
+            : context.l10n.batteryRecommended,
       ),
       trailing: granted
           ? Icon(
@@ -281,6 +501,87 @@ class _BatteryOptimizationTileState extends State<_BatteryOptimizationTile>
             )
           : const Icon(Icons.chevron_right),
       onTap: granted ? null : _request,
+    );
+  }
+}
+
+class _PendingSyncTile extends ConsumerWidget {
+  const _PendingSyncTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(pendingSyncCountProvider).valueOrNull ?? 0;
+    return ListTile(
+      leading: const Icon(Icons.sync_outlined),
+      title: Text(context.l10n.progressSync),
+      subtitle: Text(
+        count == 0
+            ? context.l10n.progressSyncAllSynced
+            : context.l10n.updatesWaitingToSync(count),
+      ),
+      trailing: count == 0
+          ? null
+          : TextButton(
+              onPressed: () =>
+                  ref.read(pendingSyncControllerProvider.notifier).flushPending(),
+              child: Text(context.l10n.retryNow),
+            ),
+    );
+  }
+}
+
+class _TimeOfDayTile extends StatelessWidget {
+  const _TimeOfDayTile({
+    required this.title,
+    required this.minutes,
+    required this.onChanged,
+  });
+
+  final String title;
+  final int minutes;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final time = TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60);
+    return ListTile(
+      title: Text(title),
+      trailing: Text(time.format(context)),
+      onTap: () async {
+        final picked = await showTimePicker(context: context, initialTime: time);
+        if (picked != null) onChanged(picked.hour * 60 + picked.minute);
+      },
+    );
+  }
+}
+
+class _CellularPolicyTile extends StatelessWidget {
+  const _CellularPolicyTile({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final CellularPolicy value;
+  final ValueChanged<CellularPolicy> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Text(title),
+      trailing: DropdownButton<CellularPolicy>(
+        value: value,
+        underline: const SizedBox.shrink(),
+        onChanged: (v) {
+          if (v != null) onChanged(v);
+        },
+        items: [
+          DropdownMenuItem(value: CellularPolicy.always, child: Text(context.l10n.always)),
+          DropdownMenuItem(value: CellularPolicy.ask, child: Text(context.l10n.ask)),
+          DropdownMenuItem(value: CellularPolicy.never, child: Text(context.l10n.never)),
+        ],
+      ),
     );
   }
 }

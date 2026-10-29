@@ -9,6 +9,8 @@ import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../player/mini_player.dart';
+import 'state/library_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 4.10: reached from a [LibrarySeries] tile (Home shelf or
 /// the Series tab), which already holds every book in the series -- see
@@ -94,3 +96,52 @@ class _SeriesBookTile extends StatelessWidget {
     );
   }
 }
+
+/// Opens a series from just its id (collapsed-series tiles, the item page,
+/// "Go to series"), where no [LibrarySeries] with its books is on hand.
+/// Books come from the library's series filter, the same call "download
+/// series" uses.
+class SeriesLoaderScreen extends ConsumerWidget {
+  const SeriesLoaderScreen({
+    required this.seriesId,
+    required this.libraryId,
+    required this.name,
+    super.key,
+  });
+
+  final String seriesId;
+  final String? libraryId;
+  final String name;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lib = libraryId ?? ref.watch(selectedLibraryIdProvider);
+    if (lib == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(name)),
+        body: Center(child: Text(context.l10n.seriesUnavailable)),
+      );
+    }
+    final async = ref.watch(seriesBooksProvider((lib, seriesId)));
+    return async.when(
+      data: (books) => SeriesDetailScreen(
+        series: LibrarySeries(id: seriesId, name: name, books: books),
+      ),
+      loading: () => Scaffold(
+        appBar: AppBar(title: Text(name)),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(title: Text(name)),
+        body: Center(child: Text(context.l10n.failedToLoadSeries(e))),
+      ),
+    );
+  }
+}
+
+/// Route location for a series opened without its books in hand.
+String seriesLocation(String id, {String? libraryId, String? name}) =>
+    Uri(
+      path: '/series/$id',
+      queryParameters: {'library': ?libraryId, 'name': ?name},
+    ).toString();

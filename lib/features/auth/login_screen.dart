@@ -1,17 +1,30 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'masked_server_address.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import 'state/profile_switcher.dart';
 import 'state/session_controller.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 3.2: username/password login. `serverUrl` is passed in
 /// from [ConnectServerScreen] via the route's `extra`. On success,
 /// [SessionController] transitions to `SessionAuthenticated` and the
 /// router's redirect takes over — this screen doesn't navigate itself.
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({required this.serverUrl, super.key});
+  const LoginScreen({
+    required this.serverUrl,
+    this.addMode = false,
+    super.key,
+  });
 
   final String serverUrl;
+
+  /// Adding another account while signed in: stops playback once the
+  /// credentials check out, then lands on the new account's home.
+  final bool addMode;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -34,7 +47,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
     if (username.isEmpty) {
-      setState(() => _errorMessage = 'Enter a username.');
+      setState(() => _errorMessage = context.l10n.enterUsername);
       return;
     }
 
@@ -50,11 +63,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             serverUrl: widget.serverUrl,
             username: username,
             password: password,
+            beforeActivate: widget.addMode
+                ? ref.read(profileSwitcherProvider).prepareForChange
+                : null,
           );
+      if (widget.addMode && mounted) context.go('/home');
     } on DioException catch (e) {
       setState(() => _errorMessage = _messageFor(e));
     } catch (_) {
-      setState(() => _errorMessage = 'Something went wrong. Try again.');
+      setState(() => _errorMessage = context.l10n.somethingWentWrong);
     } finally {
       if (mounted) setState(() => _isLoggingIn = false);
     }
@@ -62,26 +79,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String _messageFor(DioException e) {
     if (e.response?.statusCode == 401) {
-      return 'Incorrect username or password.';
+      return context.l10n.incorrectCredentials;
     }
     if (e.type == DioExceptionType.connectionError ||
         e.type == DioExceptionType.connectionTimeout) {
-      return 'Lost connection to the server.';
+      return context.l10n.lostConnection;
     }
-    return 'Login failed. Try again.';
+    return context.l10n.loginFailed;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Log In')),
+      appBar: AppBar(title: Text(context.l10n.logIn)),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
+            MaskedServerAddress(
               widget.serverUrl,
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
@@ -91,8 +108,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               controller: _usernameController,
               autocorrect: false,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Username',
+              decoration: InputDecoration(
+                labelText: context.l10n.username,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -101,8 +118,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               controller: _passwordController,
               obscureText: true,
               textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'Password',
+              decoration: InputDecoration(
+                labelText: context.l10n.password,
                 border: OutlineInputBorder(),
               ),
               onSubmitted: (_) => _login(),
@@ -123,7 +140,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Log In'),
+                  : Text(context.l10n.logIn),
             ),
           ],
         ),

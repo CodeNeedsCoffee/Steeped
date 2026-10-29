@@ -3,41 +3,41 @@ import 'dart:convert';
 /// LIBRARY_PLAN.md L4: sort options, mapped to the server's `sort` values
 /// (confirmed in `libraryItemsBookFilters.js`).
 enum LibrarySort {
-  title('Title', 'media.metadata.title'),
-  author('Author', 'media.metadata.authorName'),
-  addedAt('Date added', 'addedAt'),
-  publishedYear('Published year', 'media.metadata.publishedYear'),
-  duration('Duration', 'media.duration'),
-  lastProgress('Last played', 'progress'),
-  random('Random', 'random');
+  title('media.metadata.title'),
+  author('media.metadata.authorName'),
+  addedAt('addedAt'),
+  publishedYear('media.metadata.publishedYear'),
+  duration('media.duration'),
+  lastProgress('progress'),
+  random('random');
 
-  const LibrarySort(this.label, this.param);
-  final String label;
+  const LibrarySort(this.param);
   final String param;
 }
 
 enum LibraryViewMode { grid, list }
 
 enum LibraryFilterGroup {
-  genres('Genre'),
-  tags('Tag'),
-  authors('Author'),
-  narrators('Narrator'),
-  series('Series'),
-  languages('Language'),
-  progress('Progress');
-
-  const LibraryFilterGroup(this.label);
-  final String label;
+  genres,
+  tags,
+  authors,
+  narrators,
+  series,
+  languages,
+  progress,
+  ebooks,
 }
 
 /// Progress filter values (the server compares the decoded string).
-const progressFilterValues = {
-  'in-progress': 'In progress',
-  'finished': 'Finished',
-  'not-started': 'Not started',
-  'not-finished': 'Not finished',
-};
+const progressFilterValues = [
+  'in-progress',
+  'finished',
+  'not-started',
+  'not-finished',
+];
+
+/// Ebook filter values (`ebooks.<base64>` in `libraryItemsBookFilters.js`).
+const ebookFilterValues = ['ebook', 'no-ebook'];
 
 /// What the Books grid is showing: sort, direction, one optional filter, and
 /// the view mode. Persisted per library.
@@ -49,6 +49,7 @@ class LibraryQuery {
     this.filterValue,
     this.filterLabel,
     this.viewMode = LibraryViewMode.grid,
+    this.section = 'books',
   });
 
   factory LibraryQuery.fromJson(Map<String, dynamic> json) {
@@ -68,6 +69,7 @@ class LibraryQuery {
       viewMode: json['viewMode'] == 'list'
           ? LibraryViewMode.list
           : LibraryViewMode.grid,
+      section: json['section']?.toString() ?? 'books',
     );
   }
 
@@ -82,6 +84,10 @@ class LibraryQuery {
   final String? filterLabel;
   final LibraryViewMode viewMode;
 
+  /// Which of Books/Authors/Collections/Playlists was last open (the
+  /// `LibrarySection` name), so the library tab reopens where you left it.
+  final String section;
+
   bool get hasFilter => filterGroup != null && filterValue != null;
 
   /// `<group>.<base64(value)>`, or null when unfiltered.
@@ -93,6 +99,7 @@ class LibraryQuery {
     LibrarySort? sort,
     bool? desc,
     LibraryViewMode? viewMode,
+    String? section,
   }) => LibraryQuery(
     sort: sort ?? this.sort,
     desc: desc ?? this.desc,
@@ -100,6 +107,7 @@ class LibraryQuery {
     filterValue: filterValue,
     filterLabel: filterLabel,
     viewMode: viewMode ?? this.viewMode,
+    section: section ?? this.section,
   );
 
   LibraryQuery withFilter(
@@ -113,10 +121,16 @@ class LibraryQuery {
     filterValue: value,
     filterLabel: label ?? value,
     viewMode: viewMode,
+    section: section,
   );
 
   LibraryQuery withoutFilter() =>
-      LibraryQuery(sort: sort, desc: desc, viewMode: viewMode);
+      LibraryQuery(
+        sort: sort,
+        desc: desc,
+        viewMode: viewMode,
+        section: section,
+      );
 
   Map<String, dynamic> toJson() => {
     'sort': sort.name,
@@ -125,6 +139,7 @@ class LibraryQuery {
     'filterValue': filterValue,
     'filterLabel': filterLabel,
     'viewMode': viewMode.name,
+    'section': section,
   };
 
   @override
@@ -134,11 +149,12 @@ class LibraryQuery {
       other.desc == desc &&
       other.filterGroup == filterGroup &&
       other.filterValue == filterValue &&
-      other.viewMode == viewMode;
+      other.viewMode == viewMode &&
+      other.section == section;
 
   @override
   int get hashCode =>
-      Object.hash(sort, desc, filterGroup, filterValue, viewMode);
+      Object.hash(sort, desc, filterGroup, filterValue, viewMode, section);
 }
 
 /// `GET /api/libraries/:id/filterdata`: the values each filter group offers.

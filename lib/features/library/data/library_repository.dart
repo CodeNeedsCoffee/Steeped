@@ -71,6 +71,7 @@ class LibraryRepository {
     String? filter,
     String? sort,
     bool desc = false,
+    bool collapseSeries = false,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/libraries/$libraryId/items',
@@ -80,6 +81,7 @@ class LibraryRepository {
         'filter': ?filter,
         'sort': ?sort,
         if (sort != null && desc) 'desc': 1,
+        if (collapseSeries) 'collapseseries': 1,
       },
     );
     final data = response.data ?? const {};

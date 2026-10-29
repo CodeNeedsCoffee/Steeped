@@ -24,12 +24,15 @@ enum SocketConnectionStatus {
 class SocketService extends StateNotifier<SocketConnectionStatus> {
   SocketService(this._ref) : super(SocketConnectionStatus.disconnected) {
     _ref.listen<SessionState>(sessionControllerProvider, (previous, next) {
-      final serverUrl = switch (next) {
-        SessionAuthenticated(:final serverUrl) => serverUrl,
+      final target = switch (next) {
+        SessionAuthenticated(:final serverUrl, :final profileId) => (
+          serverUrl,
+          profileId,
+        ),
         _ => null,
       };
-      if (serverUrl != null) {
-        unawaited(_connect(serverUrl));
+      if (target != null) {
+        unawaited(_connect(target.$1, target.$2));
       } else {
         _disconnect();
       }
@@ -57,15 +60,18 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
   /// Fixed by re-reading the token from storage (the freshest copy,
   /// updated independently by `AuthInterceptor`) at the moment of *every*
   /// connect, including ones `socket_io_client` triggers on its own.
-  Future<void> _connect(String serverUrl) async {
-    // Already connected/connecting to this server — a token rotation
+  Future<void> _connect(String serverUrl, String profileId) async {
+    // Already connected/connecting as this account — a token rotation
     // alone doesn't need a full reconnect (see the onConnect re-fetch
-    // below); auth_failed is what handles a genuinely stale token.
-    if (_socket != null && _connectedServerUrl == serverUrl) return;
+    // below); auth_failed is what handles a genuinely stale token. The
+    // profile is part of the identity so switching between two accounts on
+    // the same server still reconnects with the right token.
+    final key = '$profileId@$serverUrl';
+    if (_socket != null && _connectedServerUrl == key) return;
     _disconnect();
 
     final storage = _ref.read(sessionStorageProvider);
-    final token = await storage.readEffectiveToken();
+    final token = await storage.readEffectiveToken(profileId: profileId);
     if (token == null) return;
 
     final uri = Uri.parse(serverUrl);
@@ -148,7 +154,7 @@ class SocketService extends StateNotifier<SocketConnectionStatus> {
 
     socket.connect();
     _socket = socket;
-    _connectedServerUrl = serverUrl;
+    _connectedServerUrl = key;
   }
 
   /// Always reads storage fresh rather than closing over a token value —

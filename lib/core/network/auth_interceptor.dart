@@ -19,7 +19,7 @@ class AuthInterceptor extends QueuedInterceptor {
 
   final SessionStorage sessionStorage;
   final TokenRefreshCoordinator tokenRefreshCoordinator;
-  final Future<void> Function() onSessionExpired;
+  final Future<void> Function(String? profileId) onSessionExpired;
 
   /// Bug fix 2026-08-03: a refresh here previously only reached secure
   /// storage — the in-memory session (and anything reading its token
@@ -54,6 +54,11 @@ class AuthInterceptor extends QueuedInterceptor {
       return;
     }
 
+    // The account this request was made for. If the user switches accounts
+    // while the refresh is in flight, the new tokens still land in this
+    // account's own slot (see TokenRefreshCoordinator), but must not be
+    // pushed into the now-active session's in-memory state.
+    final profileAtStart = await sessionStorage.readActiveProfileId();
     final AuthUser user;
     try {
       // Goes through TokenRefreshCoordinator (shared with SocketService and
@@ -63,6 +68,7 @@ class AuthInterceptor extends QueuedInterceptor {
       // TokenRefreshCoordinator's doc comment.
       user = await tokenRefreshCoordinator.refresh(
         serverUrl: err.requestOptions.baseUrl,
+        profileId: profileAtStart,
       );
     } catch (e) {
       // Bug fix 2026-09-30: this used to treat *any* failure here — a
@@ -83,7 +89,7 @@ class AuthInterceptor extends QueuedInterceptor {
           e is StateError ||
           (e is DioException && e.type == DioExceptionType.badResponse);
       if (isDefinitiveRejection) {
-        await onSessionExpired();
+        await onSessionExpired(profileAtStart);
       }
       handler.next(err);
       return;
@@ -91,11 +97,15 @@ class AuthInterceptor extends QueuedInterceptor {
 
     final newAccessToken = user.accessToken;
     if (newAccessToken == null) {
-      await onSessionExpired();
+      await onSessionExpired(profileAtStart);
       handler.next(err);
       return;
     }
 
+    if (await sessionStorage.readActiveProfileId() != profileAtStart) {
+      handler.next(err);
+      return;
+    }
     onTokensRefreshed(
       accessToken: newAccessToken,
       refreshToken: user.refreshToken,

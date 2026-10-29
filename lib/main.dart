@@ -12,9 +12,13 @@ import 'core/audio/audio_handler_provider.dart';
 import 'core/audio/car_content_tree.dart';
 import 'core/audio/steeped_audio_handler.dart';
 import 'core/logging/log_repository.dart';
+import 'core/storage/database_backup.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Keep a copy of the database before a schema upgrade can rewrite it.
+  await backupDatabaseBeforeUpgrade(currentSchemaVersion: 9);
 
   // Activates background_downloader's persistent task database and ensures
   // proper restart after the app is suspended/killed mid-download.

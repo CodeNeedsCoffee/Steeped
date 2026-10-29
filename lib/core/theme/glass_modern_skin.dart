@@ -15,26 +15,28 @@ class GlassModernSkin extends Skin {
   SkinId get id => SkinId.glassModern;
 
   @override
-  String get displayName => 'Glass Modern';
-
-  @override
-  String get description =>
-      'Frosted glass surfaces over a deep dark background, translucent '
-      'cards.';
-
-  @override
-  ThemeData buildTheme() {
+  ThemeData buildTheme([ThemeVariant variant = ThemeVariant.dark]) {
     const seedColor = Color(0xFF7FA8FF); // cool accent reads as "glass"
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: seedColor,
-      brightness: Brightness.dark,
-    ).copyWith(
-      surface: const Color(0xFF12151B),
-      surfaceContainerHighest: Colors.white.withValues(alpha: 0.08),
-    );
+    final isLight = variant == ThemeVariant.light;
+    // Translucent overlays are tinted with the text color so they read as
+    // "lighter than the surface" on dark and "darker" on light.
+    final ink = isLight ? Colors.black : Colors.white;
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: seedColor,
+          brightness: isLight ? Brightness.light : Brightness.dark,
+        ).copyWith(
+          surface: switch (variant) {
+            ThemeVariant.light => const Color(0xFFF3F5FA),
+            ThemeVariant.black => const Color(0xFF000000),
+            _ => const Color(0xFF12151B),
+          },
+          surfaceContainerHighest: ink.withValues(alpha: isLight ? 0.07 : 0.08),
+        );
 
     return ThemeData(
       useMaterial3: true,
+      brightness: colorScheme.brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: colorScheme.surface,
       extensions: const [
@@ -52,16 +54,14 @@ class GlassModernSkin extends Skin {
         surfaceTintColor: Colors.transparent,
       ),
       cardTheme: CardThemeData(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: ink.withValues(alpha: 0.06),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+          side: BorderSide(color: ink.withValues(alpha: 0.10)),
         ),
       ),
-      dividerTheme: DividerThemeData(
-        color: Colors.white.withValues(alpha: 0.08),
-      ),
+      dividerTheme: DividerThemeData(color: ink.withValues(alpha: 0.08)),
     );
   }
 }
