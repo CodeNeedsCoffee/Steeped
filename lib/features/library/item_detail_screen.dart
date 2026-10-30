@@ -8,12 +8,18 @@ import '../../models/library_item_detail.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../auth/state/permission_providers.dart';
+import '../player/discard_progress_dialog.dart';
+import 'library_actions.dart';
+import 'series_detail_screen.dart';
 import '../downloads/state/download_controller.dart';
 import '../player/mini_player.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import '../podcasts/podcast_detail_view.dart';
 import 'state/library_providers.dart';
+import '../../l10n/l10n.dart';
+import '../../core/utils/format_duration.dart';
 
 /// PLAN.md Phase 4.8: item detail screen. Play (Phase 5) and Download
 /// (Phase 6) are real; "Read" and "Add to Playlist" remain stubs (ebook
@@ -36,10 +42,22 @@ class ItemDetailScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('')),
+      appBar: AppBar(
+        title: const Text(''),
+        actions: [
+          if (detailAsync.valueOrNull case final item?)
+            if (!item.isPodcast)
+              IconButton(
+                tooltip: context.l10n.moreActions,
+                icon: const Icon(Icons.more_vert),
+                onPressed: () =>
+                    showItemQuickActions(context, ref, item.toLibraryItem()),
+              ),
+        ],
+      ),
       body: detailAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Failed to load: $error')),
+        error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
         data: (item) => serverUrl == null
             ? const SizedBox.shrink()
             : item.isPodcast
@@ -52,7 +70,11 @@ class ItemDetailScreen extends ConsumerWidget {
 }
 
 class _ItemDetailBody extends ConsumerWidget {
-  const _ItemDetailBody({required this.item, required this.serverUrl, required this.token});
+  const _ItemDetailBody({
+    required this.item,
+    required this.serverUrl,
+    required this.token,
+  });
 
   final LibraryItemDetail item;
   final String serverUrl;
@@ -78,28 +100,70 @@ class _ItemDetailBody extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Text(item.title, style: textTheme.headlineSmall, textAlign: TextAlign.center),
+        Text(
+          item.title,
+          style: textTheme.headlineSmall,
+          textAlign: TextAlign.center,
+        ),
         if (item.subtitle != null)
-          Text(item.subtitle!, style: textTheme.titleSmall, textAlign: TextAlign.center),
+          Text(
+            item.subtitle!,
+            style: textTheme.titleSmall,
+            textAlign: TextAlign.center,
+          ),
         if (item.authors.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              item.authorNames,
-              style: textTheme.bodyMedium,
-              textAlign: TextAlign.center,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                for (final a in item.authors)
+                  InkWell(
+                    onTap: () => context.push('/author/${a.id}'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        a.name,
+                        style: textTheme.bodyMedium?.copyWith(
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         if (item.series.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(
-              item.series.map((s) => s.label).join(', '),
-              style: textTheme.bodySmall,
-              textAlign: TextAlign.center,
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                for (final s in item.series)
+                  InkWell(
+                    onTap: () => context.push(
+                      seriesLocation(
+                        s.id,
+                        libraryId: item.libraryId,
+                        name: s.name,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        s.label,
+                        style: textTheme.bodySmall?.copyWith(
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-        if (item.series.isNotEmpty && item.libraryId != null)
+        if (item.series.isNotEmpty &&
+            item.libraryId != null &&
+            ref.watch(canDownloadProvider))
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: _DownloadSeriesButton(
@@ -112,8 +176,22 @@ class _ItemDetailBody extends ConsumerWidget {
           const SizedBox(height: 12),
           LinearProgressIndicator(value: _displayProgressFraction(item)),
           Text(
-            item.progress!.isFinished ? 'Finished' : _progressSummary(item),
+            item.progress!.isFinished
+                ? context.l10n.finished
+                : _progressSummary(context, item),
             style: textTheme.labelSmall,
+          ),
+          Align(
+            child: TextButton.icon(
+              onPressed: () => confirmAndDiscardProgress(
+                context,
+                ref,
+                libraryItemId: item.id,
+                title: item.title,
+              ),
+              icon: const Icon(Icons.restart_alt, size: 18),
+              label: Text(context.l10n.discardProgressButton),
+            ),
           ),
         ],
         const SizedBox(height: 20),
@@ -140,17 +218,17 @@ class _ItemDetailBody extends ConsumerWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.play_arrow),
-              label: const Text('Play'),
+              label: Text(context.l10n.play),
             ),
             if (item.hasEbook) ...[
               const SizedBox(width: 12),
               OutlinedButton.icon(
                 onPressed: () => _openReader(context, item),
                 icon: const Icon(Icons.menu_book),
-                label: const Text('Read'),
+                label: Text(context.l10n.read),
               ),
             ],
-            if (item.tracks.isNotEmpty) ...[
+            if (item.tracks.isNotEmpty && ref.watch(canDownloadProvider)) ...[
               const SizedBox(width: 12),
               _DownloadButton(item: item, serverUrl: serverUrl, token: token),
             ],
@@ -167,14 +245,18 @@ class _ItemDetailBody extends ConsumerWidget {
         ],
         if (item.narrators.isNotEmpty) ...[
           const SizedBox(height: 16),
-          Text('Narrated by ${item.narrators.join(', ')}', textAlign: TextAlign.center),
+          Text(
+            context.l10n.narratedBy(item.narrators.join(', ')),
+            textAlign: TextAlign.center,
+          ),
         ],
         if (!item.isPodcast) ...[
           const SizedBox(height: 8),
           Text(
             [
-              if (item.duration != null) _formatDuration(item.duration!),
-              if (item.chapters.isNotEmpty) '${item.chapters.length} chapters',
+              if (item.duration != null) formatDurationText(context.l10n, item.duration!),
+              if (item.chapters.isNotEmpty)
+                context.l10n.chaptersCount(item.chapters.length),
               if (item.publishedYear != null) item.publishedYear!,
             ].join(' · '),
             textAlign: TextAlign.center,
@@ -200,7 +282,7 @@ class _ItemDetailBody extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '.${ebookFile.format} isn\'t supported yet — no pure-Dart RAR decoder exists for CBR.',
+            context.l10n.isnTSupportedYetNo(ebookFile.format),
           ),
         ),
       );
@@ -214,13 +296,6 @@ class _ItemDetailBody extends ConsumerWidget {
     context.push(path);
   }
 
-  String _formatDuration(double seconds) {
-    final totalMinutes = (seconds / 60).round();
-    final hours = totalMinutes ~/ 60;
-    final minutes = totalMinutes % 60;
-    if (hours == 0) return '${minutes}m';
-    return '${hours}h ${minutes}m';
-  }
 
   /// The server's `progress` fraction field isn't recomputed by the
   /// sessionless progress-sync PATCH we use (5.9) — only `currentTime`/
@@ -243,14 +318,19 @@ class _ItemDetailBody extends ConsumerWidget {
   /// (see [MediaProgress]'s doc comment: its real reading position lives in
   /// `ebookProgress`/`ebookLocation` instead), so there's no time-based
   /// countdown to show for those.
-  String _progressSummary(LibraryItemDetail item) {
-    final percent = '${(_displayProgressFraction(item) * 100).round()}% complete';
+  String _progressSummary(BuildContext context, LibraryItemDetail item) {
+    final percent = (_displayProgressFraction(item) * 100).round();
     final duration = item.duration;
     if (item.tracks.isEmpty || duration == null || duration <= 0) {
-      return percent;
+      return context.l10n.percentComplete(percent);
     }
-    final remaining = (duration - item.progress!.currentTime).clamp(0.0, duration).toDouble();
-    return '$percent · ${_formatDuration(remaining)} left';
+    final remaining = (duration - item.progress!.currentTime)
+        .clamp(0.0, duration)
+        .toDouble();
+    return context.l10n.percentCompleteTimeLeft(
+      percent,
+      formatDurationText(context.l10n, remaining),
+    );
   }
 }
 
@@ -298,11 +378,11 @@ class _DownloadSeriesButtonState extends ConsumerState<_DownloadSeriesButton> {
                   SnackBar(
                     content: Text(
                       queued == 0
-                          ? 'Every book in "${series.name}" is already '
-                                'downloaded.'
-                          : 'Downloading $queued book'
-                                '${queued == 1 ? '' : 's'} from '
-                                '"${series.name}".',
+                          ? context.l10n.allBooksAlreadyDownloaded(series.name)
+                          : context.l10n.downloadingBooksFromSeries(
+                              queued,
+                              series.name,
+                            ),
                     ),
                   ),
                 );
@@ -317,7 +397,7 @@ class _DownloadSeriesButtonState extends ConsumerState<_DownloadSeriesButton> {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.download_outlined, size: 18),
-      label: Text('Download series: ${series.name}'),
+      label: Text(context.l10n.downloadSeries(series.name)),
     );
   }
 }
@@ -352,7 +432,7 @@ class _DownloadButton extends ConsumerWidget {
             .read(downloadControllerProvider.notifier)
             .download(item: item, serverUrl: serverUrl, token: token),
         icon: const Icon(Icons.download_outlined),
-        label: const Text('Download'),
+        label: Text(context.l10n.download),
       );
     }
 
@@ -361,7 +441,7 @@ class _DownloadButton extends ConsumerWidget {
         onPressed: () =>
             ref.read(downloadControllerProvider.notifier).delete(item.id),
         icon: const Icon(Icons.download_done),
-        label: const Text('Downloaded'),
+        label: Text(context.l10n.downloaded),
       );
     }
 
@@ -374,7 +454,9 @@ class _DownloadButton extends ConsumerWidget {
           LinearProgressIndicator(value: progress),
           const SizedBox(height: 4),
           Text(
-            progress == null ? 'Downloading…' : '${(progress * 100).round()}%',
+            progress == null
+                ? context.l10n.downloadingEllipsis
+                : '${(progress * 100).round()}%',
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],

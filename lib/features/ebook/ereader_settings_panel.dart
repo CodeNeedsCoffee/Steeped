@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/ereader_settings.dart';
 import 'state/ebook_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// Shared between the EPUB reader's in-context settings sheet and the main
 /// Settings → Ereader section (PLAN.md Phase 9.3) — same global
@@ -23,21 +24,23 @@ class EreaderSettingsPanel extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Reading Settings', style: Theme.of(context).textTheme.titleMedium),
+          Text(context.l10n.readingSettings, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 16),
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 8,
             children: [
-              const Text('Font'),
-              const Spacer(),
+              Text(context.l10n.font),
               SegmentedButton<EreaderFontFamily>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: EreaderFontFamily.sans,
-                    label: Text('Sans'),
+                    label: Text(context.l10n.sans),
                   ),
                   ButtonSegment(
                     value: EreaderFontFamily.serif,
-                    label: Text('Serif'),
+                    label: Text(context.l10n.serif),
                   ),
                 ],
                 selected: {settings.fontFamily},
@@ -48,7 +51,7 @@ class EreaderSettingsPanel extends ConsumerWidget {
           ),
           Row(
             children: [
-              const Text('Bold'),
+              Text(context.l10n.bold),
               const Spacer(),
               Switch(
                 value: settings.bold,
@@ -56,7 +59,7 @@ class EreaderSettingsPanel extends ConsumerWidget {
               ),
             ],
           ),
-          const Text('Font size'),
+          Text(context.l10n.fontSize),
           Slider(
             value: settings.fontScale,
             min: 0.7,
@@ -65,7 +68,7 @@ class EreaderSettingsPanel extends ConsumerWidget {
             label: settings.fontScale.toStringAsFixed(1),
             onChanged: (v) => controller.save(settings.copyWith(fontScale: v)),
           ),
-          const Text('Line spacing'),
+          Text(context.l10n.lineSpacing),
           Slider(
             value: settings.lineSpacing,
             min: 1.0,
@@ -75,15 +78,17 @@ class EreaderSettingsPanel extends ConsumerWidget {
             onChanged: (v) =>
                 controller.save(settings.copyWith(lineSpacing: v)),
           ),
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 8,
             children: [
-              const Text('Theme'),
-              const Spacer(),
+              Text(context.l10n.theme),
               SegmentedButton<EreaderTheme>(
-                segments: const [
-                  ButtonSegment(value: EreaderTheme.light, label: Text('Light')),
-                  ButtonSegment(value: EreaderTheme.dark, label: Text('Dark')),
-                  ButtonSegment(value: EreaderTheme.black, label: Text('Black')),
+                segments: [
+                  ButtonSegment(value: EreaderTheme.light, label: Text(context.l10n.light)),
+                  ButtonSegment(value: EreaderTheme.dark, label: Text(context.l10n.dark)),
+                  ButtonSegment(value: EreaderTheme.black, label: Text(context.l10n.black)),
                 ],
                 selected: {settings.theme},
                 onSelectionChanged: (s) =>

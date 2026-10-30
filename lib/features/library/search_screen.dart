@@ -13,6 +13,7 @@ import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import 'state/library_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 4.7 (partial: Books + Series). A plain routed screen
 /// rather than Flutter's `SearchDelegate` -- this app's `AppBar`s already
@@ -53,8 +54,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         title: TextField(
           controller: _controller,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Search books, series, authors…',
+          decoration: InputDecoration(
+            hintText: context.l10n.searchBooksSeriesAuthors,
             border: InputBorder.none,
           ),
           onChanged: (query) {
@@ -82,14 +83,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   );
                 }
                 if (results.isEmpty) {
-                  return const Center(child: Text('No results.'));
+                  return Center(child: Text(context.l10n.noResults));
                 }
                 return ListView(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   children: [
                     if (results.books.isNotEmpty)
                       _ResultSection(
-                        title: 'Books',
+                        title: context.l10n.sectionBooks,
                         children: results.books
                             .map(
                               (item) => _BookResultTile(
@@ -102,7 +103,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                     if (results.authors.isNotEmpty)
                       _ResultSection(
-                        title: 'Authors',
+                        title: context.l10n.sectionAuthors,
                         children: [
                           for (final a in results.authors)
                             ListTile(
@@ -113,7 +114,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                 size: 40,
                               ),
                               title: Text(a.name),
-                              subtitle: Text('${a.numBooks} books'),
+                              subtitle: Text(context.l10n.bookCount(a.numBooks)),
                               onTap: () {
                                 ref.read(recentSearchesProvider.notifier).add(_controller.text);
                                 context.push('/author/${a.id}');
@@ -123,7 +124,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                     if (results.series.isNotEmpty)
                       _ResultSection(
-                        title: 'Series',
+                        title: context.l10n.filterSeries,
                         children: results.series
                             .map(
                               (series) => _SeriesResultTile(
@@ -134,15 +135,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                             )
                             .toList(),
                       ),
-                    ..._facetSection(context, 'Narrators', LibraryFilterGroup.narrators, results.narrators),
-                    ..._facetSection(context, 'Genres', LibraryFilterGroup.genres, results.genres),
-                    ..._facetSection(context, 'Tags', LibraryFilterGroup.tags, results.tags),
+                    ..._facetSection(context, context.l10n.narrators, LibraryFilterGroup.narrators, results.narrators),
+                    ..._facetSection(context, context.l10n.genres, LibraryFilterGroup.genres, results.genres),
+                    ..._facetSection(context, context.l10n.tags, LibraryFilterGroup.tags, results.tags),
                   ],
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) =>
-                  Center(child: Text('Search failed: $error')),
+                  Center(child: Text(context.l10n.searchFailed(error))),
             ),
     );
   }
@@ -164,7 +165,7 @@ extension on _SearchScreenState {
             ListTile(
               leading: const Icon(Icons.filter_alt_outlined),
               title: Text(f.name),
-              subtitle: Text('${f.count} items'),
+              subtitle: Text(context.l10n.itemCount(f.count)),
               onTap: () {
                 ref.read(recentSearchesProvider.notifier).add(_controller.text);
                 final q = ref.read(libraryQueryProvider(widget.libraryId));
@@ -189,15 +190,15 @@ class _RecentSearches extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final recent = ref.watch(recentSearchesProvider);
     if (recent.isEmpty) {
-      return const Center(child: Text('Search this library.'));
+      return Center(child: Text(context.l10n.searchThisLibrary));
     }
     return ListView(
       children: [
         ListTile(
-          title: const Text('Recent searches'),
+          title: Text(context.l10n.recentSearches),
           trailing: TextButton(
             onPressed: () => ref.read(recentSearchesProvider.notifier).clear(),
-            child: const Text('Clear'),
+            child: Text(context.l10n.clear),
           ),
         ),
         for (final term in recent)
@@ -290,7 +291,7 @@ class _SeriesResultTile extends StatelessWidget {
               height: 48,
             ),
       title: Text(series.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text('${series.books.length} book${series.books.length == 1 ? '' : 's'}'),
+      subtitle: Text(context.l10n.bookCount(series.books.length)),
       onTap: () => context.push('/series/${series.id}', extra: series),
     );
   }

@@ -453,3 +453,16 @@ These appear in the **server** README but are server/web-admin functions — Ste
 - **Test on Android continuously** (fast, no Mac trip); reserve **Xcode** for the milestone checkpoints in the cadence table, plus the early smoke test so iOS build breakage never surprises you late.
 - Keep this file's checkboxes updated as you build — it doubles as a changelog and the parity ledger.
 - If a feature turns out to depend on a server API you're unsure of, confirm the response shape against `~/Code/audiobookshelf` (server source) or https://api.audiobookshelf.org before implementing the client side.
+
+
+## Addendum (2026-10-07): quality-of-life pass
+
+See `QOL_PLAN.md` for the plan and `ROADMAP.md` for what landed. Structural changes worth knowing:
+- `AppSettings` gained many fields, all defaulted in `fromJson`; the old `jumpIntervalSeconds` and
+  `allowCellular*` bools are read as fallbacks.
+- Drift schema is now v9 (`ServerProfiles`, `profileId` on `DownloadedItems`/`PendingProgressSyncs`).
+  `ProfileMigrator` assigns the pre-existing single session to profile #1; `backupDatabaseBeforeUpgrade`
+  copies the database first.
+- Secure storage keys moved from `session.*` to `profile:<id>:*` (`session.activeProfile` points at the
+  active one).
+- UI strings live in `lib/l10n/app_en.arb`; a test fails on new hard-coded literals.

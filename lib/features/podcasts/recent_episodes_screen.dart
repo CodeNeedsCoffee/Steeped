@@ -13,6 +13,7 @@ import '../player/mini_player.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import 'state/podcast_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 7.6: newest episodes across a podcast library, with play +
 /// download-to-device. Server-source for the exact `/recent-episodes` shape
@@ -36,16 +37,16 @@ class RecentEpisodesScreen extends ConsumerWidget {
     };
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Latest Episodes')),
+      appBar: AppBar(title: Text(context.l10n.latestEpisodes)),
       body: serverUrl == null
           ? const SizedBox.shrink()
           : episodesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) =>
-                  Center(child: Text('Failed to load: $error')),
+                  Center(child: Text(context.l10n.failedToLoad(error))),
               data: (episodes) {
                 if (episodes.isEmpty) {
-                  return const Center(child: Text('No recent episodes.'));
+                  return Center(child: Text(context.l10n.noRecentEpisodes));
                 }
                 return RefreshIndicator(
                   onRefresh: () =>
@@ -119,7 +120,9 @@ class _RecentEpisodeTile extends ConsumerWidget {
         icon: Icon(
           isDownloaded ? Icons.download_done : Icons.download_outlined,
         ),
-        tooltip: isDownloaded ? 'Downloaded' : 'Download episode',
+        tooltip: isDownloaded
+            ? context.l10n.downloaded
+            : context.l10n.downloadEpisode,
         onPressed: isDownloaded
             ? null
             : () => ref

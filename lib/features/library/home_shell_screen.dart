@@ -1,7 +1,10 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/network/connectivity_service.dart';
 import '../../core/network/cover_image_url.dart';
 import '../../core/network/socket_service.dart';
 import '../../core/storage/app_database.dart';
@@ -10,6 +13,7 @@ import '../../models/library_item.dart';
 import '../../models/library_series.dart';
 import '../../models/personalized_shelf.dart';
 import '../../widgets/cover_image.dart';
+import '../auth/profile_menu_button.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../downloads/downloads_screen.dart';
@@ -20,8 +24,11 @@ import '../player/mini_player.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/pending_sync_controller.dart';
 import '../player/state/playback_controller.dart';
+import '../settings/state/settings_providers.dart';
+import 'library_actions.dart';
 import 'library_browse_tab.dart';
 import 'state/library_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 4.2 (libraries + switcher), 4.3 (personalized home
 /// shelves, rendered generically by shelf type rather than hardcoding each
@@ -99,8 +106,8 @@ class HomeShellScreen extends ConsumerWidget {
       },
       data: (libraries) {
         if (libraries.isEmpty) {
-          return const Scaffold(
-            body: Center(child: Text('No libraries on this server.')),
+          return Scaffold(
+            body: Center(child: Text(context.l10n.noLibrariesOnThisServer)),
           );
         }
         final libraryId =
@@ -137,16 +144,16 @@ class _NoLibrariesFallback extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Failed to load libraries: $error'),
+            Text(context.l10n.failedToLoadLibraries(error)),
             const SizedBox(height: 12),
             FilledButton.tonal(
               onPressed: () => ref.invalidate(librariesProvider),
-              child: const Text('Retry'),
+              child: Text(context.l10n.retry),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
               onPressed: () => context.push('/downloads'),
-              child: const Text('View Downloads'),
+              child: Text(context.l10n.viewDownloads),
             ),
           ],
         ),
@@ -184,9 +191,9 @@ class _HomeShellTabs extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tabs = [
-      const Tab(text: 'Home'),
-      if (!isPodcast) const Tab(text: 'Series'),
-      const Tab(text: 'Library'),
+      Tab(text: context.l10n.tabHome),
+      if (!isPodcast) Tab(text: context.l10n.tabSeries),
+      Tab(text: context.l10n.tabLibrary),
     ];
     // Compensates for Scaffold.extendBodyBehindAppBar below — without this,
     // the Library tab's first grid row would render underneath the
@@ -210,22 +217,29 @@ class _HomeShellTabs extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Center(
-                child: _ConnectionBadge(status: ref.watch(socketServiceProvider)),
+                child: _ConnectionBadge(
+                  status: ref.watch(socketServiceProvider),
+                  network: ref.watch(networkKindProvider).valueOrNull,
+                  showNetwork:
+                      ref.watch(appSettingsProvider).valueOrNull?.showNetworkType ??
+                      true,
+                ),
               ),
             ),
+            const ProfileMenuButton(),
             IconButton(
               icon: const Icon(Icons.search),
-              tooltip: 'Search',
+              tooltip: context.l10n.search,
               onPressed: () => context.push('/search/$libraryId'),
             ),
             IconButton(
               icon: const Icon(Icons.download_done_outlined),
-              tooltip: 'Downloads',
+              tooltip: context.l10n.downloads,
               onPressed: () => context.push('/downloads'),
             ),
             IconButton(
               icon: const Icon(Icons.settings_outlined),
-              tooltip: 'Settings',
+              tooltip: context.l10n.settings,
               onPressed: () => context.push('/settings'),
             ),
           ],
@@ -242,10 +256,10 @@ class _HomeShellTabs extends ConsumerWidget {
             ),
             if (!isPodcast)
               isOffline
-                  ? const _OfflineTabPlaceholder(label: 'Series')
+                  ? _OfflineTabPlaceholder(label: context.l10n.tabSeries)
                   : _SeriesTab(libraryId: libraryId),
             isOffline
-                ? const _OfflineTabPlaceholder(label: 'Library')
+                ? _OfflineTabPlaceholder(label: context.l10n.tabLibrary)
                 : LibraryBrowseTab(
                     libraryId: libraryId,
                     isPodcast: isPodcast,
@@ -333,7 +347,7 @@ class _HomeTab extends ConsumerWidget {
                 onPressed: () =>
                     context.push('/library/$libraryId/recent-episodes'),
                 icon: const Icon(Icons.podcasts),
-                label: const Text('Latest Episodes'),
+                label: Text(context.l10n.latestEpisodes),
               ),
             ),
             const SizedBox(height: 16),
@@ -345,14 +359,14 @@ class _HomeTab extends ConsumerWidget {
             ),
             error: (error, _) => Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('Failed to load home shelves: $error'),
+              child: Text(context.l10n.failedToLoadHomeShelves(error)),
             ),
             data: (shelves) {
               final visible = shelves.where((s) => !s.isEmpty).toList();
               if (visible.isEmpty) {
-                return const Padding(
+                return Padding(
                   padding: EdgeInsets.all(32),
-                  child: Center(child: Text('Nothing to show yet.')),
+                  child: Center(child: Text(context.l10n.nothingToShowYet)),
                 );
               }
               return Column(
@@ -427,10 +441,10 @@ class _SeriesTabState extends ConsumerState<_SeriesTab> {
       return const Center(child: CircularProgressIndicator());
     }
     if (state.error != null && state.series.isEmpty) {
-      return Center(child: Text('Failed to load series: ${state.error}'));
+      return Center(child: Text(context.l10n.failedToLoadSeries(state.error ?? '')));
     }
     if (state.series.isEmpty) {
-      return const Center(child: Text('No series in this library.'));
+      return Center(child: Text(context.l10n.noSeriesInThisLibrary));
     }
     if (serverUrl == null) return const SizedBox.shrink();
 
@@ -505,7 +519,7 @@ class _ShelfRow extends StatelessWidget {
   }
 }
 
-class _ItemCard extends StatelessWidget {
+class _ItemCard extends ConsumerWidget {
   const _ItemCard({required this.item, required this.serverUrl, required this.token});
 
   final LibraryItem item;
@@ -513,9 +527,10 @@ class _ItemCard extends StatelessWidget {
   final String? token;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
       onTap: () => context.push('/item/${item.id}'),
+      onLongPress: () => showItemQuickActions(context, ref, item),
       child: SizedBox(
         width: 120,
         child: Column(
@@ -612,7 +627,7 @@ class _SeriesCard extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             Text(
-              '${series.books.length} book${series.books.length == 1 ? '' : 's'}',
+              context.l10n.bookCount(series.books.length),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall,
@@ -660,7 +675,7 @@ class _SeriesRow extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
             Text(
-              '${series.books.length} book${series.books.length == 1 ? '' : 's'}',
+              context.l10n.bookCount(series.books.length),
               style: Theme.of(context).textTheme.labelSmall,
             ),
             if (series.books.isNotEmpty) ...[
@@ -738,13 +753,13 @@ class _OfflineHomeTab extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    "Can't reach the server. Showing downloaded content.",
+                    context.l10n.canTReachTheServer,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
                 TextButton(
                   onPressed: () => ref.invalidate(librariesProvider),
-                  child: const Text('Retry'),
+                  child: Text(context.l10n.retry),
                 ),
               ],
             ),
@@ -752,14 +767,14 @@ class _OfflineHomeTab extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Text(
-              'Continue Listening',
+              context.l10n.continueListening,
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
           if (downloads.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(32),
-              child: Center(child: Text('No downloaded content yet.')),
+              child: Center(child: Text(context.l10n.noDownloadedContentYet)),
             )
           else
             ...downloads.map((item) => _OfflineDownloadTile(item: item)),
@@ -827,11 +842,11 @@ class _OfflineTabPlaceholder extends ConsumerWidget {
         children: [
           const Icon(Icons.cloud_off, size: 40),
           const SizedBox(height: 12),
-          Text('$label browsing needs a connection.'),
+          Text(context.l10n.browsingNeedsAConnection(label)),
           const SizedBox(height: 12),
           TextButton(
             onPressed: () => ref.invalidate(librariesProvider),
-            child: const Text('Retry'),
+            child: Text(context.l10n.retry),
           ),
         ],
       ),
@@ -840,18 +855,31 @@ class _OfflineTabPlaceholder extends ConsumerWidget {
 }
 
 class _ConnectionBadge extends StatelessWidget {
-  const _ConnectionBadge({required this.status});
+  const _ConnectionBadge({
+    required this.status,
+    required this.network,
+    required this.showNetwork,
+  });
 
   final SocketConnectionStatus status;
+  final NetworkKind? network;
+  final bool showNetwork;
 
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
-      SocketConnectionStatus.authenticated => (Colors.greenAccent, 'Live'),
-      SocketConnectionStatus.connected => (Colors.amber, 'Connecting'),
-      SocketConnectionStatus.connecting => (Colors.amber, 'Connecting'),
-      SocketConnectionStatus.authFailed => (Colors.redAccent, 'Auth failed'),
-      SocketConnectionStatus.disconnected => (Colors.grey, 'Offline'),
+      SocketConnectionStatus.authenticated => (
+        Colors.greenAccent,
+        switch (showNetwork && Platform.isAndroid ? network : null) {
+          NetworkKind.cellular => context.l10n.liveCellular,
+          NetworkKind.meteredWifi => context.l10n.liveMetered,
+          _ => context.l10n.live,
+        },
+      ),
+      SocketConnectionStatus.connected => (Colors.amber, context.l10n.connecting),
+      SocketConnectionStatus.connecting => (Colors.amber, context.l10n.connecting),
+      SocketConnectionStatus.authFailed => (Colors.redAccent, context.l10n.authFailed),
+      SocketConnectionStatus.disconnected => (Colors.grey, context.l10n.offline),
     };
     return Row(
       mainAxisSize: MainAxisSize.min,

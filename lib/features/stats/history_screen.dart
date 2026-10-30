@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../player/mini_player.dart';
 import 'state/stats_providers.dart';
+import '../../l10n/l10n.dart';
+import '../../core/utils/format_duration.dart';
 
 /// PLAN.md Phase 9.7: `GET /api/me/listening-sessions`, confirmed live
 /// against evan's real server (2026-07-31) — paginated, 1228 real sessions
@@ -43,13 +45,13 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final state = ref.watch(historyControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('History (${state.total})')),
+      appBar: AppBar(title: Text(context.l10n.historyWithCount(state.total))),
       body: state.sessions.isEmpty && state.isLoading
           ? const Center(child: CircularProgressIndicator())
           : state.error != null && state.sessions.isEmpty
-          ? Center(child: Text('Failed to load: ${state.error}'))
+          ? Center(child: Text(context.l10n.failedToLoad(state.error ?? '')))
           : state.sessions.isEmpty
-          ? const Center(child: Text('No listening history yet.'))
+          ? Center(child: Text(context.l10n.noListeningHistoryYet))
           : ListView.builder(
               controller: _scrollController,
               itemCount: state.sessions.length + (state.hasMore ? 1 : 0),
@@ -73,7 +75,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                       session.date,
                     ].join(' · '),
                   ),
-                  trailing: Text(_formatDuration(session.timeListening)),
+                  trailing: Text(formatDurationText(context.l10n, session.timeListening)),
                   onTap: () => context.push('/item/${session.libraryItemId}'),
                 );
               },
@@ -82,11 +84,4 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  String _formatDuration(double seconds) {
-    final totalMinutes = (seconds / 60).round();
-    final hours = totalMinutes ~/ 60;
-    final minutes = totalMinutes % 60;
-    if (hours == 0) return '${minutes}m';
-    return '${hours}h ${minutes}m';
-  }
 }

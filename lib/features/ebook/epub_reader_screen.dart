@@ -13,6 +13,7 @@ import '../player/state/playback_controller.dart' show progressRepositoryProvide
 import 'data/ereader_settings.dart';
 import 'ereader_settings_panel.dart';
 import 'state/ebook_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// Confirmed live against evan's real server (2026-07-31): epub_view
 /// 3.2.0's default image-tag handler does
@@ -200,12 +201,12 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           if (_controller != null)
             IconButton(
               icon: const Icon(Icons.list),
-              tooltip: 'Table of Contents',
+              tooltip: context.l10n.tableOfContents,
               onPressed: () => _showToc(context, _controller!),
             ),
           IconButton(
             icon: const Icon(Icons.text_fields),
-            tooltip: 'Reading settings',
+            tooltip: context.l10n.readingSettingsTooltip,
             onPressed: () => _showSettings(context),
           ),
         ],
@@ -213,7 +214,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       body: _error != null
           ? Center(
               child: Text(
-                'Failed to load: $_error',
+                context.l10n.failedToLoad(_error ?? ''),
                 style: TextStyle(color: settings.textColor),
               ),
             )
@@ -228,7 +229,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Downloading book…',
+                    context.l10n.downloadingBook,
                     style: TextStyle(color: settings.textColor),
                   ),
                 ],
@@ -260,7 +261,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           itemBuilder: (context, index) {
             final chapter = toc[index];
             return ListTile(
-              title: Text(chapter.title ?? 'Chapter ${index + 1}'),
+              title: Text(chapter.title ?? context.l10n.chapterNumber(index + 1)),
               onTap: () {
                 controller.scrollTo(index: chapter.startIndex);
                 Navigator.pop(context);

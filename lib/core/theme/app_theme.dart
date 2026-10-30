@@ -20,7 +20,13 @@ class AppSpacing extends ThemeExtension<AppSpacing> {
   final double xl;
 
   @override
-  AppSpacing copyWith({double? xs, double? sm, double? md, double? lg, double? xl}) {
+  AppSpacing copyWith({
+    double? xs,
+    double? sm,
+    double? md,
+    double? lg,
+    double? xl,
+  }) {
     return AppSpacing(
       xs: xs ?? this.xs,
       sm: sm ?? this.sm,
@@ -68,4 +74,3 @@ class AppRadii extends ThemeExtension<AppRadii> {
     );
   }
 }
-

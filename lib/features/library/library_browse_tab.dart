@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../settings/state/settings_providers.dart';
+import '../../l10n/enum_labels.dart';
+import '../../l10n/l10n.dart';
 import 'library_browse_widgets.dart';
 import 'library_grid_screen.dart';
 import 'library_toolbar.dart';
+import 'state/library_providers.dart';
 
-enum LibrarySection {
-  books('Books'),
-  authors('Authors'),
-  collections('Collections'),
-  playlists('Playlists');
-
-  const LibrarySection(this.label);
-  final String label;
-}
+enum LibrarySection { books, authors, collections, playlists }
 
 /// Remembered per library for the life of the app session.
 final librarySectionProvider = StateProvider.family<LibrarySection, String>(
@@ -40,7 +36,16 @@ class LibraryBrowseTab extends ConsumerWidget {
     final sections = isPodcast
         ? [LibrarySection.books, LibrarySection.playlists]
         : LibrarySection.values;
-    var section = ref.watch(librarySectionProvider(libraryId));
+    final remember =
+        ref.watch(appSettingsProvider).valueOrNull?.rememberLibrarySection ??
+        true;
+    final query = ref.watch(libraryQueryProvider(libraryId));
+    var section = remember
+        ? LibrarySection.values.firstWhere(
+            (s) => s.name == query.section,
+            orElse: () => LibrarySection.books,
+          )
+        : ref.watch(librarySectionProvider(libraryId));
     if (!sections.contains(section)) section = LibrarySection.books;
 
     return Column(
@@ -53,12 +58,21 @@ class LibraryBrowseTab extends ConsumerWidget {
               showSelectedIcon: false,
               segments: [
                 for (final s in sections)
-                  ButtonSegment(value: s, label: Text(s.label)),
+                  ButtonSegment(
+                    value: s,
+                    label: Text(s.localized(context.l10n)),
+                  ),
               ],
               selected: {section},
-              onSelectionChanged: (s) => ref
-                  .read(librarySectionProvider(libraryId).notifier)
-                  .state = s.first,
+              onSelectionChanged: (s) {
+                ref.read(librarySectionProvider(libraryId).notifier).state =
+                    s.first;
+                if (remember) {
+                  ref
+                      .read(libraryQueryProvider(libraryId).notifier)
+                      .update(query.copyWith(section: s.first.name));
+                }
+              },
             ),
           ),
         ),

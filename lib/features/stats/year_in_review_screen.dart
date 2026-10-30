@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/stats_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 9.5: annual recap. No dedicated server endpoint was found
 /// for this (only `/api/me/listening-stats`, confirmed live) — built by
@@ -17,10 +18,10 @@ class YearInReviewScreen extends ConsumerWidget {
     final year = DateTime.now().year;
 
     return Scaffold(
-      appBar: AppBar(title: Text('$year in Review')),
+      appBar: AppBar(title: Text(context.l10n.inReview(year))),
       body: statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Failed to load: $error')),
+        error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
         data: (stats) {
           final yearSeconds = stats.days.entries
               .where((e) => e.key.startsWith('$year-'))
@@ -32,8 +33,8 @@ class YearInReviewScreen extends ConsumerWidget {
             ..sort((a, b) => b.value.compareTo(a.value));
 
           if (yearSeconds == 0) {
-            return const Center(
-              child: Text('No listening activity yet this year.'),
+            return Center(
+              child: Text(context.l10n.noListeningActivityYetThis),
             );
           }
 
@@ -42,13 +43,13 @@ class YearInReviewScreen extends ConsumerWidget {
             children: [
               Center(
                 child: Text(
-                  _formatDuration(yearSeconds),
+                  _formatDuration(context, yearSeconds),
                   style: Theme.of(context).textTheme.displaySmall,
                 ),
               ),
               Center(
                 child: Text(
-                  'listened in $year',
+                  context.l10n.listenedIn(year),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
@@ -56,22 +57,22 @@ class YearInReviewScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _Metric(label: 'Days active', value: '$yearDaysListened'),
+                  _Metric(label: context.l10n.daysActive, value: '$yearDaysListened'),
                   _Metric(
-                    label: 'Longest streak',
-                    value: '${stats.currentStreakDays}d',
+                    label: context.l10n.longestStreak,
+                    value: context.l10n.streakDaysShort(stats.currentStreakDays),
                   ),
                 ],
               ),
               if (topItems.isNotEmpty) ...[
                 const SizedBox(height: 32),
-                Text('Top Items', style: Theme.of(context).textTheme.titleMedium),
+                Text(context.l10n.topItems, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 ...topItems.take(5).map(
                   (e) => ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('Item ${e.key.substring(0, 8)}…'),
-                    trailing: Text(_formatDuration(e.value)),
+                    title: Text(context.l10n.itemShortId(e.key.substring(0, 8))),
+                    trailing: Text(_formatDuration(context, e.value)),
                   ),
                 ),
               ],
@@ -82,10 +83,12 @@ class YearInReviewScreen extends ConsumerWidget {
     );
   }
 
-  String _formatDuration(double seconds) {
+  String _formatDuration(BuildContext context, double seconds) {
     final totalHours = seconds / 3600;
-    if (totalHours >= 1) return '${totalHours.toStringAsFixed(1)}h';
-    return '${(seconds / 60).round()}m';
+    if (totalHours >= 1) {
+      return context.l10n.durationHoursDecimal(totalHours.toStringAsFixed(1));
+    }
+    return context.l10n.durationMinutes((seconds / 60).round());
   }
 }
 

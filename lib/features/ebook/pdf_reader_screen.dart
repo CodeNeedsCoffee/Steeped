@@ -7,6 +7,7 @@ import 'package:pdfx/pdfx.dart';
 import '../library/state/library_providers.dart';
 import '../player/state/playback_controller.dart' show progressRepositoryProvider;
 import 'state/ebook_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// PLAN.md Phase 8.3: PDF reader (paged, no ereader text-styling — that's
 /// EPUB-specific per 8.2). Progress synced as page/pageCount, reusing the
@@ -100,7 +101,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
                 child: PdfPageNumber(
                   controller: _controller!,
                   builder: (context, loadingState, page, pagesCount) => Text(
-                    '$page / ${pagesCount ?? '?'}',
+                    context.l10n.pageOfTotal(page, pagesCount ?? '?'),
                   ),
                 ),
               ),
@@ -108,7 +109,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
         ],
       ),
       body: _error != null
-          ? Center(child: Text('Failed to load: $_error'))
+          ? Center(child: Text(context.l10n.failedToLoad(_error ?? '')))
           : _downloading
           ? Center(
               child: Column(
@@ -118,7 +119,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
                     value: _downloadProgress > 0 ? _downloadProgress : null,
                   ),
                   const SizedBox(height: 12),
-                  const Text('Downloading…'),
+                  Text(context.l10n.downloading),
                 ],
               ),
             )

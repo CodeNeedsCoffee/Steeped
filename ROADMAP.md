@@ -224,6 +224,32 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
   correct no matter how the route leaves the stack. **Not yet verified live** — needs an on-device repro.
   See `PLAN.md` Phase 5.2 for full detail.
 
+## Quality-of-life pass (branch `qol-features`, 2026-10-07)
+
+Everything in `QOL_PLAN.md` that doesn't need admin permissions or a Mac, done in the plan's order. All
+uncommitted. Verified on Linux (unit/widget tests plus integration tests against audiobooks.dev and a
+second local Audiobookshelf); **audio behaviour is unit-tested only and still needs a phone check**.
+
+- **A Settings:** separate jump back/forward lengths (old single value migrates), cellular Always/Ask/Never
+  (old bools migrate), mask server address, hide Download without permission, lock-screen seek toggle.
+- **B Playback:** auto-rewind on resume (with optional scaling), sleep timer end-of-chapter, fade-out,
+  30-second chime, quick extend/restart, automatic night window.
+- **C Progress:** discard progress, sync-failed badge + "Retry now".
+- **D Library:** remembered section, has-ebook filter, go to author/series, quick actions on shelves and the
+  item page, author page in reading order, collapse series.
+- **E1/E2:** metered label + "treat metered Wi-Fi like cellular"; multiple servers/accounts with a
+  first-launch migration of the old session into profile #1, a pre-upgrade database backup, per-profile
+  tokens/downloads/queued progress/search history, switcher in the Home app bar and Account screen, grouped
+  Downloads screen.
+- **F:** light/dark/black/follow-system variants per skin, accessibility pass (contrast tests, tooltips,
+  large-text overflow fixes), native splash, translation setup (en-US only, `lib/l10n/README.md`),
+  Android Auto settings + "play <book>" voice search.
+
+Not verified: sleep fade/chime and auto-rewind by ear, Android 12 splash and metered detection on a device,
+Android Auto/Assistant, iOS launch screen, E2 on a phone. Known gaps: car-tree titles and notification
+action labels aren't localized; `ServerProfile` removal while that account is playing downloads from another
+server was reasoned about, not exercised.
+
 ## Next
 
 - Two parallel threads are open — Milestone 3 (skins) and Milestone 4 (car integration) — pick up either:

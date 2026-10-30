@@ -6,6 +6,8 @@ import '../player/mini_player.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import 'state/local_media_providers.dart';
+import '../../l10n/l10n.dart';
+import '../../core/utils/format_duration.dart';
 
 /// PLAN.md Phase 6.8: on-device audio import/scan, with no server involved
 /// — simplified to single-file import (see `LocalMediaRepository`'s doc
@@ -20,11 +22,11 @@ class LocalMediaScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Local Media'),
+        title: Text(context.l10n.localMedia),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: 'Import a file',
+            tooltip: context.l10n.importAFile,
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
               final title = await ref
@@ -32,7 +34,7 @@ class LocalMediaScreen extends ConsumerWidget {
                   .importFile();
               if (title != null) {
                 messenger.showSnackBar(
-                  SnackBar(content: Text('Imported "$title"')),
+                  SnackBar(content: Text(context.l10n.imported(title))),
                 );
               }
             },
@@ -41,15 +43,14 @@ class LocalMediaScreen extends ConsumerWidget {
       ),
       body: itemsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Failed to load: $error')),
+        error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
         data: (items) {
           if (items.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'No local media yet. Tap + to import an audio file from '
-                  'this device — these never touch the server.',
+                  context.l10n.noLocalMediaYetTap,
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -64,9 +65,11 @@ class LocalMediaScreen extends ConsumerWidget {
               final subtitle = duration == null
                   ? null
                   : progress != null && duration > 0
-                  ? '${(progress / duration * 100).clamp(0, 100).round()}% '
-                        'played · ${_formatDuration(duration)}'
-                  : _formatDuration(duration);
+                  ? context.l10n.percentPlayedDuration(
+                      (progress / duration * 100).clamp(0, 100).round(),
+                      formatDurationText(context.l10n, duration),
+                    )
+                  : formatDurationText(context.l10n, duration);
               final isLoading =
                   ref.watch(playbackLoadingIdProvider) == item.id;
               return ListTile(
@@ -78,6 +81,7 @@ class LocalMediaScreen extends ConsumerWidget {
                 title: Text(item.title),
                 subtitle: subtitle == null ? null : Text(subtitle),
                 trailing: IconButton(
+                  tooltip: context.l10n.delete,
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => ref
                       .read(localMediaRepositoryProvider)
@@ -101,11 +105,4 @@ class LocalMediaScreen extends ConsumerWidget {
     );
   }
 
-  String _formatDuration(double seconds) {
-    final totalMinutes = (seconds / 60).round();
-    final hours = totalMinutes ~/ 60;
-    final minutes = totalMinutes % 60;
-    if (hours == 0) return '${minutes}m';
-    return '${hours}h ${minutes}m';
-  }
 }

@@ -7,12 +7,14 @@ import '../../core/theme/app_skin_style.dart';
 import '../../models/library_item.dart';
 import '../../models/library_query.dart';
 import 'library_actions.dart';
+import 'series_detail_screen.dart';
 import 'library_toolbar.dart';
 import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../player/mini_player.dart';
 import 'state/library_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// Thin wrapper around [LibraryItemsGrid] for the standalone `/library/:id`
 /// route (deep links, and anywhere still pushing to it directly). The grid
@@ -27,7 +29,7 @@ class LibraryGridScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final total = ref.watch(libraryItemsProvider(libraryId)).total;
     return Scaffold(
-      appBar: AppBar(title: Text('Library ($total)')),
+      appBar: AppBar(title: Text(context.l10n.libraryLabel(total))),
       body: Column(
         children: [
           LibraryToolbar(libraryId: libraryId),
@@ -101,12 +103,16 @@ class _LibraryItemsGridState extends ConsumerState<LibraryItemsGrid> {
       return const Center(child: CircularProgressIndicator());
     }
     if (state.error != null && state.items.isEmpty) {
-      return Center(child: Text('Failed to load: ${state.error}'));
+      return Center(child: Text(context.l10n.failedToLoad(state.error ?? '')));
     }
     if (state.items.isEmpty) {
       final filtered = ref.watch(libraryQueryProvider(widget.libraryId)).hasFilter;
       return Center(
-        child: Text(filtered ? 'Nothing matches this filter.' : 'This library is empty.'),
+        child: Text(
+          filtered
+              ? context.l10n.nothingMatchesFilter
+              : context.l10n.libraryIsEmpty,
+        ),
       );
     }
     if (serverUrl == null) {
@@ -142,17 +148,33 @@ class _LibraryItemsGridState extends ConsumerState<LibraryItemsGrid> {
                 width: 48,
                 height: 48,
               ),
-              title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: Text(
-                [
-                  ?item.authorOrPublisherName,
-                  if (item.duration != null) _fmt(item.duration!),
-                ].join(' · '),
+              title: Text(
+                item.collapsedSeries?.name ?? item.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () => context.push('/item/${item.id}'),
-              onLongPress: () => showItemQuickActions(context, ref, item),
+              subtitle: Text(
+                item.collapsedSeries != null
+                    ? context.l10n.bookCount(item.collapsedSeries!.numBooks)
+                    : [
+                        ?item.authorOrPublisherName,
+                        if (item.duration != null) _fmt(item.duration!),
+                      ].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => item.collapsedSeries != null
+                  ? context.push(
+                    seriesLocation(
+                      item.collapsedSeries!.id,
+                      libraryId: item.libraryId,
+                      name: item.collapsedSeries!.name,
+                    ),
+                  )
+                  : context.push('/item/${item.id}'),
+              onLongPress: item.collapsedSeries != null
+                  ? null
+                  : () => showItemQuickActions(context, ref, item),
             );
           },
         ),
@@ -220,9 +242,20 @@ class LibraryBookTile extends ConsumerWidget {
       height: double.infinity,
     );
 
+    final collapsed = item.collapsedSeries;
     return GestureDetector(
-      onTap: () => context.push('/item/${item.id}'),
-      onLongPress: () => showItemQuickActions(context, ref, item),
+      onTap: () => collapsed != null
+          ? context.push(
+              seriesLocation(
+                collapsed.id,
+                libraryId: item.libraryId,
+                name: collapsed.name,
+              ),
+            )
+          : context.push('/item/${item.id}'),
+      onLongPress: collapsed != null
+          ? null
+          : () => showItemQuickActions(context, ref, item),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -233,12 +266,18 @@ class LibraryBookTile extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            item.title,
+            collapsed?.name ?? item.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          if (item.authorOrPublisherName != null)
+          if (collapsed != null)
+            Text(
+              context.l10n.bookCount(collapsed.numBooks),
+              maxLines: 1,
+              style: Theme.of(context).textTheme.labelSmall,
+            )
+          else if (item.authorOrPublisherName != null)
             Text(
               item.authorOrPublisherName!,
               maxLines: 1,

@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../models/library_item.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../auth/state/permission_providers.dart';
 import '../downloads/state/download_controller.dart';
+import 'series_detail_screen.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import 'state/library_providers.dart';
+import '../../l10n/l10n.dart';
 
 /// Whether the signed-in account may change shared server data
 /// (collections). Playlists are per-user and always allowed.
@@ -28,7 +31,7 @@ Future<String?> promptForName(
   BuildContext context, {
   required String title,
   String initial = '',
-  String action = 'Save',
+  String? action,
 }) {
   final controller = TextEditingController(text: initial);
   return showDialog<String>(
@@ -38,17 +41,17 @@ Future<String?> promptForName(
       content: TextField(
         controller: controller,
         autofocus: true,
-        decoration: const InputDecoration(labelText: 'Name'),
+        decoration: InputDecoration(labelText: context.l10n.name),
         onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-          child: Text(action),
+          child: Text(action ?? context.l10n.save),
         ),
       ],
     ),
@@ -59,7 +62,7 @@ Future<bool> confirmAction(
   BuildContext context, {
   required String title,
   required String message,
-  String action = 'Delete',
+  String? action,
 }) async {
   final ok = await showDialog<bool>(
     context: context,
@@ -69,11 +72,11 @@ Future<bool> confirmAction(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: Text(action),
+          child: Text(action ?? context.l10n.delete),
         ),
       ],
     ),
@@ -109,33 +112,36 @@ Future<void> showAddToPlaylistSheet(
               ),
               error: (e, _) => Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text('Could not load playlists: $e'),
+                child: Text(context.l10n.couldNotLoadPlaylists(e)),
               ),
               data: (playlists) => ListView(
                 shrinkWrap: true,
                 children: [
-                  const ListTile(title: Text('Add to playlist')),
+                  ListTile(title: Text(context.l10n.addToPlaylist)),
                   ListTile(
                     leading: const Icon(Icons.add),
-                    title: const Text('New playlist…'),
+                    title: Text(context.l10n.newPlaylistEllipsis),
                     onTap: () async {
                       final name = await promptForName(
                         sheetContext,
-                        title: 'New playlist',
-                        action: 'Create',
+                        title: sheetContext.l10n.newPlaylistEllipsis,
+                        action: sheetContext.l10n.create,
                       );
                       if (name == null) return;
                       try {
                         await repo.createPlaylist(
                           libraryId: libraryId,
                           name: name,
-                          items: [(libraryItemId: libraryItemId, episodeId: null)],
+                          items: [
+                            (libraryItemId: libraryItemId, episodeId: null),
+                          ],
                         );
                         ref.invalidate(playlistsProvider(libraryId));
-                        if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-                        _snack(context, 'Added to "$name"');
+                        if (sheetContext.mounted)
+                          Navigator.of(sheetContext).pop();
+                        _snack(context, context.l10n.addedTo(name));
                       } catch (e) {
-                        _snack(context, 'Could not create playlist: $e');
+                        _snack(context, context.l10n.couldNotCreatePlaylist(e));
                       }
                     },
                   ),
@@ -147,7 +153,7 @@ Future<void> showAddToPlaylistSheet(
                             : Icons.playlist_add,
                       ),
                       title: Text(p.name),
-                      subtitle: Text('${p.items.length} items'),
+                      subtitle: Text(context.l10n.itemCount(p.items.length)),
                       onTap: () async {
                         try {
                           if (p.contains(libraryItemId)) {
@@ -158,7 +164,7 @@ Future<void> showAddToPlaylistSheet(
                           ref.invalidate(playlistsProvider(libraryId));
                           ref.invalidate(playlistDetailProvider(p.id));
                         } catch (e) {
-                          _snack(context, 'Playlist update failed: $e');
+                          _snack(context, context.l10n.playlistUpdateFailed(e));
                         }
                       },
                     ),
@@ -199,20 +205,20 @@ Future<void> showAddToCollectionSheet(
               ),
               error: (e, _) => Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text('Could not load collections: $e'),
+                child: Text(context.l10n.couldNotLoadCollections(e)),
               ),
               data: (collections) => ListView(
                 shrinkWrap: true,
                 children: [
-                  const ListTile(title: Text('Add to collection')),
+                  ListTile(title: Text(context.l10n.addToCollection)),
                   ListTile(
                     leading: const Icon(Icons.add),
-                    title: const Text('New collection…'),
+                    title: Text(context.l10n.newCollectionEllipsis),
                     onTap: () async {
                       final name = await promptForName(
                         sheetContext,
-                        title: 'New collection',
-                        action: 'Create',
+                        title: sheetContext.l10n.newCollectionEllipsis,
+                        action: sheetContext.l10n.create,
                       );
                       if (name == null) return;
                       try {
@@ -222,10 +228,11 @@ Future<void> showAddToCollectionSheet(
                           bookIds: [bookId],
                         );
                         ref.invalidate(collectionsProvider(libraryId));
-                        if (sheetContext.mounted) Navigator.of(sheetContext).pop();
-                        _snack(context, 'Added to "$name"');
+                        if (sheetContext.mounted)
+                          Navigator.of(sheetContext).pop();
+                        _snack(context, context.l10n.addedTo(name));
                       } catch (e) {
-                        _snack(context, 'Could not create collection: $e');
+                        _snack(context, context.l10n.couldNotCreateCollection(e));
                       }
                     },
                   ),
@@ -237,7 +244,7 @@ Future<void> showAddToCollectionSheet(
                             : Icons.collections_bookmark_outlined,
                       ),
                       title: Text(c.name),
-                      subtitle: Text('${c.books.length} books'),
+                      subtitle: Text(context.l10n.books(c.books.length)),
                       onTap: () async {
                         try {
                           if (c.books.any((b) => b.id == bookId)) {
@@ -248,7 +255,7 @@ Future<void> showAddToCollectionSheet(
                           ref.invalidate(collectionsProvider(libraryId));
                           ref.invalidate(collectionDetailProvider(c.id));
                         } catch (e) {
-                          _snack(context, 'Collection update failed: $e');
+                          _snack(context, context.l10n.collectionUpdateFailed(e));
                         }
                       },
                     ),
@@ -278,7 +285,11 @@ Future<void> showItemQuickActions(
       child: Wrap(
         children: [
           ListTile(
-            title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+            title: Text(
+              item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             subtitle: item.authorOrPublisherName == null
                 ? null
                 : Text(item.authorOrPublisherName!),
@@ -286,28 +297,48 @@ Future<void> showItemQuickActions(
           if (isBook)
             ListTile(
               leading: const Icon(Icons.play_arrow),
-              title: const Text('Play'),
+              title: Text(context.l10n.play),
               onTap: () async {
                 Navigator.of(sheetContext).pop();
-                await ref.read(playbackControllerProvider.notifier).playItem(item.id);
+                await ref
+                    .read(playbackControllerProvider.notifier)
+                    .playItem(item.id);
                 if (context.mounted &&
                     ref.read(currentPlaybackItemProvider)?.id == item.id) {
                   openNowPlaying(context, ref);
                 }
               },
             ),
+          if (isBook && item.authorOrPublisherName != null)
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text(context.l10n.goToAuthor),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _goToAuthorOrSeries(context, ref, item.id, author: true);
+              },
+            ),
+          if (isBook && item.seriesName != null)
+            ListTile(
+              leading: const Icon(Icons.collections_bookmark_outlined),
+              title: Text(context.l10n.goToSeries),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _goToAuthorOrSeries(context, ref, item.id, author: false);
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('Details'),
+            title: Text(context.l10n.details),
             onTap: () {
               Navigator.of(sheetContext).pop();
               context.push('/item/${item.id}');
             },
           ),
-          if (isBook)
+          if (isBook && ref.read(canDownloadProvider))
             ListTile(
               leading: const Icon(Icons.download_outlined),
-              title: const Text('Download'),
+              title: Text(context.l10n.download),
               onTap: () async {
                 Navigator.of(sheetContext).pop();
                 final s = ref.read(sessionControllerProvider);
@@ -323,16 +354,16 @@ Future<void> showItemQuickActions(
                         serverUrl: s.serverUrl,
                         token: s.user.effectiveToken,
                       );
-                  _snack(context, 'Download started');
+                  _snack(context, context.l10n.downloadStarted);
                 } catch (e) {
-                  _snack(context, 'Download failed: $e');
+                  _snack(context, context.l10n.downloadFailed(e));
                 }
               },
             ),
           if (isBook && libraryId != null)
             ListTile(
               leading: const Icon(Icons.playlist_add),
-              title: const Text('Add to playlist'),
+              title: Text(context.l10n.addToPlaylist),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 showAddToPlaylistSheet(
@@ -346,7 +377,7 @@ Future<void> showItemQuickActions(
           if (isBook && libraryId != null && canEditCollections(ref))
             ListTile(
               leading: const Icon(Icons.collections_bookmark_outlined),
-              title: const Text('Add to collection'),
+              title: Text(context.l10n.addToCollection),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 showAddToCollectionSheet(
@@ -360,12 +391,12 @@ Future<void> showItemQuickActions(
           if (isBook && item.duration != null) ...[
             ListTile(
               leading: const Icon(Icons.check_circle_outline),
-              title: const Text('Mark finished'),
+              title: Text(context.l10n.markFinished),
               onTap: () => _markFinished(sheetContext, ref, item, true),
             ),
             ListTile(
               leading: const Icon(Icons.restart_alt),
-              title: const Text('Mark not finished'),
+              title: Text(context.l10n.markNotFinished),
               onTap: () => _markFinished(sheetContext, ref, item, false),
             ),
           ],
@@ -382,19 +413,26 @@ Future<void> _markFinished(
   bool finished,
 ) async {
   final messenger = ScaffoldMessenger.of(sheetContext);
+  final l10n = sheetContext.l10n;
   Navigator.of(sheetContext).pop();
   try {
-    await ref.read(progressRepositoryProvider).updateProgress(
-      libraryItemId: item.id,
-      currentTime: finished ? item.duration! : 0,
-      duration: item.duration!,
-      isFinished: finished,
-    );
+    await ref
+        .read(progressRepositoryProvider)
+        .updateProgress(
+          libraryItemId: item.id,
+          currentTime: finished ? item.duration! : 0,
+          duration: item.duration!,
+          isFinished: finished,
+        );
     messenger.showSnackBar(
-      SnackBar(content: Text(finished ? 'Marked finished' : 'Marked not finished')),
+      SnackBar(
+        content: Text(
+          finished ? l10n.markedFinished : l10n.markedNotFinished,
+        ),
+      ),
     );
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('Could not update: $e')));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotUpdate(e))));
   }
 }
 
@@ -409,13 +447,71 @@ Future<int> downloadBooks(
   var queued = 0;
   for (final id in itemIds) {
     try {
-      final detail = await ref.read(libraryRepositoryProvider).fetchItemDetail(id);
+      final detail = await ref
+          .read(libraryRepositoryProvider)
+          .fetchItemDetail(id);
       if (detail.tracks.isEmpty) continue;
       await ref
           .read(downloadControllerProvider.notifier)
-          .download(item: detail, serverUrl: s.serverUrl, token: s.user.effectiveToken);
+          .download(
+            item: detail,
+            serverUrl: s.serverUrl,
+            token: s.user.effectiveToken,
+          );
       queued++;
     } catch (_) {}
   }
   return queued;
+}
+
+/// Minified list items carry names but not ids, so the author/series ids come
+/// from the item's detail. With several authors/series, asks which one.
+Future<void> _goToAuthorOrSeries(
+  BuildContext context,
+  WidgetRef ref,
+  String itemId, {
+  required bool author,
+}) async {
+  try {
+    final detail = await ref.read(libraryRepositoryProvider).fetchItemDetail(
+      itemId,
+    );
+    final targets = author
+        ? [for (final a in detail.authors) (id: a.id, name: a.name)]
+        : [for (final s in detail.series) (id: s.id, name: s.name)];
+    if (targets.isEmpty) {
+      if (context.mounted) _snack(context, context.l10n.notAvailableForThisItem);
+      return;
+    }
+    if (!context.mounted) return;
+    String? id = targets.first.id;
+    if (targets.length > 1) {
+      id = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (ctx) => SafeArea(
+          child: Wrap(
+            children: [
+              for (final t in targets)
+                ListTile(
+                  title: Text(t.name),
+                  onTap: () => Navigator.pop(ctx, t.id),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (id == null || !context.mounted) return;
+    if (author) {
+      context.push('/author/$id');
+    } else {
+      final s = detail.series.firstWhere((s) => s.id == id);
+      context.push(
+        seriesLocation(id, libraryId: detail.libraryId, name: s.name),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) _snack(context, context.l10n.couldNotOpen(e));
+  }
 }

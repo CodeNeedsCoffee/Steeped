@@ -10,6 +10,8 @@ import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import 'library_actions.dart';
 import 'state/library_providers.dart';
+import '../../core/utils/format_duration.dart';
+import '../../l10n/l10n.dart';
 
 ({String serverUrl, String? token})? sessionAuth(WidgetRef ref) {
   final s = ref.watch(sessionControllerProvider);
@@ -17,13 +19,8 @@ import 'state/library_providers.dart';
   return (serverUrl: s.serverUrl, token: s.user.effectiveToken);
 }
 
-String formatDuration(double seconds) {
-  final d = Duration(seconds: seconds.round());
-  final h = d.inHours;
-  final m = d.inMinutes.remainder(60);
-  if (h == 0) return '${m}m';
-  return '${h}h ${m}m';
-}
+String formatDuration(BuildContext context, double seconds) =>
+    formatDurationText(context.l10n, seconds);
 
 /// Up to four covers in a 2x2 mosaic (a single cover fills the tile).
 class CoverMosaic extends StatelessWidget {
@@ -121,12 +118,12 @@ class AuthorsView extends ConsumerWidget {
       child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ListView(
-          children: [Center(child: Text('Failed to load authors: $e'))],
+          children: [Center(child: Text(context.l10n.failedToLoadAuthors(e)))],
         ),
         data: (authors) {
           if (authors.isEmpty) {
             return ListView(
-              children: const [Center(child: Text('No authors in this library.'))],
+              children: [Center(child: Text(context.l10n.noAuthorsInThisLibrary))],
             );
           }
           return GridView.builder(
@@ -159,7 +156,7 @@ class AuthorsView extends ConsumerWidget {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     Text(
-                      '${a.numBooks} book${a.numBooks == 1 ? '' : 's'}',
+                      context.l10n.bookCount(a.numBooks),
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],
@@ -190,7 +187,7 @@ class CollectionsView extends ConsumerWidget {
       child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ListView(
-          children: [Center(child: Text('Failed to load collections: $e'))],
+          children: [Center(child: Text(context.l10n.failedToLoadCollections(e)))],
         ),
         data: (collections) => ListView(
           padding: EdgeInsets.only(top: topPadding, bottom: 16),
@@ -198,12 +195,12 @@ class CollectionsView extends ConsumerWidget {
             if (canEdit)
               ListTile(
                 leading: const Icon(Icons.add),
-                title: const Text('New collection'),
+                title: Text(context.l10n.newCollection),
                 onTap: () async {
                   final name = await promptForName(
                     context,
-                    title: 'New collection',
-                    action: 'Create',
+                    title: context.l10n.newCollectionEllipsis,
+                    action: context.l10n.create,
                   );
                   if (name == null) return;
                   await ref
@@ -213,9 +210,9 @@ class CollectionsView extends ConsumerWidget {
                 },
               ),
             if (collections.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(32),
-                child: Center(child: Text('No collections yet.')),
+                child: Center(child: Text(context.l10n.noCollectionsYet)),
               ),
             for (final c in collections)
               ListTile(
@@ -226,7 +223,7 @@ class CollectionsView extends ConsumerWidget {
                 ),
                 title: Text(c.name),
                 subtitle: Text(
-                  '${c.books.length} books · ${formatDuration(c.totalDuration)}',
+                  context.l10n.bookCountDuration(c.books.length, formatDuration(context, c.totalDuration)),
                 ),
                 onTap: () => context.push('/collection/${c.id}'),
               ),
@@ -253,19 +250,19 @@ class PlaylistsView extends ConsumerWidget {
       child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ListView(
-          children: [Center(child: Text('Failed to load playlists: $e'))],
+          children: [Center(child: Text(context.l10n.failedToLoadPlaylists(e)))],
         ),
         data: (playlists) => ListView(
           padding: EdgeInsets.only(top: topPadding, bottom: 16),
           children: [
             ListTile(
               leading: const Icon(Icons.add),
-              title: const Text('New playlist'),
+              title: Text(context.l10n.newPlaylist),
               onTap: () async {
                 final name = await promptForName(
                   context,
-                  title: 'New playlist',
-                  action: 'Create',
+                  title: context.l10n.newPlaylistEllipsis,
+                  action: context.l10n.create,
                 );
                 if (name == null) return;
                 await ref
@@ -275,9 +272,9 @@ class PlaylistsView extends ConsumerWidget {
               },
             ),
             if (playlists.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.all(32),
-                child: Center(child: Text('No playlists yet.')),
+                child: Center(child: Text(context.l10n.noPlaylistsYet)),
               ),
             for (final p in playlists)
               ListTile(
@@ -288,7 +285,7 @@ class PlaylistsView extends ConsumerWidget {
                 ),
                 title: Text(p.name),
                 subtitle: Text(
-                  '${p.items.length} items · ${formatDuration(p.totalDuration)}',
+                  context.l10n.itemCountDuration(p.items.length, formatDuration(context, p.totalDuration)),
                 ),
                 onTap: () => context.push('/playlist/${p.id}'),
               ),

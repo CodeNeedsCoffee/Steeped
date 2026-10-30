@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/listening_stats.dart';
 import '../player/mini_player.dart';
 import 'state/stats_providers.dart';
+import '../../l10n/l10n.dart';
+import '../../core/utils/format_duration.dart';
 
 /// PLAN.md Phase 9.4: minutes-listening 7-day chart, best day, daily
 /// average, days listened, streak, items finished, week listening. All
@@ -20,23 +23,23 @@ class StatsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stats'),
+        title: Text(context.l10n.stats),
         actions: [
           TextButton(
             onPressed: () => context.push('/stats/year-in-review'),
-            child: const Text('Year in Review'),
+            child: Text(context.l10n.yearInReview),
           ),
         ],
       ),
       body: statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Failed to load: $error')),
+        error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
         data: (stats) => RefreshIndicator(
           onRefresh: () => ref.refresh(listeningStatsProvider.future),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text('Last 7 Days', style: Theme.of(context).textTheme.titleMedium),
+              Text(context.l10n.last7Days, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 12),
               _WeekChart(stats: stats),
               const SizedBox(height: 24),
@@ -47,29 +50,29 @@ class StatsScreen extends ConsumerWidget {
                 childAspectRatio: 2.2,
                 children: [
                   _StatTile(
-                    label: 'Daily average',
-                    value: _formatDuration(stats.dailyAverageSeconds),
+                    label: context.l10n.dailyAverage,
+                    value: formatDurationText(context.l10n, stats.dailyAverageSeconds),
                   ),
                   _StatTile(
-                    label: 'Best day',
-                    value: _formatDuration(stats.bestDaySeconds),
+                    label: context.l10n.bestDay,
+                    value: formatDurationText(context.l10n, stats.bestDaySeconds),
                   ),
                   _StatTile(
-                    label: 'Days listened',
+                    label: context.l10n.daysListened,
                     value: '${stats.daysListened}',
                   ),
                   _StatTile(
-                    label: 'Current streak',
-                    value: '${stats.currentStreakDays} day${stats.currentStreakDays == 1 ? '' : 's'}',
+                    label: context.l10n.currentStreak,
+                    value: context.l10n.streakDays(stats.currentStreakDays),
                   ),
                   _StatTile(
-                    label: 'This week',
-                    value: _formatDuration(
+                    label: context.l10n.thisWeek,
+                    value: formatDurationText(context.l10n, 
                       stats.lastNDays(7).fold(0.0, (sum, e) => sum + e.value),
                     ),
                   ),
                   _StatTile(
-                    label: 'Items finished',
+                    label: context.l10n.itemsFinished,
                     value: finishedAsync.when(
                       data: (count) => '$count',
                       loading: () => '…',
@@ -81,7 +84,7 @@ class StatsScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               if (stats.recentSessions.isNotEmpty) ...[
                 Text(
-                  'Recent Sessions',
+                  context.l10n.recentSessions,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
@@ -90,7 +93,7 @@ class StatsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     title: Text(s.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
                     subtitle: Text(s.date),
-                    trailing: Text(_formatDuration(s.timeListening)),
+                    trailing: Text(formatDurationText(context.l10n, s.timeListening)),
                     onTap: () => context.push('/item/${s.libraryItemId}'),
                   ),
                 ),
@@ -103,13 +106,6 @@ class StatsScreen extends ConsumerWidget {
     );
   }
 
-  String _formatDuration(double seconds) {
-    final totalMinutes = (seconds / 60).round();
-    final hours = totalMinutes ~/ 60;
-    final minutes = totalMinutes % 60;
-    if (hours == 0) return '${minutes}m';
-    return '${hours}h ${minutes}m';
-  }
 }
 
 class _WeekChart extends StatelessWidget {
@@ -122,7 +118,7 @@ class _WeekChart extends StatelessWidget {
     final days = stats.lastNDays(7);
     final maxValue = days.fold(1.0, (max, e) => e.value > max ? e.value : max);
     final scheme = Theme.of(context).colorScheme;
-    const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final weekday = DateFormat.E(Localizations.localeOf(context).toString());
 
     return SizedBox(
       height: 140,
@@ -137,7 +133,9 @@ class _WeekChart extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text(
-                        entry.value > 0 ? '${(entry.value / 60).round()}m' : '',
+                        entry.value > 0
+                            ? context.l10n.durationMinutes((entry.value / 60).round())
+                            : '',
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                       const SizedBox(height: 4),
@@ -150,7 +148,7 @@ class _WeekChart extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        weekdayLabels[entry.key.weekday - 1],
+                        weekday.format(entry.key),
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                     ],

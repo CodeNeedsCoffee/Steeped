@@ -12,6 +12,8 @@ import '../downloads/state/download_controller.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import 'state/podcast_providers.dart';
+import '../../l10n/l10n.dart';
+import '../../core/utils/format_duration.dart';
 
 /// PLAN.md Phase 7.1/7.2/7.5: podcast detail — header + episode list with
 /// per-episode played/in-progress/unplayed state, stream/download/delete.
@@ -81,17 +83,17 @@ class PodcastDetailBody extends ConsumerWidget {
         const SizedBox(height: 24),
         Text(
           episodes.isEmpty
-              ? 'Episodes'
+              ? context.l10n.episodes
               : incomplete > 0
-              ? '${episodes.length} episodes · $incomplete incomplete'
-              : '${episodes.length} episodes',
+              ? context.l10n.episodesCountIncomplete(episodes.length, incomplete)
+              : context.l10n.episodesCount(episodes.length),
           style: textTheme.titleMedium,
         ),
         const Divider(),
         if (episodes.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: Text('No episodes yet.')),
+            child: Center(child: Text(context.l10n.noEpisodesYet)),
           )
         else
           ...episodes.map(
@@ -142,11 +144,13 @@ class _EpisodeTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final subtitle = [
       if (episode.publishedAt != null) _formatDate(episode.publishedAt!),
-      if (episode.duration != null) _formatDuration(episode.duration!),
+      if (episode.duration != null) formatDurationText(context.l10n, episode.duration!),
       if (episode.isFinished)
-        'Finished'
+        context.l10n.finished
       else if (episode.isInProgress && episode.duration != null)
-        '${((episode.progress!.currentTime / episode.duration!) * 100).round()}% played',
+        context.l10n.percentPlayed(
+          ((episode.progress!.currentTime / episode.duration!) * 100).round(),
+        ),
     ].join(' · ');
 
     final downloadId = '${podcast.id}::${episode.id}';
@@ -187,13 +191,6 @@ class _EpisodeTile extends ConsumerWidget {
     return DateFormat.yMMMd().format(date);
   }
 
-  String _formatDuration(double seconds) {
-    final totalMinutes = (seconds / 60).round();
-    final hours = totalMinutes ~/ 60;
-    final minutes = totalMinutes % 60;
-    if (hours == 0) return '${minutes}m';
-    return '${hours}h ${minutes}m';
-  }
 }
 
 class _StateIcon extends StatelessWidget {
@@ -238,7 +235,7 @@ class _EpisodeDownloadButton extends ConsumerWidget {
     if (existing == null) {
       return IconButton(
         icon: const Icon(Icons.download_outlined),
-        tooltip: 'Download episode',
+        tooltip: context.l10n.downloadEpisode,
         onPressed: episode.audioTrack == null
             ? null
             : () => ref
@@ -255,7 +252,7 @@ class _EpisodeDownloadButton extends ConsumerWidget {
     if (existing.status == 'complete') {
       return IconButton(
         icon: const Icon(Icons.download_done),
-        tooltip: 'Delete downloaded episode',
+        tooltip: context.l10n.deleteDownloadedEpisode,
         onPressed: () =>
             ref.read(downloadControllerProvider.notifier).delete(downloadId),
       );

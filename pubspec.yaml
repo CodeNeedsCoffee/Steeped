@@ -51,6 +51,8 @@ dependencies:
   permission_handler: ^13.0.0
   background_downloader: ^9.5.7
   path_provider: ^2.1.6
+  path: ^1.9.1
+  sqlite3: ^3.5.2
   epub_view: ^3.2.0
   # Direct dep (not just epub_view's transitive one): needed to supply a
   # safe custom chapterBuilder that works around a real crash in epub_view
@@ -104,6 +106,7 @@ flutter:
 
   assets:
     - assets/icon/steeped_logo.png
+    - assets/audio/sleep_chime.wav
 
   # To add assets to your application, add an assets section, like this:
   # assets:

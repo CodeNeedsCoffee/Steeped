@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../library/state/library_providers.dart';
 import '../player/state/playback_controller.dart' show progressRepositoryProvider;
 import 'state/ebook_providers.dart';
+import '../../l10n/l10n.dart';
 
 const _imageExts = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'};
 
@@ -132,13 +133,13 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: pages != null
-            ? Text('${_currentPage + 1} / ${pages.length}')
+            ? Text(context.l10n.pageOfTotal(_currentPage + 1, pages.length))
             : null,
       ),
       body: _error != null
           ? Center(
               child: Text(
-                'Failed to load: $_error',
+                context.l10n.failedToLoad(_error ?? ''),
                 style: const TextStyle(color: Colors.white),
               ),
             )
@@ -155,7 +156,9 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    _extracting ? 'Extracting pages…' : 'Downloading…',
+                    _extracting
+                        ? context.l10n.extractingPages
+                        : context.l10n.downloadingEllipsis,
                     style: const TextStyle(color: Colors.white),
                   ),
                 ],

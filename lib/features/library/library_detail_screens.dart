@@ -7,13 +7,16 @@ import '../../models/library_item.dart';
 import '../../models/library_series.dart';
 import '../../widgets/cover_image.dart';
 import '../../core/network/cover_image_url.dart';
+import '../auth/state/permission_providers.dart';
 import '../player/mini_player.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
+import 'author_book_order.dart';
 import 'library_actions.dart';
 import 'library_browse_widgets.dart';
 import 'library_grid_screen.dart';
 import 'state/library_providers.dart';
+import '../../l10n/l10n.dart';
 
 Future<void> _playQueue(
   BuildContext context,
@@ -50,12 +53,12 @@ class AuthorDetailScreen extends ConsumerWidget {
     final async = ref.watch(authorDetailProvider(authorId));
     final auth = sessionAuth(ref);
     return Scaffold(
-      appBar: AppBar(title: Text(async.valueOrNull?.name ?? 'Author')),
+      appBar: AppBar(title: Text(async.valueOrNull?.name ?? context.l10n.author)),
       body: auth == null
           ? const SizedBox.shrink()
           : async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Failed to load author: $e')),
+              error: (e, _) => Center(child: Text(context.l10n.failedToLoadAuthor(e))),
               data: (a) => CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(
@@ -85,8 +88,10 @@ class AuthorDetailScreen extends ConsumerWidget {
                                 for (final LibrarySeries s in a.series)
                                   ActionChip(
                                     label: Text(s.name),
-                                    onPressed: () =>
-                                        context.push('/series/${s.id}', extra: s),
+                                    onPressed: () => context.push(
+                                      '/series/${s.id}',
+                                      extra: s,
+                                    ),
                                   ),
                               ],
                             ),
@@ -105,9 +110,9 @@ class AuthorDetailScreen extends ConsumerWidget {
                             crossAxisSpacing: 16,
                             childAspectRatio: 0.62,
                           ),
-                      itemCount: a.books.length,
+                      itemCount: authorBooksInReadingOrder(a).length,
                       itemBuilder: (context, i) => LibraryBookTile(
-                        item: a.books[i],
+                        item: authorBooksInReadingOrder(a)[i],
                         serverUrl: auth.serverUrl,
                         token: auth.token,
                       ),
@@ -135,7 +140,7 @@ class CollectionDetailScreen extends ConsumerWidget {
     final repo = ref.read(libraryRepositoryProvider);
     return Scaffold(
       appBar: AppBar(
-        title: Text(c?.name ?? 'Collection'),
+        title: Text(c?.name ?? context.l10n.collection),
         actions: [
           if (c != null && canEdit)
             PopupMenuButton<String>(
@@ -143,7 +148,7 @@ class CollectionDetailScreen extends ConsumerWidget {
                 if (v == 'rename') {
                   final name = await promptForName(
                     context,
-                    title: 'Rename collection',
+                    title: context.l10n.renameCollection,
                     initial: c.name,
                   );
                   if (name == null) return;
@@ -153,8 +158,8 @@ class CollectionDetailScreen extends ConsumerWidget {
                 } else if (v == 'delete') {
                   final ok = await confirmAction(
                     context,
-                    title: 'Delete collection?',
-                    message: '"${c.name}" will be deleted for everyone on this server.',
+                    title: context.l10n.deleteCollectionTitle,
+                    message: context.l10n.deleteCollectionMessage(c.name),
                   );
                   if (!ok) return;
                   await repo.deleteCollection(c.id);
@@ -162,9 +167,9 @@ class CollectionDetailScreen extends ConsumerWidget {
                   if (context.mounted) context.pop();
                 }
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'rename', child: Text('Rename')),
-                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              itemBuilder: (_) => [
+                PopupMenuItem(value: 'rename', child: Text(context.l10n.rename)),
+                PopupMenuItem(value: 'delete', child: Text(context.l10n.delete)),
               ],
             ),
         ],
@@ -173,7 +178,8 @@ class CollectionDetailScreen extends ConsumerWidget {
           ? const SizedBox.shrink()
           : async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Failed to load collection: $e')),
+              error: (e, _) =>
+                  Center(child: Text(context.l10n.failedToLoadCollection(e))),
               data: (c) => Column(
                 children: [
                   Padding(
@@ -182,39 +188,43 @@ class CollectionDetailScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            '${c.books.length} books · ${formatDuration(c.totalDuration)}',
+                            context.l10n.bookCountDuration(c.books.length, formatDuration(context, c.totalDuration)),
                           ),
                         ),
                         FilledButton.icon(
                           onPressed: c.books.isEmpty
                               ? null
-                              : () => _playQueue(context, ref, c.name,
-                                  [for (final b in c.books) _asQueueItem(b)], 0),
+                              : () => _playQueue(context, ref, c.name, [
+                                  for (final b in c.books) _asQueueItem(b),
+                                ], 0),
                           icon: const Icon(Icons.play_arrow),
-                          label: const Text('Play all'),
+                          label: Text(context.l10n.playAll),
                         ),
-                        IconButton(
-                          tooltip: 'Download all',
-                          icon: const Icon(Icons.download_outlined),
-                          onPressed: () async {
-                            final n = await downloadBooks(
-                              context,
-                              ref,
-                              c.books.map((b) => b.id),
-                            );
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Queued $n downloads')),
+                        if (ref.watch(canDownloadProvider))
+                          IconButton(
+                            tooltip: context.l10n.downloadAll,
+                            icon: const Icon(Icons.download_outlined),
+                            onPressed: () async {
+                              final n = await downloadBooks(
+                                context,
+                                ref,
+                                c.books.map((b) => b.id),
                               );
-                            }
-                          },
-                        ),
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(context.l10n.queuedDownloads(n)),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
                       ],
                     ),
                   ),
                   Expanded(
                     child: c.books.isEmpty
-                        ? const Center(child: Text('This collection is empty.'))
+                        ? Center(child: Text(context.l10n.thisCollectionIsEmpty))
                         : ListView(
                             children: [
                               for (final b in c.books)
@@ -229,18 +239,32 @@ class CollectionDetailScreen extends ConsumerWidget {
                                     width: 48,
                                     height: 48,
                                   ),
-                                  title: Text(b.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  title: Text(
+                                    b.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                   subtitle: Text(b.authorOrPublisherName ?? ''),
                                   onTap: () => context.push('/item/${b.id}'),
-                                  onLongPress: () => showItemQuickActions(context, ref, b),
+                                  onLongPress: () =>
+                                      showItemQuickActions(context, ref, b),
                                   trailing: canEdit
                                       ? IconButton(
-                                          tooltip: 'Remove from collection',
-                                          icon: const Icon(Icons.remove_circle_outline),
+                                          tooltip: context.l10n.removeFromCollection,
+                                          icon: const Icon(
+                                            Icons.remove_circle_outline,
+                                          ),
                                           onPressed: () async {
-                                            await repo.removeBookFromCollection(c.id, b.id);
-                                            ref.invalidate(collectionDetailProvider(c.id));
-                                            ref.invalidate(collectionsProvider(c.libraryId));
+                                            await repo.removeBookFromCollection(
+                                              c.id,
+                                              b.id,
+                                            );
+                                            ref.invalidate(
+                                              collectionDetailProvider(c.id),
+                                            );
+                                            ref.invalidate(
+                                              collectionsProvider(c.libraryId),
+                                            );
                                           },
                                         )
                                       : null,
@@ -281,9 +305,9 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _local = null);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not reorder: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.l10n.couldNotReorder(e))));
       }
     }
   }
@@ -299,7 +323,7 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
     });
     return Scaffold(
       appBar: AppBar(
-        title: Text(p?.name ?? 'Playlist'),
+        title: Text(p?.name ?? context.l10n.playlist),
         actions: [
           if (p != null)
             PopupMenuButton<String>(
@@ -307,7 +331,7 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                 if (v == 'rename') {
                   final name = await promptForName(
                     context,
-                    title: 'Rename playlist',
+                    title: context.l10n.renamePlaylist,
                     initial: p.name,
                   );
                   if (name == null) return;
@@ -317,8 +341,8 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                 } else if (v == 'delete') {
                   final ok = await confirmAction(
                     context,
-                    title: 'Delete playlist?',
-                    message: '"${p.name}" will be deleted.',
+                    title: context.l10n.deletePlaylistTitle,
+                    message: context.l10n.deletePlaylistMessage(p.name),
                   );
                   if (!ok) return;
                   await repo.deletePlaylist(p.id);
@@ -326,9 +350,9 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                   if (context.mounted) context.pop();
                 }
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'rename', child: Text('Rename')),
-                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              itemBuilder: (_) => [
+                PopupMenuItem(value: 'rename', child: Text(context.l10n.rename)),
+                PopupMenuItem(value: 'delete', child: Text(context.l10n.delete)),
               ],
             ),
         ],
@@ -337,7 +361,8 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
           ? const SizedBox.shrink()
           : async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Failed to load playlist: $e')),
+              error: (e, _) =>
+                  Center(child: Text(context.l10n.failedToLoadPlaylist(e))),
               data: (p) {
                 final items = _local ?? p.items;
                 return Column(
@@ -348,38 +373,49 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              '${items.length} items · ${formatDuration(p.totalDuration)}',
+                              context.l10n.itemCountDuration(items.length, formatDuration(context, p.totalDuration)),
                             ),
                           ),
                           FilledButton.icon(
                             onPressed: items.isEmpty
                                 ? null
-                                : () => _playQueue(context, ref, p.name, items, 0),
+                                : () => _playQueue(
+                                    context,
+                                    ref,
+                                    p.name,
+                                    items,
+                                    0,
+                                  ),
                             icon: const Icon(Icons.play_arrow),
-                            label: const Text('Play all'),
+                            label: Text(context.l10n.playAll),
                           ),
-                          IconButton(
-                            tooltip: 'Download all',
-                            icon: const Icon(Icons.download_outlined),
-                            onPressed: () async {
-                              final n = await downloadBooks(
-                                context,
-                                ref,
-                                items.where((i) => i.episodeId == null).map((i) => i.libraryItemId),
-                              );
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Queued $n downloads')),
+                          if (ref.watch(canDownloadProvider))
+                            IconButton(
+                              tooltip: context.l10n.downloadAll,
+                              icon: const Icon(Icons.download_outlined),
+                              onPressed: () async {
+                                final n = await downloadBooks(
+                                  context,
+                                  ref,
+                                  items
+                                      .where((i) => i.episodeId == null)
+                                      .map((i) => i.libraryItemId),
                                 );
-                              }
-                            },
-                          ),
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(context.l10n.queuedDownloads(n)),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
                         ],
                       ),
                     ),
                     Expanded(
                       child: items.isEmpty
-                          ? const Center(child: Text('This playlist is empty.'))
+                          ? Center(child: Text(context.l10n.thisPlaylistIsEmpty))
                           : ReorderableListView.builder(
                               buildDefaultDragHandles: true,
                               itemCount: items.length,
@@ -400,24 +436,44 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                                           width: 48,
                                           height: 48,
                                         ),
-                                  title: Text(it.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  subtitle: Text(it.item?.authorOrPublisherName ?? ''),
+                                  title: Text(
+                                    it.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    it.item?.authorOrPublisherName ?? '',
+                                  ),
                                   onTap: () => it.episodeId == null
-                                      ? _playQueue(context, ref, p.name, items, i)
-                                      : context.push('/item/${it.libraryItemId}'),
+                                      ? _playQueue(
+                                          context,
+                                          ref,
+                                          p.name,
+                                          items,
+                                          i,
+                                        )
+                                      : context.push(
+                                          '/item/${it.libraryItemId}',
+                                        ),
                                   trailing: Padding(
                                     padding: const EdgeInsets.only(right: 32),
                                     child: IconButton(
-                                      tooltip: 'Remove',
-                                      icon: const Icon(Icons.remove_circle_outline),
+                                      tooltip: context.l10n.remove,
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline,
+                                      ),
                                       onPressed: () async {
                                         await repo.removeFromPlaylist(
                                           p.id,
                                           it.libraryItemId,
                                           episodeId: it.episodeId,
                                         );
-                                        ref.invalidate(playlistDetailProvider(p.id));
-                                        ref.invalidate(playlistsProvider(p.libraryId));
+                                        ref.invalidate(
+                                          playlistDetailProvider(p.id),
+                                        );
+                                        ref.invalidate(
+                                          playlistsProvider(p.libraryId),
+                                        );
                                       },
                                     ),
                                   ),
