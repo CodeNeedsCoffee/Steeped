@@ -8,7 +8,10 @@ import '../../../core/logging/log_repository.dart';
 import '../../../core/network/connectivity_service.dart';
 import '../../../core/storage/app_database.dart';
 import '../../auth/state/session_controller.dart';
+import '../../../core/network/dio_client.dart';
+import '../data/listening_session_repository.dart';
 import '../data/pending_sync_repository.dart';
+import '../../stats/state/stats_providers.dart';
 import 'playback_controller.dart';
 
 final pendingSyncRepositoryProvider = Provider<PendingSyncRepository>((ref) {
@@ -17,6 +20,21 @@ final pendingSyncRepositoryProvider = Provider<PendingSyncRepository>((ref) {
     profileId: ref.watch(activeProfileIdProvider) ?? '',
   );
 });
+
+final listeningSessionRepositoryProvider = Provider<ListeningSessionRepository>(
+  (ref) => ListeningSessionRepository(ref.watch(dioProvider)),
+);
+
+final pendingListeningSessionRepositoryProvider =
+    Provider<PendingListeningSessionRepository>((ref) {
+      return PendingListeningSessionRepository(
+        ref.watch(appDatabaseProvider),
+        profileId: ref.watch(activeProfileIdProvider) ?? '',
+      );
+    });
+
+/// Queue key of the listening session being tracked live, if any.
+final liveSessionKeyProvider = StateProvider<String?>((ref) => null);
 
 /// Count of not-yet-uploaded progress syncs — available for a future "N
 /// pending" indicator; not currently surfaced in the UI.
@@ -45,21 +63,17 @@ class PendingSyncController extends Notifier<void> {
 
   @override
   void build() {
-    _sub = ref
-        .read(connectivityProvider)
-        .onConnectivityChanged
-        .listen((results) {
-          if (results.any((r) => r != ConnectivityResult.none)) {
-            // Collapse the burst: a handoff settles well inside 2s, and the
-            // queue is not so urgent that it can't wait for the network to
-            // stop moving underneath it.
-            _connectivityDebounce?.cancel();
-            _connectivityDebounce = Timer(
-              const Duration(seconds: 2),
-              flushPending,
-            );
-          }
-        });
+    _sub = ref.read(connectivityProvider).onConnectivityChanged.listen((
+      results,
+    ) {
+      if (results.any((r) => r != ConnectivityResult.none)) {
+        // Collapse the burst: a handoff settles well inside 2s, and the
+        // queue is not so urgent that it can't wait for the network to
+        // stop moving underneath it.
+        _connectivityDebounce?.cancel();
+        _connectivityDebounce = Timer(const Duration(seconds: 2), flushPending);
+      }
+    });
     // Bug found 2026-08-02 (reported by evan as "weird errors" in the
     // Logs screen): `onConnectivityChanged` only fires when the network
     // *type* changes (e.g. wifi -> cellular) — it never fires for a DNS
@@ -96,7 +110,33 @@ class PendingSyncController extends Notifier<void> {
     }
   }
 
+  /// Uploads listening time that never reached the server as a session.
+  /// The row of the item being played right now is skipped: the live tracker
+  /// is still adding to it and will deliver it itself.
+  Future<void> _flushSessions() async {
+    final repo = ref.read(pendingListeningSessionRepositoryProvider);
+    final api = ref.read(listeningSessionRepositoryProvider);
+    var uploaded = false;
+    for (final row in await repo.pending()) {
+      if (row.sessionKey == ref.read(liveSessionKeyProvider)) continue;
+      try {
+        await api.uploadLocal(row);
+        await repo.remove(row.sessionKey);
+        uploaded = true;
+      } on DioException catch (e) {
+        if (e.type != DioExceptionType.badResponse) break;
+        // The server rejected it for good (e.g. the item was deleted).
+        await repo.remove(row.sessionKey);
+      }
+    }
+    if (uploaded) {
+      ref.invalidate(listeningStatsProvider);
+      ref.invalidate(historyControllerProvider);
+    }
+  }
+
   Future<void> _flush() async {
+    await _flushSessions();
     final repo = ref.read(pendingSyncRepositoryProvider);
     final progressRepo = ref.read(progressRepositoryProvider);
     // The item currently playing is owned by [PlaybackController]'s own 15s

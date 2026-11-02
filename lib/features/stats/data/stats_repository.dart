@@ -51,7 +51,12 @@ class StatsRepository {
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       '/api/me/listening-sessions',
-      queryParameters: {'page': page, 'itemsPerPage': itemsPerPage},
+      queryParameters: {
+        'page': page,
+        'itemsPerPage': itemsPerPage,
+        'sort': 'updatedAt',
+        'desc': 1,
+      },
     );
     final data = response.data ?? const {};
     final sessions = (data['sessions'] as List<dynamic>?) ?? const [];

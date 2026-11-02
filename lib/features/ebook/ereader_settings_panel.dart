@@ -10,12 +10,16 @@ import '../../l10n/l10n.dart';
 /// [ereaderSettingsProvider], so a change made from either place applies
 /// everywhere immediately.
 class EreaderSettingsPanel extends ConsumerWidget {
-  const EreaderSettingsPanel({super.key});
+  const EreaderSettingsPanel({super.key, this.showTheme = true});
+
+  /// The main Settings screen leaves the theme to Appearance.
+  final bool showTheme;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings =
-        ref.watch(ereaderSettingsProvider).valueOrNull ?? const EreaderSettings();
+        ref.watch(ereaderSettingsProvider).valueOrNull ??
+        const EreaderSettings();
     final controller = ref.read(ereaderSettingsProvider.notifier);
 
     return Padding(
@@ -24,10 +28,14 @@ class EreaderSettingsPanel extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(context.l10n.readingSettings, style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            context.l10n.readingSettings,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 16),
           Wrap(
             alignment: WrapAlignment.spaceBetween,
+            spacing: 16,
             crossAxisAlignment: WrapCrossAlignment.center,
             runSpacing: 8,
             children: [
@@ -78,24 +86,35 @@ class EreaderSettingsPanel extends ConsumerWidget {
             onChanged: (v) =>
                 controller.save(settings.copyWith(lineSpacing: v)),
           ),
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            runSpacing: 8,
-            children: [
-              Text(context.l10n.theme),
-              SegmentedButton<EreaderTheme>(
-                segments: [
-                  ButtonSegment(value: EreaderTheme.light, label: Text(context.l10n.light)),
-                  ButtonSegment(value: EreaderTheme.dark, label: Text(context.l10n.dark)),
-                  ButtonSegment(value: EreaderTheme.black, label: Text(context.l10n.black)),
-                ],
-                selected: {settings.theme},
-                onSelectionChanged: (s) =>
-                    controller.save(settings.copyWith(theme: s.first)),
-              ),
-            ],
-          ),
+          if (showTheme)
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              spacing: 16,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 8,
+              children: [
+                Text(context.l10n.theme),
+                SegmentedButton<EreaderTheme>(
+                  segments: [
+                    ButtonSegment(
+                      value: EreaderTheme.light,
+                      label: Text(context.l10n.light),
+                    ),
+                    ButtonSegment(
+                      value: EreaderTheme.dark,
+                      label: Text(context.l10n.dark),
+                    ),
+                    ButtonSegment(
+                      value: EreaderTheme.black,
+                      label: Text(context.l10n.black),
+                    ),
+                  ],
+                  selected: {settings.theme},
+                  onSelectionChanged: (s) =>
+                      controller.save(settings.copyWith(theme: s.first)),
+                ),
+              ],
+            ),
         ],
       ),
     );

@@ -3243,6 +3243,703 @@ class ServerProfilesCompanion extends UpdateCompanion<ServerProfile> {
   }
 }
 
+class $PendingListeningSessionsTable extends PendingListeningSessions
+    with TableInfo<$PendingListeningSessionsTable, PendingListeningSession> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingListeningSessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sessionKeyMeta = const VerificationMeta(
+    'sessionKey',
+  );
+  @override
+  late final GeneratedColumn<String> sessionKey = GeneratedColumn<String>(
+    'session_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _libraryItemIdMeta = const VerificationMeta(
+    'libraryItemId',
+  );
+  @override
+  late final GeneratedColumn<String> libraryItemId = GeneratedColumn<String>(
+    'library_item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _episodeIdMeta = const VerificationMeta(
+    'episodeId',
+  );
+  @override
+  late final GeneratedColumn<String> episodeId = GeneratedColumn<String>(
+    'episode_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _displayTitleMeta = const VerificationMeta(
+    'displayTitle',
+  );
+  @override
+  late final GeneratedColumn<String> displayTitle = GeneratedColumn<String>(
+    'display_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayAuthorMeta = const VerificationMeta(
+    'displayAuthor',
+  );
+  @override
+  late final GeneratedColumn<String> displayAuthor = GeneratedColumn<String>(
+    'display_author',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _durationMeta = const VerificationMeta(
+    'duration',
+  );
+  @override
+  late final GeneratedColumn<double> duration = GeneratedColumn<double>(
+    'duration',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _currentTimeMeta = const VerificationMeta(
+    'currentTime',
+  );
+  @override
+  late final GeneratedColumn<double> currentTime = GeneratedColumn<double>(
+    'current_time',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timeListeningMeta = const VerificationMeta(
+    'timeListening',
+  );
+  @override
+  late final GeneratedColumn<double> timeListening = GeneratedColumn<double>(
+    'time_listening',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _profileIdMeta = const VerificationMeta(
+    'profileId',
+  );
+  @override
+  late final GeneratedColumn<String> profileId = GeneratedColumn<String>(
+    'profile_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    sessionKey,
+    libraryItemId,
+    episodeId,
+    displayTitle,
+    displayAuthor,
+    duration,
+    currentTime,
+    timeListening,
+    startedAt,
+    updatedAt,
+    profileId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_listening_sessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingListeningSession> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('session_key')) {
+      context.handle(
+        _sessionKeyMeta,
+        sessionKey.isAcceptableOrUnknown(data['session_key']!, _sessionKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionKeyMeta);
+    }
+    if (data.containsKey('library_item_id')) {
+      context.handle(
+        _libraryItemIdMeta,
+        libraryItemId.isAcceptableOrUnknown(
+          data['library_item_id']!,
+          _libraryItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_libraryItemIdMeta);
+    }
+    if (data.containsKey('episode_id')) {
+      context.handle(
+        _episodeIdMeta,
+        episodeId.isAcceptableOrUnknown(data['episode_id']!, _episodeIdMeta),
+      );
+    }
+    if (data.containsKey('display_title')) {
+      context.handle(
+        _displayTitleMeta,
+        displayTitle.isAcceptableOrUnknown(
+          data['display_title']!,
+          _displayTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayTitleMeta);
+    }
+    if (data.containsKey('display_author')) {
+      context.handle(
+        _displayAuthorMeta,
+        displayAuthor.isAcceptableOrUnknown(
+          data['display_author']!,
+          _displayAuthorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('duration')) {
+      context.handle(
+        _durationMeta,
+        duration.isAcceptableOrUnknown(data['duration']!, _durationMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_durationMeta);
+    }
+    if (data.containsKey('current_time')) {
+      context.handle(
+        _currentTimeMeta,
+        currentTime.isAcceptableOrUnknown(
+          data['current_time']!,
+          _currentTimeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_currentTimeMeta);
+    }
+    if (data.containsKey('time_listening')) {
+      context.handle(
+        _timeListeningMeta,
+        timeListening.isAcceptableOrUnknown(
+          data['time_listening']!,
+          _timeListeningMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_timeListeningMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('profile_id')) {
+      context.handle(
+        _profileIdMeta,
+        profileId.isAcceptableOrUnknown(data['profile_id']!, _profileIdMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sessionKey};
+  @override
+  PendingListeningSession map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingListeningSession(
+      sessionKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_key'],
+      )!,
+      libraryItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}library_item_id'],
+      )!,
+      episodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}episode_id'],
+      ),
+      displayTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_title'],
+      )!,
+      displayAuthor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_author'],
+      ),
+      duration: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}duration'],
+      )!,
+      currentTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}current_time'],
+      )!,
+      timeListening: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}time_listening'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      profileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_id'],
+      )!,
+    );
+  }
+
+  @override
+  $PendingListeningSessionsTable createAlias(String alias) {
+    return $PendingListeningSessionsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingListeningSession extends DataClass
+    implements Insertable<PendingListeningSession> {
+  final String sessionKey;
+  final String libraryItemId;
+  final String? episodeId;
+  final String displayTitle;
+  final String? displayAuthor;
+  final double duration;
+  final double currentTime;
+  final double timeListening;
+  final DateTime startedAt;
+  final DateTime updatedAt;
+  final String profileId;
+  const PendingListeningSession({
+    required this.sessionKey,
+    required this.libraryItemId,
+    this.episodeId,
+    required this.displayTitle,
+    this.displayAuthor,
+    required this.duration,
+    required this.currentTime,
+    required this.timeListening,
+    required this.startedAt,
+    required this.updatedAt,
+    required this.profileId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['session_key'] = Variable<String>(sessionKey);
+    map['library_item_id'] = Variable<String>(libraryItemId);
+    if (!nullToAbsent || episodeId != null) {
+      map['episode_id'] = Variable<String>(episodeId);
+    }
+    map['display_title'] = Variable<String>(displayTitle);
+    if (!nullToAbsent || displayAuthor != null) {
+      map['display_author'] = Variable<String>(displayAuthor);
+    }
+    map['duration'] = Variable<double>(duration);
+    map['current_time'] = Variable<double>(currentTime);
+    map['time_listening'] = Variable<double>(timeListening);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['profile_id'] = Variable<String>(profileId);
+    return map;
+  }
+
+  PendingListeningSessionsCompanion toCompanion(bool nullToAbsent) {
+    return PendingListeningSessionsCompanion(
+      sessionKey: Value(sessionKey),
+      libraryItemId: Value(libraryItemId),
+      episodeId: episodeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(episodeId),
+      displayTitle: Value(displayTitle),
+      displayAuthor: displayAuthor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(displayAuthor),
+      duration: Value(duration),
+      currentTime: Value(currentTime),
+      timeListening: Value(timeListening),
+      startedAt: Value(startedAt),
+      updatedAt: Value(updatedAt),
+      profileId: Value(profileId),
+    );
+  }
+
+  factory PendingListeningSession.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingListeningSession(
+      sessionKey: serializer.fromJson<String>(json['sessionKey']),
+      libraryItemId: serializer.fromJson<String>(json['libraryItemId']),
+      episodeId: serializer.fromJson<String?>(json['episodeId']),
+      displayTitle: serializer.fromJson<String>(json['displayTitle']),
+      displayAuthor: serializer.fromJson<String?>(json['displayAuthor']),
+      duration: serializer.fromJson<double>(json['duration']),
+      currentTime: serializer.fromJson<double>(json['currentTime']),
+      timeListening: serializer.fromJson<double>(json['timeListening']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      profileId: serializer.fromJson<String>(json['profileId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sessionKey': serializer.toJson<String>(sessionKey),
+      'libraryItemId': serializer.toJson<String>(libraryItemId),
+      'episodeId': serializer.toJson<String?>(episodeId),
+      'displayTitle': serializer.toJson<String>(displayTitle),
+      'displayAuthor': serializer.toJson<String?>(displayAuthor),
+      'duration': serializer.toJson<double>(duration),
+      'currentTime': serializer.toJson<double>(currentTime),
+      'timeListening': serializer.toJson<double>(timeListening),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'profileId': serializer.toJson<String>(profileId),
+    };
+  }
+
+  PendingListeningSession copyWith({
+    String? sessionKey,
+    String? libraryItemId,
+    Value<String?> episodeId = const Value.absent(),
+    String? displayTitle,
+    Value<String?> displayAuthor = const Value.absent(),
+    double? duration,
+    double? currentTime,
+    double? timeListening,
+    DateTime? startedAt,
+    DateTime? updatedAt,
+    String? profileId,
+  }) => PendingListeningSession(
+    sessionKey: sessionKey ?? this.sessionKey,
+    libraryItemId: libraryItemId ?? this.libraryItemId,
+    episodeId: episodeId.present ? episodeId.value : this.episodeId,
+    displayTitle: displayTitle ?? this.displayTitle,
+    displayAuthor: displayAuthor.present
+        ? displayAuthor.value
+        : this.displayAuthor,
+    duration: duration ?? this.duration,
+    currentTime: currentTime ?? this.currentTime,
+    timeListening: timeListening ?? this.timeListening,
+    startedAt: startedAt ?? this.startedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    profileId: profileId ?? this.profileId,
+  );
+  PendingListeningSession copyWithCompanion(
+    PendingListeningSessionsCompanion data,
+  ) {
+    return PendingListeningSession(
+      sessionKey: data.sessionKey.present
+          ? data.sessionKey.value
+          : this.sessionKey,
+      libraryItemId: data.libraryItemId.present
+          ? data.libraryItemId.value
+          : this.libraryItemId,
+      episodeId: data.episodeId.present ? data.episodeId.value : this.episodeId,
+      displayTitle: data.displayTitle.present
+          ? data.displayTitle.value
+          : this.displayTitle,
+      displayAuthor: data.displayAuthor.present
+          ? data.displayAuthor.value
+          : this.displayAuthor,
+      duration: data.duration.present ? data.duration.value : this.duration,
+      currentTime: data.currentTime.present
+          ? data.currentTime.value
+          : this.currentTime,
+      timeListening: data.timeListening.present
+          ? data.timeListening.value
+          : this.timeListening,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      profileId: data.profileId.present ? data.profileId.value : this.profileId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingListeningSession(')
+          ..write('sessionKey: $sessionKey, ')
+          ..write('libraryItemId: $libraryItemId, ')
+          ..write('episodeId: $episodeId, ')
+          ..write('displayTitle: $displayTitle, ')
+          ..write('displayAuthor: $displayAuthor, ')
+          ..write('duration: $duration, ')
+          ..write('currentTime: $currentTime, ')
+          ..write('timeListening: $timeListening, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('profileId: $profileId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    sessionKey,
+    libraryItemId,
+    episodeId,
+    displayTitle,
+    displayAuthor,
+    duration,
+    currentTime,
+    timeListening,
+    startedAt,
+    updatedAt,
+    profileId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingListeningSession &&
+          other.sessionKey == this.sessionKey &&
+          other.libraryItemId == this.libraryItemId &&
+          other.episodeId == this.episodeId &&
+          other.displayTitle == this.displayTitle &&
+          other.displayAuthor == this.displayAuthor &&
+          other.duration == this.duration &&
+          other.currentTime == this.currentTime &&
+          other.timeListening == this.timeListening &&
+          other.startedAt == this.startedAt &&
+          other.updatedAt == this.updatedAt &&
+          other.profileId == this.profileId);
+}
+
+class PendingListeningSessionsCompanion
+    extends UpdateCompanion<PendingListeningSession> {
+  final Value<String> sessionKey;
+  final Value<String> libraryItemId;
+  final Value<String?> episodeId;
+  final Value<String> displayTitle;
+  final Value<String?> displayAuthor;
+  final Value<double> duration;
+  final Value<double> currentTime;
+  final Value<double> timeListening;
+  final Value<DateTime> startedAt;
+  final Value<DateTime> updatedAt;
+  final Value<String> profileId;
+  final Value<int> rowid;
+  const PendingListeningSessionsCompanion({
+    this.sessionKey = const Value.absent(),
+    this.libraryItemId = const Value.absent(),
+    this.episodeId = const Value.absent(),
+    this.displayTitle = const Value.absent(),
+    this.displayAuthor = const Value.absent(),
+    this.duration = const Value.absent(),
+    this.currentTime = const Value.absent(),
+    this.timeListening = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.profileId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PendingListeningSessionsCompanion.insert({
+    required String sessionKey,
+    required String libraryItemId,
+    this.episodeId = const Value.absent(),
+    required String displayTitle,
+    this.displayAuthor = const Value.absent(),
+    required double duration,
+    required double currentTime,
+    required double timeListening,
+    required DateTime startedAt,
+    required DateTime updatedAt,
+    this.profileId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : sessionKey = Value(sessionKey),
+       libraryItemId = Value(libraryItemId),
+       displayTitle = Value(displayTitle),
+       duration = Value(duration),
+       currentTime = Value(currentTime),
+       timeListening = Value(timeListening),
+       startedAt = Value(startedAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<PendingListeningSession> custom({
+    Expression<String>? sessionKey,
+    Expression<String>? libraryItemId,
+    Expression<String>? episodeId,
+    Expression<String>? displayTitle,
+    Expression<String>? displayAuthor,
+    Expression<double>? duration,
+    Expression<double>? currentTime,
+    Expression<double>? timeListening,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<String>? profileId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (sessionKey != null) 'session_key': sessionKey,
+      if (libraryItemId != null) 'library_item_id': libraryItemId,
+      if (episodeId != null) 'episode_id': episodeId,
+      if (displayTitle != null) 'display_title': displayTitle,
+      if (displayAuthor != null) 'display_author': displayAuthor,
+      if (duration != null) 'duration': duration,
+      if (currentTime != null) 'current_time': currentTime,
+      if (timeListening != null) 'time_listening': timeListening,
+      if (startedAt != null) 'started_at': startedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (profileId != null) 'profile_id': profileId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PendingListeningSessionsCompanion copyWith({
+    Value<String>? sessionKey,
+    Value<String>? libraryItemId,
+    Value<String?>? episodeId,
+    Value<String>? displayTitle,
+    Value<String?>? displayAuthor,
+    Value<double>? duration,
+    Value<double>? currentTime,
+    Value<double>? timeListening,
+    Value<DateTime>? startedAt,
+    Value<DateTime>? updatedAt,
+    Value<String>? profileId,
+    Value<int>? rowid,
+  }) {
+    return PendingListeningSessionsCompanion(
+      sessionKey: sessionKey ?? this.sessionKey,
+      libraryItemId: libraryItemId ?? this.libraryItemId,
+      episodeId: episodeId ?? this.episodeId,
+      displayTitle: displayTitle ?? this.displayTitle,
+      displayAuthor: displayAuthor ?? this.displayAuthor,
+      duration: duration ?? this.duration,
+      currentTime: currentTime ?? this.currentTime,
+      timeListening: timeListening ?? this.timeListening,
+      startedAt: startedAt ?? this.startedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      profileId: profileId ?? this.profileId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sessionKey.present) {
+      map['session_key'] = Variable<String>(sessionKey.value);
+    }
+    if (libraryItemId.present) {
+      map['library_item_id'] = Variable<String>(libraryItemId.value);
+    }
+    if (episodeId.present) {
+      map['episode_id'] = Variable<String>(episodeId.value);
+    }
+    if (displayTitle.present) {
+      map['display_title'] = Variable<String>(displayTitle.value);
+    }
+    if (displayAuthor.present) {
+      map['display_author'] = Variable<String>(displayAuthor.value);
+    }
+    if (duration.present) {
+      map['duration'] = Variable<double>(duration.value);
+    }
+    if (currentTime.present) {
+      map['current_time'] = Variable<double>(currentTime.value);
+    }
+    if (timeListening.present) {
+      map['time_listening'] = Variable<double>(timeListening.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (profileId.present) {
+      map['profile_id'] = Variable<String>(profileId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingListeningSessionsCompanion(')
+          ..write('sessionKey: $sessionKey, ')
+          ..write('libraryItemId: $libraryItemId, ')
+          ..write('episodeId: $episodeId, ')
+          ..write('displayTitle: $displayTitle, ')
+          ..write('displayAuthor: $displayAuthor, ')
+          ..write('duration: $duration, ')
+          ..write('currentTime: $currentTime, ')
+          ..write('timeListening: $timeListening, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('profileId: $profileId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3262,6 +3959,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $ServerProfilesTable serverProfiles = $ServerProfilesTable(this);
+  late final $PendingListeningSessionsTable pendingListeningSessions =
+      $PendingListeningSessionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3274,6 +3973,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     pendingProgressSyncs,
     localMediaItems,
     serverProfiles,
+    pendingListeningSessions,
   ];
 }
 
@@ -5203,6 +5903,351 @@ typedef $$ServerProfilesTableProcessedTableManager =
       ServerProfile,
       PrefetchHooks Function()
     >;
+typedef $$PendingListeningSessionsTableCreateCompanionBuilder =
+    PendingListeningSessionsCompanion Function({
+      required String sessionKey,
+      required String libraryItemId,
+      Value<String?> episodeId,
+      required String displayTitle,
+      Value<String?> displayAuthor,
+      required double duration,
+      required double currentTime,
+      required double timeListening,
+      required DateTime startedAt,
+      required DateTime updatedAt,
+      Value<String> profileId,
+      Value<int> rowid,
+    });
+typedef $$PendingListeningSessionsTableUpdateCompanionBuilder =
+    PendingListeningSessionsCompanion Function({
+      Value<String> sessionKey,
+      Value<String> libraryItemId,
+      Value<String?> episodeId,
+      Value<String> displayTitle,
+      Value<String?> displayAuthor,
+      Value<double> duration,
+      Value<double> currentTime,
+      Value<double> timeListening,
+      Value<DateTime> startedAt,
+      Value<DateTime> updatedAt,
+      Value<String> profileId,
+      Value<int> rowid,
+    });
+
+class $$PendingListeningSessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingListeningSessionsTable> {
+  $$PendingListeningSessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get sessionKey => $composableBuilder(
+    column: $table.sessionKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get libraryItemId => $composableBuilder(
+    column: $table.libraryItemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get episodeId => $composableBuilder(
+    column: $table.episodeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayTitle => $composableBuilder(
+    column: $table.displayTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayAuthor => $composableBuilder(
+    column: $table.displayAuthor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get currentTime => $composableBuilder(
+    column: $table.currentTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get timeListening => $composableBuilder(
+    column: $table.timeListening,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingListeningSessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingListeningSessionsTable> {
+  $$PendingListeningSessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get sessionKey => $composableBuilder(
+    column: $table.sessionKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get libraryItemId => $composableBuilder(
+    column: $table.libraryItemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get episodeId => $composableBuilder(
+    column: $table.episodeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayTitle => $composableBuilder(
+    column: $table.displayTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayAuthor => $composableBuilder(
+    column: $table.displayAuthor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get currentTime => $composableBuilder(
+    column: $table.currentTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get timeListening => $composableBuilder(
+    column: $table.timeListening,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get profileId => $composableBuilder(
+    column: $table.profileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingListeningSessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingListeningSessionsTable> {
+  $$PendingListeningSessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get sessionKey => $composableBuilder(
+    column: $table.sessionKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get libraryItemId => $composableBuilder(
+    column: $table.libraryItemId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get episodeId =>
+      $composableBuilder(column: $table.episodeId, builder: (column) => column);
+
+  GeneratedColumn<String> get displayTitle => $composableBuilder(
+    column: $table.displayTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get displayAuthor => $composableBuilder(
+    column: $table.displayAuthor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get duration =>
+      $composableBuilder(column: $table.duration, builder: (column) => column);
+
+  GeneratedColumn<double> get currentTime => $composableBuilder(
+    column: $table.currentTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get timeListening => $composableBuilder(
+    column: $table.timeListening,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get profileId =>
+      $composableBuilder(column: $table.profileId, builder: (column) => column);
+}
+
+class $$PendingListeningSessionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PendingListeningSessionsTable,
+          PendingListeningSession,
+          $$PendingListeningSessionsTableFilterComposer,
+          $$PendingListeningSessionsTableOrderingComposer,
+          $$PendingListeningSessionsTableAnnotationComposer,
+          $$PendingListeningSessionsTableCreateCompanionBuilder,
+          $$PendingListeningSessionsTableUpdateCompanionBuilder,
+          (
+            PendingListeningSession,
+            BaseReferences<
+              _$AppDatabase,
+              $PendingListeningSessionsTable,
+              PendingListeningSession
+            >,
+          ),
+          PendingListeningSession,
+          PrefetchHooks Function()
+        > {
+  $$PendingListeningSessionsTableTableManager(
+    _$AppDatabase db,
+    $PendingListeningSessionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingListeningSessionsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PendingListeningSessionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PendingListeningSessionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> sessionKey = const Value.absent(),
+                Value<String> libraryItemId = const Value.absent(),
+                Value<String?> episodeId = const Value.absent(),
+                Value<String> displayTitle = const Value.absent(),
+                Value<String?> displayAuthor = const Value.absent(),
+                Value<double> duration = const Value.absent(),
+                Value<double> currentTime = const Value.absent(),
+                Value<double> timeListening = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<String> profileId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingListeningSessionsCompanion(
+                sessionKey: sessionKey,
+                libraryItemId: libraryItemId,
+                episodeId: episodeId,
+                displayTitle: displayTitle,
+                displayAuthor: displayAuthor,
+                duration: duration,
+                currentTime: currentTime,
+                timeListening: timeListening,
+                startedAt: startedAt,
+                updatedAt: updatedAt,
+                profileId: profileId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String sessionKey,
+                required String libraryItemId,
+                Value<String?> episodeId = const Value.absent(),
+                required String displayTitle,
+                Value<String?> displayAuthor = const Value.absent(),
+                required double duration,
+                required double currentTime,
+                required double timeListening,
+                required DateTime startedAt,
+                required DateTime updatedAt,
+                Value<String> profileId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PendingListeningSessionsCompanion.insert(
+                sessionKey: sessionKey,
+                libraryItemId: libraryItemId,
+                episodeId: episodeId,
+                displayTitle: displayTitle,
+                displayAuthor: displayAuthor,
+                duration: duration,
+                currentTime: currentTime,
+                timeListening: timeListening,
+                startedAt: startedAt,
+                updatedAt: updatedAt,
+                profileId: profileId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingListeningSessionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PendingListeningSessionsTable,
+      PendingListeningSession,
+      $$PendingListeningSessionsTableFilterComposer,
+      $$PendingListeningSessionsTableOrderingComposer,
+      $$PendingListeningSessionsTableAnnotationComposer,
+      $$PendingListeningSessionsTableCreateCompanionBuilder,
+      $$PendingListeningSessionsTableUpdateCompanionBuilder,
+      (
+        PendingListeningSession,
+        BaseReferences<
+          _$AppDatabase,
+          $PendingListeningSessionsTable,
+          PendingListeningSession
+        >,
+      ),
+      PendingListeningSession,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5221,4 +6266,9 @@ class $AppDatabaseManager {
       $$LocalMediaItemsTableTableManager(_db, _db.localMediaItems);
   $$ServerProfilesTableTableManager get serverProfiles =>
       $$ServerProfilesTableTableManager(_db, _db.serverProfiles);
+  $$PendingListeningSessionsTableTableManager get pendingListeningSessions =>
+      $$PendingListeningSessionsTableTableManager(
+        _db,
+        _db.pendingListeningSessions,
+      );
 }

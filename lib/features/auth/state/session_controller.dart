@@ -170,8 +170,27 @@ class SessionController extends Notifier<SessionState> {
   /// to duplicate normalization when passing the URL on to [login].
   Future<(String url, ServerStatus status)> checkServer(String rawUrl) async {
     final url = AuthRepository.normalizeServerUrl(rawUrl);
-    final status = await _repository.checkStatus(url);
-    return (url, status);
+    try {
+      return (url, await _repository.checkStatus(url));
+    } on DioException catch (e) {
+      // No scheme typed: https was a guess. A plain-http server (a LAN
+      // address, say) refuses it at the connection level, so try http too.
+      // A typed scheme is taken at its word.
+      final unreachable =
+          e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.unknown;
+      if (AuthRepository.hasScheme(rawUrl) || !unreachable) rethrow;
+      final httpUrl = AuthRepository.normalizeServerUrl(
+        rawUrl,
+        defaultScheme: 'http',
+      );
+      try {
+        return (httpUrl, await _repository.checkStatus(httpUrl));
+      } on DioException {
+        throw e; // report the original (https) failure
+      }
+    }
   }
 
   /// Signs in and makes the account the active profile. Signing in to a
@@ -282,7 +301,10 @@ class SessionController extends Notifier<SessionState> {
   /// error` playback failures at 18:00:57/18:01:05 for the same stale
   /// token. Call this right after any reactive refresh so the two never
   /// diverge again.
-  void updateTokens({required String? accessToken, required String? refreshToken}) {
+  void updateTokens({
+    required String? accessToken,
+    required String? refreshToken,
+  }) {
     final current = state;
     if (current is! SessionAuthenticated) return;
     state = SessionAuthenticated(

@@ -307,6 +307,17 @@ server was reasoned about, not exercised.
 - Whenever real app-icon artwork exists: revisit Phase 9.9, including whether `epub_view`'s `image` ^3.x
   pin still blocks `flutter_launcher_icons`/`flutter_native_splash`.
 
+## To do
+
+- **E-book progress isn't syncing** (reported 2026-11-02). `epub_reader_screen.dart:171`,
+  `comic_reader_screen.dart:110` and `pdf_reader_screen.dart:75` call
+  `ProgressRepository.updateEbookProgress` (PATCH `/api/me/progress/:id` with `ebookLocation` +
+  `ebookProgress`), but there's no retry/durable queue like audio progress has (the pending-sync table has no
+  ebook fields), errors may be swallowed, and the position may not be reloaded when the book is reopened.
+  To investigate: log the PATCH result on a real EPUB, check the callback actually fires on page turns and on
+  leaving the reader, confirm the server stores `ebookLocation`/`ebookProgress`, and make sure Home's
+  "Continue reading" refreshes afterwards.
+
 ## Later
 
 - Milestone 3 → 4 → 5, in that order. The next big native-divergence point is iOS **background URLSession**

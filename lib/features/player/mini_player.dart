@@ -155,6 +155,15 @@ class MiniPlayer extends ConsumerWidget {
               tooltip: context.l10n.forwardSeconds(settings.jumpForwardSeconds),
               onPressed: controller.jumpForward,
             ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              iconSize: 22,
+              visualDensity: VisualDensity.compact,
+              tooltip: context.l10n.stopPlayback,
+              // Saves the position, ends the listening session and hides
+              // the bar.
+              onPressed: controller.closePlayer,
+            ),
           ],
         ),
       ),

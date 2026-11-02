@@ -43,8 +43,9 @@ class DownloadedItems extends Table {
   RealColumn get totalDuration => real().nullable()();
   TextColumn get chaptersJson => text().nullable()();
   TextColumn get coverLocalPath => text().nullable()();
-  TextColumn get status =>
-      text().withDefault(const Constant('downloading'))(); // downloading | complete
+  TextColumn get status => text().withDefault(
+    const Constant('downloading'),
+  )(); // downloading | complete
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   // Local cache of listening progress, seeded at download time and kept
   // fresh by PlaybackController on every sync — this is what a downloaded
@@ -82,6 +83,7 @@ class DownloadedTracks extends Table {
 /// without needing `adb logcat`.
 class LogEntries extends Table {
   IntColumn get id => integer().autoIncrement()();
+
   /// Most recent occurrence — an entry repeated back-to-back updates this
   /// rather than inserting again, so a persistently-failing operation stays
   /// sorted by when it last happened.
@@ -89,6 +91,7 @@ class LogEntries extends Table {
   TextColumn get level => text()(); // info | warning | error
   TextColumn get tag => text()();
   TextColumn get message => text()();
+
   /// How many times this identical entry has occurred in a row. A retry loop
   /// (a socket reconnecting every 5s with no network) would otherwise emit
   /// hundreds of byte-identical rows and evict every useful entry under the
@@ -134,6 +137,29 @@ class LocalMediaItems extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Listening time that has not reached the server as a listening session
+/// (offline, or the sync/close call failed). Uploaded through
+/// `POST /api/session/local`, which counts it towards stats and history.
+/// [sessionKey] is a client-made id, so re-uploading after a lost response
+/// can't create a duplicate session.
+class PendingListeningSessions extends Table {
+  TextColumn get sessionKey => text()();
+  TextColumn get libraryItemId => text()();
+  TextColumn get episodeId => text().nullable()();
+  TextColumn get displayTitle => text()();
+  TextColumn get displayAuthor => text().nullable()();
+  RealColumn get duration => real()();
+  RealColumn get currentTime => real()();
+  RealColumn get timeListening => real()();
+  DateTimeColumn get startedAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  // The profile whose server receives it, as for [PendingProgressSyncs].
+  TextColumn get profileId => text().withDefault(const Constant(''))();
+
+  @override
+  Set<Column> get primaryKey => {sessionKey};
+}
+
 @DriftDatabase(
   tables: [
     KeyValueEntries,
@@ -143,6 +169,7 @@ class LocalMediaItems extends Table {
     PendingProgressSyncs,
     LocalMediaItems,
     ServerProfiles,
+    PendingListeningSessions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -150,7 +177,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -185,6 +212,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(serverProfiles);
         await m.addColumn(downloadedItems, downloadedItems.profileId);
         await m.addColumn(pendingProgressSyncs, pendingProgressSyncs.profileId);
+      }
+      if (from < 10) {
+        await m.createTable(pendingListeningSessions);
       }
     },
   );

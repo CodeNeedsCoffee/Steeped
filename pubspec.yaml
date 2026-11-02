@@ -69,6 +69,10 @@ dependencies:
   # only, `copyFileToCacheDir` gives a real usable file path with no SAF
   # tree-URI path-resolution headaches, no new transitive deps.
   flutter_file_dialog: ^3.3.2
+  # Linux desktop playback only (just_audio has no Linux backend). Drives the
+  # system `mpv` binary; unlike just_audio_media_kit it doesn't conflict with
+  # epub_view.
+  just_audio_mpv: ^0.1.7
 
 dev_dependencies:
   flutter_test:

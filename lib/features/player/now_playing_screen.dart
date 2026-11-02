@@ -487,25 +487,17 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   ) {
     final controller = ref.read(playbackControllerProvider.notifier);
     final isActive = ref.read(sleepTimerRemainingProvider) != null;
-    final hasChapters =
-        ref.read(currentPlaybackItemProvider)?.chapters.isNotEmpty ?? false;
+    final chapterMinutesLeft = controller.chapterMinutesLeft();
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => Padding(
-        // Lifts the sheet above the keyboard while the value is typed.
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-        ),
-        child: _SleepTimerSheet(
-          initialMinutes: settings.sleepTimerDefaultMinutes,
-          isActive: isActive,
-          hasChapters: hasChapters,
-          onStart: (minutes) =>
-              controller.startSleepTimer(Duration(minutes: minutes)),
-          onEndOfChapter: controller.startSleepTimerAtChapterEnd,
-          onCancel: controller.cancelSleepTimer,
-        ),
+      builder: (sheetContext) => _SleepTimerSheet(
+        initialMinutes: settings.sleepTimerDefaultMinutes,
+        isActive: isActive,
+        chapterMinutesLeft: chapterMinutesLeft,
+        onStart: (minutes) =>
+            controller.startSleepTimer(Duration(minutes: minutes)),
+        onCancel: controller.cancelSleepTimer,
       ),
     );
   }
@@ -1085,24 +1077,26 @@ class _SpeedSheetState extends State<_SpeedSheet> {
   }
 }
 
-/// Sleep-timer picker, modelled on [_SpeedSheet]: steppers, a typed value
-/// and presets. Unlike speed, nothing applies until "Start timer" -- a timer
-/// that began on every tweak would be running before it was set.
+/// Sleep-timer picker: a minutes slider with presets. Nothing applies until
+/// "Start timer" -- a timer that began on every tweak would be running
+/// before it was set. "End of chapter" fills the slider with the time left
+/// in the chapter; the timer still starts from "Start timer".
 class _SleepTimerSheet extends StatefulWidget {
   const _SleepTimerSheet({
     required this.initialMinutes,
     required this.isActive,
-    required this.hasChapters,
+    required this.chapterMinutesLeft,
     required this.onStart,
-    required this.onEndOfChapter,
     required this.onCancel,
   });
 
   final int initialMinutes;
   final bool isActive;
-  final bool hasChapters;
+
+  /// Whole minutes (rounded up) to the end of the current chapter, or null
+  /// when the book has no chapters.
+  final int? chapterMinutesLeft;
   final ValueChanged<int> onStart;
-  final VoidCallback onEndOfChapter;
   final VoidCallback onCancel;
 
   @override
@@ -1110,49 +1104,12 @@ class _SleepTimerSheet extends StatefulWidget {
 }
 
 class _SleepTimerSheetState extends State<_SleepTimerSheet> {
-  late int _minutes = normalizeSleepMinutes(widget.initialMinutes);
-  final _inputController = TextEditingController();
-  String? _inputError;
-  bool _showExactInput = false;
+  static const _sliderMax = 240;
 
-  @override
-  void dispose() {
-    _inputController.dispose();
-    super.dispose();
-  }
+  late int _minutes = _clamp(widget.initialMinutes);
 
-  void _set(int minutes) => setState(() {
-    _minutes = minutes;
-    _inputError = null;
-  });
-
-  void _applyTypedValue() {
-    final parsed = parseSleepMinutes(_inputController.text);
-    if (parsed == null) {
-      setState(
-        () => _inputError = context.l10n.sleepInputError(
-          formatSleepMinutes(minSleepMinutes),
-          formatSleepMinutes(maxSleepMinutes),
-        ),
-      );
-      return;
-    }
-    _inputController.clear();
-    FocusScope.of(context).unfocus();
-    _set(parsed);
-    setState(() => _showExactInput = false);
-  }
-
-  void _toggleExactInput() {
-    setState(() {
-      _showExactInput = !_showExactInput;
-      if (!_showExactInput) {
-        _inputController.clear();
-        _inputError = null;
-      }
-    });
-    if (!_showExactInput) FocusScope.of(context).unfocus();
-  }
+  static int _clamp(int minutes) =>
+      normalizeSleepMinutes(minutes).clamp(minSleepMinutes, _sliderMax);
 
   void _finish(VoidCallback action) {
     action();
@@ -1162,7 +1119,7 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const deltas = [-15, -5, -1, 1, 5, 15];
+    final chapterLeft = widget.chapterMinutesLeft;
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -1171,75 +1128,19 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
           children: [
             Text(context.l10n.sleepTimer, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                const Expanded(child: SizedBox.shrink()),
-                Text(
-                  formatSleepMinutes(_minutes),
-                  style: theme.textTheme.displaySmall,
-                ),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      onPressed: _toggleExactInput,
-                      tooltip: _showExactInput
-                          ? context.l10n.hideExactDuration
-                          : context.l10n.enterExactDuration,
-                      isSelected: _showExactInput,
-                      icon: const Icon(Icons.edit_outlined),
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              formatSleepMinutes(_minutes),
+              style: theme.textTheme.displaySmall,
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final delta in deltas)
-                  OutlinedButton(
-                    onPressed: stepSleepMinutes(_minutes, delta) == _minutes
-                        ? null
-                        : () => _set(stepSleepMinutes(_minutes, delta)),
-                    child: Text('${delta > 0 ? '+' : '\u2212'}${delta.abs()}'),
-                  ),
-              ],
+            Slider(
+              value: _minutes.toDouble(),
+              min: minSleepMinutes.toDouble(),
+              max: _sliderMax.toDouble(),
+              divisions: _sliderMax - minSleepMinutes,
+              label: formatSleepMinutes(_minutes),
+              onChanged: (v) => setState(() => _minutes = v.round()),
             ),
-            if (_showExactInput) ...[
-              const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _inputController,
-                      autofocus: true,
-                      keyboardType: TextInputType.text,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _applyTypedValue(),
-                      decoration: InputDecoration(
-                        labelText: context.l10n.exactDuration,
-                        hintText: context.l10n.exactDurationHint,
-                        errorText: _inputError,
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: FilledButton(
-                      onPressed: _applyTypedValue,
-                      child: Text(context.l10n.setLabel),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 8,
@@ -1247,15 +1148,21 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
                 for (final preset in {
                   ...sleepTimerPresets,
                   widget.initialMinutes,
-                }.toList()..sort())
+                }.where((m) => m <= _sliderMax).toList()..sort())
                   ChoiceChip(
                     label: Text(formatSleepMinutes(preset)),
                     selected: _minutes == preset,
-                    onSelected: (_) => _set(preset),
+                    onSelected: (_) => setState(() => _minutes = preset),
                   ),
               ],
             ),
             const SizedBox(height: 16),
+            if (chapterLeft != null)
+              TextButton.icon(
+                onPressed: () => setState(() => _minutes = _clamp(chapterLeft)),
+                icon: const Icon(Icons.bookmark_outline),
+                label: Text(context.l10n.endOfChapter),
+              ),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -1264,12 +1171,6 @@ class _SleepTimerSheetState extends State<_SleepTimerSheet> {
                 label: Text(context.l10n.startTimer),
               ),
             ),
-            if (widget.hasChapters)
-              TextButton.icon(
-                onPressed: () => _finish(widget.onEndOfChapter),
-                icon: const Icon(Icons.bookmark_outline),
-                label: Text(context.l10n.endOfChapter),
-              ),
             if (widget.isActive)
               TextButton.icon(
                 onPressed: () => _finish(widget.onCancel),

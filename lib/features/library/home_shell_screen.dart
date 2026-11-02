@@ -321,6 +321,34 @@ class _HomeTab extends ConsumerWidget {
     if (isOffline) return _OfflineHomeTab(libraryId: libraryId);
     final shelvesAsync = ref.watch(personalizedShelvesProvider(libraryId));
 
+    // Home is kept alive underneath Now Playing and item pages, so it never
+    // reloads by itself: "Continue listening" would still show the old
+    // state after starting, pausing or closing a book. Refresh when Now
+    // Playing closes, when a different book starts, and just after playback
+    // stops (the position is synced on pause, hence the short delay).
+    void refreshSoon([Duration delay = const Duration(seconds: 2)]) {
+      Future.delayed(delay, () {
+        if (context.mounted) {
+          ref.invalidate(personalizedShelvesProvider(libraryId));
+        }
+      });
+    }
+
+    ref.listen(nowPlayingOpenProvider, (previous, open) {
+      if (previous == true && !open) refreshSoon(const Duration(seconds: 1));
+    });
+    ref.listen(currentPlaybackItemProvider.select((i) => i?.downloadId), (
+      previous,
+      id,
+    ) {
+      if (id != previous) refreshSoon(const Duration(seconds: 3));
+    });
+    ref.listen(isPlayingProvider, (previous, next) {
+      if (previous?.valueOrNull == true && next.valueOrNull == false) {
+        refreshSoon();
+      }
+    });
+
     // Scaffold.extendBodyBehindAppBar above already redefines
     // MediaQuery.padding.top for body descendants to be the app bar's own
     // total height (toolbar + TabBar) -- that's the mechanism SafeArea
@@ -353,6 +381,8 @@ class _HomeTab extends ConsumerWidget {
             const SizedBox(height: 16),
           ],
           shelvesAsync.when(
+            // Keep the old shelves on screen while a refresh is in flight.
+            skipLoadingOnReload: true,
             loading: () => const Padding(
               padding: EdgeInsets.all(32),
               child: Center(child: CircularProgressIndicator()),

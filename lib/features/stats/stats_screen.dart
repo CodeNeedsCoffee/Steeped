@@ -33,15 +33,26 @@ class StatsScreen extends ConsumerWidget {
       ),
       body: statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
+        error: (error, _) =>
+            Center(child: Text(context.l10n.failedToLoad(error))),
         data: (stats) => RefreshIndicator(
           onRefresh: () => ref.refresh(listeningStatsProvider.future),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(context.l10n.last7Days, style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                context.l10n.last7Days,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 12),
               _WeekChart(stats: stats),
+              const SizedBox(height: 24),
+              Text(
+                context.l10n.byDayOfWeek,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              _WeekdayChart(totals: stats.weekdaySecondsMonFirst),
               const SizedBox(height: 24),
               GridView.count(
                 crossAxisCount: 2,
@@ -51,11 +62,17 @@ class StatsScreen extends ConsumerWidget {
                 children: [
                   _StatTile(
                     label: context.l10n.dailyAverage,
-                    value: formatDurationText(context.l10n, stats.dailyAverageSeconds),
+                    value: formatDurationText(
+                      context.l10n,
+                      stats.dailyAverageSeconds,
+                    ),
                   ),
                   _StatTile(
                     label: context.l10n.bestDay,
-                    value: formatDurationText(context.l10n, stats.bestDaySeconds),
+                    value: formatDurationText(
+                      context.l10n,
+                      stats.bestDaySeconds,
+                    ),
                   ),
                   _StatTile(
                     label: context.l10n.daysListened,
@@ -67,7 +84,8 @@ class StatsScreen extends ConsumerWidget {
                   ),
                   _StatTile(
                     label: context.l10n.thisWeek,
-                    value: formatDurationText(context.l10n, 
+                    value: formatDurationText(
+                      context.l10n,
                       stats.lastNDays(7).fold(0.0, (sum, e) => sum + e.value),
                     ),
                   ),
@@ -88,15 +106,23 @@ class StatsScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
-                ...stats.recentSessions.take(10).map(
-                  (s) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(s.displayTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text(s.date),
-                    trailing: Text(formatDurationText(context.l10n, s.timeListening)),
-                    onTap: () => context.push('/item/${s.libraryItemId}'),
-                  ),
-                ),
+                ...stats.recentSessions
+                    .take(10)
+                    .map(
+                      (s) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          s.displayTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(s.date),
+                        trailing: Text(
+                          formatDurationText(context.l10n, s.timeListening),
+                        ),
+                        onTap: () => context.push('/item/${s.libraryItemId}'),
+                      ),
+                    ),
               ],
             ],
           ),
@@ -105,7 +131,6 @@ class StatsScreen extends ConsumerWidget {
       bottomNavigationBar: const MiniPlayer(),
     );
   }
-
 }
 
 class _WeekChart extends StatelessWidget {
@@ -134,7 +159,9 @@ class _WeekChart extends StatelessWidget {
                     children: [
                       Text(
                         entry.value > 0
-                            ? context.l10n.durationMinutes((entry.value / 60).round())
+                            ? context.l10n.durationMinutes(
+                                (entry.value / 60).round(),
+                              )
                             : '',
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
@@ -157,6 +184,55 @@ class _WeekChart extends StatelessWidget {
               ),
             )
             .toList(),
+      ),
+    );
+  }
+}
+
+/// All-time listening per weekday, Monday first.
+class _WeekdayChart extends StatelessWidget {
+  const _WeekdayChart({required this.totals});
+
+  final List<double> totals;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = totals.fold(1.0, (m, v) => v > m ? v : m);
+    final scheme = Theme.of(context).colorScheme;
+    final format = DateFormat.E(Localizations.localeOf(context).toString());
+    // 2024-01-01 was a Monday.
+    final names = [
+      for (var i = 0; i < 7; i++) format.format(DateTime(2024, 1, 1 + i)),
+    ];
+    return SizedBox(
+      height: 120,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var i = 0; i < 7; i++)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      height: 80 * (totals[i] / maxValue).clamp(0.03, 1.0),
+                      decoration: BoxDecoration(
+                        color: scheme.primary,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      names[i],
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -52,36 +52,44 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           ? Center(child: Text(context.l10n.failedToLoad(state.error ?? '')))
           : state.sessions.isEmpty
           ? Center(child: Text(context.l10n.noListeningHistoryYet))
-          : ListView.builder(
-              controller: _scrollController,
-              itemCount: state.sessions.length + (state.hasMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index >= state.sessions.length) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(child: CircularProgressIndicator()),
+          : RefreshIndicator(
+              onRefresh: ref
+                  .read(historyControllerProvider.notifier)
+                  .loadFirstPage,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                controller: _scrollController,
+                itemCount: state.sessions.length + (state.hasMore ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index >= state.sessions.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final session = state.sessions[index];
+                  return ListTile(
+                    title: Text(
+                      session.displayTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      [
+                        if (session.displayAuthor != null)
+                          session.displayAuthor!,
+                        session.date,
+                      ].join(' · '),
+                    ),
+                    trailing: Text(
+                      formatDurationText(context.l10n, session.timeListening),
+                    ),
+                    onTap: () => context.push('/item/${session.libraryItemId}'),
                   );
-                }
-                final session = state.sessions[index];
-                return ListTile(
-                  title: Text(
-                    session.displayTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    [
-                      if (session.displayAuthor != null) session.displayAuthor!,
-                      session.date,
-                    ].join(' · '),
-                  ),
-                  trailing: Text(formatDurationText(context.l10n, session.timeListening)),
-                  onTap: () => context.push('/item/${session.libraryItemId}'),
-                );
-              },
+                },
+              ),
             ),
       bottomNavigationBar: const MiniPlayer(),
     );
   }
-
 }

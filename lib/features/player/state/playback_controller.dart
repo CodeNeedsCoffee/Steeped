@@ -27,9 +27,12 @@ import '../../library/state/library_providers.dart';
 import '../../localmedia/state/local_media_providers.dart';
 import '../../settings/data/app_settings.dart';
 import '../../settings/state/settings_providers.dart';
+import '../../stats/state/stats_providers.dart';
 import '../data/bookmark_repository.dart';
+import '../data/listening_session_repository.dart';
 import '../data/progress_repository.dart';
 import '../data/sleep_timer_logic.dart';
+import 'listening_session_tracker.dart';
 import 'pending_sync_controller.dart';
 
 final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
@@ -200,6 +203,44 @@ class PlaybackController extends Notifier<void> {
   /// costs a failed-attempt-and-retry cycle on the very first resume.
   static const _tokenStaleAfterPause = Duration(minutes: 10);
 
+  /// Reports listening time as server listening sessions (History, daily
+  /// totals, streak). The progress PATCH below only records the position.
+  late final _sessions = ListeningSessionTracker(
+    apiOf: () => ref.read(listeningSessionRepositoryProvider),
+    pendingOf: () => ref.read(pendingListeningSessionRepositoryProvider),
+    hasNetwork: _hasNetwork,
+    activeProfileId: () => _activeProfile,
+    onSessionEnded: _refreshStats,
+    onLiveKeyChanged: (key) =>
+        ref.read(liveSessionKeyProvider.notifier).state = key,
+  );
+
+  void _refreshStats() {
+    ref.invalidate(listeningStatsProvider);
+    ref.invalidate(finishedItemsCountProvider);
+    ref.invalidate(historyControllerProvider);
+  }
+
+  Future<void> _attachSession(LibraryItemDetail item) async {
+    if (item.isLocalOnly) return;
+    final owner = await _ownerProfileOf(item);
+    // Playback may have moved on while the owner was looked up.
+    if (ref.read(currentPlaybackItemProvider)?.downloadId != item.downloadId) {
+      return;
+    }
+    _sessions.attach(
+      SessionItem(
+        libraryItemId: item.id,
+        episodeId: item.episodeId,
+        title: item.title,
+        author: item.authorNames,
+        duration: item.duration ?? 0,
+      ),
+      itemKey: item.downloadId,
+      ownerProfileId: owner,
+    );
+  }
+
   @override
   void build() {
     _playbackStateSub = _handler.playbackState.listen(_onPlaybackStateChanged);
@@ -242,6 +283,20 @@ class PlaybackController extends Notifier<void> {
   }
 
   /// Pauses when the current chapter ends (a no-op without chapter data).
+  /// Whole minutes (rounded up) of listening left in the current chapter at
+  /// the current speed, or null without chapters. Fills the sleep sheet.
+  int? chapterMinutesLeft() {
+    final item = ref.read(currentPlaybackItemProvider);
+    final end = item == null
+        ? null
+        : chapterEndAt(_handler.globalPositionSeconds, item.chapters);
+    if (end == null) return null;
+    final speed = _handler.player.speed;
+    final left =
+        (end - _handler.globalPositionSeconds) / (speed <= 0 ? 1.0 : speed);
+    return (left / 60).ceil().clamp(1, 1 << 20);
+  }
+
   void startSleepTimerAtChapterEnd() {
     final item = ref.read(currentPlaybackItemProvider);
     final end = item == null
@@ -413,6 +468,7 @@ class PlaybackController extends Notifier<void> {
   void _onPlaybackStateChanged(PlaybackState state) {
     if (state.playing == _wasPlaying) return;
     _wasPlaying = state.playing;
+    _sessions.setPlaying(state.playing);
     final item = ref.read(currentPlaybackItemProvider);
     if (item == null) return;
     if (state.playing) {
@@ -429,6 +485,7 @@ class PlaybackController extends Notifier<void> {
       _syncTimer?.cancel();
       _syncTimer = null;
       _sync(item);
+      unawaited(_sessions.tick(_handler.globalPositionSeconds));
     }
   }
 
@@ -659,6 +716,7 @@ class PlaybackController extends Notifier<void> {
   }
 
   void _startSyncTimer(LibraryItemDetail item) {
+    unawaited(_attachSession(item));
     _syncTimer?.cancel();
     _lastSyncedPosition = null;
     _staleSyncTicks = 0;
@@ -733,6 +791,7 @@ class PlaybackController extends Notifier<void> {
   /// mistaken for a stall.
   Future<void> _periodicSync(LibraryItemDetail item) async {
     final position = _handler.globalPositionSeconds;
+    unawaited(_sessions.tick(position));
     if (_lastSyncedPosition != null &&
         (position - _lastSyncedPosition!).abs() < 0.5) {
       _staleSyncTicks++;
@@ -1251,6 +1310,7 @@ class PlaybackController extends Notifier<void> {
     _syncTimer?.cancel();
     _syncTimer = null;
     final currentTime = item.duration ?? _handler.globalPositionSeconds;
+    unawaited(_sessions.end(currentTime));
     if (item.isLocalOnly) {
       await ref
           .read(localMediaRepositoryProvider)
@@ -1485,7 +1545,9 @@ class PlaybackController extends Notifier<void> {
       await _handler.stop();
     }
     if (current != null && current.isLocalOnly && current.id == libraryItemId) {
-      await ref.read(localMediaRepositoryProvider).updateProgress(libraryItemId, 0);
+      await ref
+          .read(localMediaRepositoryProvider)
+          .updateProgress(libraryItemId, 0);
       return;
     }
     await ref
@@ -1502,6 +1564,7 @@ class PlaybackController extends Notifier<void> {
     _syncTimer?.cancel();
     _syncTimer = null;
     if (item != null) await _sync(item);
+    await _sessions.end(_handler.globalPositionSeconds);
     // Clear before stopping: `stop()` resets the player's position, and if
     // the playbackState listener above saw the item still set, it would
     // fire a second, wrong sync at position 0 right after the correct one.

@@ -121,6 +121,8 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
             TextField(
               controller: _urlController,
               autocorrect: false,
+              enableSuggestions: false,
+              autofillHints: const [AutofillHints.url],
               keyboardType: TextInputType.url,
               textInputAction: TextInputAction.done,
               decoration: InputDecoration(

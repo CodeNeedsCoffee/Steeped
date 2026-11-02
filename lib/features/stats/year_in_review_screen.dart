@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'state/stats_providers.dart';
 import '../../l10n/l10n.dart';
@@ -21,7 +22,8 @@ class YearInReviewScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(context.l10n.inReview(year))),
       body: statsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
+        error: (error, _) =>
+            Center(child: Text(context.l10n.failedToLoad(error))),
         data: (stats) {
           final yearSeconds = stats.days.entries
               .where((e) => e.key.startsWith('$year-'))
@@ -29,13 +31,11 @@ class YearInReviewScreen extends ConsumerWidget {
           final yearDaysListened = stats.days.entries
               .where((e) => e.key.startsWith('$year-') && e.value > 0)
               .length;
-          final topItems = stats.itemTimeListening.entries.toList()
-            ..sort((a, b) => b.value.compareTo(a.value));
+          final topItems =
+              ref.watch(yearTopItemsProvider(year)).valueOrNull ?? const [];
 
           if (yearSeconds == 0) {
-            return Center(
-              child: Text(context.l10n.noListeningActivityYetThis),
-            );
+            return Center(child: Text(context.l10n.noListeningActivityYetThis));
           }
 
           return ListView(
@@ -57,24 +57,39 @@ class YearInReviewScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _Metric(label: context.l10n.daysActive, value: '$yearDaysListened'),
+                  _Metric(
+                    label: context.l10n.daysActive,
+                    value: '$yearDaysListened',
+                  ),
                   _Metric(
                     label: context.l10n.longestStreak,
-                    value: context.l10n.streakDaysShort(stats.currentStreakDays),
+                    value: context.l10n.streakDaysShort(
+                      stats.longestStreakInYear(year),
+                    ),
                   ),
                 ],
               ),
               if (topItems.isNotEmpty) ...[
                 const SizedBox(height: 32),
-                Text(context.l10n.topItems, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                ...topItems.take(5).map(
-                  (e) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(context.l10n.itemShortId(e.key.substring(0, 8))),
-                    trailing: Text(_formatDuration(context, e.value)),
-                  ),
+                Text(
+                  context.l10n.topItems,
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
+                const SizedBox(height: 8),
+                ...topItems
+                    .take(5)
+                    .map(
+                      (e) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          e.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Text(_formatDuration(context, e.seconds)),
+                        onTap: () => context.push('/item/${e.libraryItemId}'),
+                      ),
+                    ),
               ],
             ],
           );

@@ -10,15 +10,26 @@ import '../../../models/server_status.dart';
 class AuthRepository {
   const AuthRepository();
 
-  /// Normalizes user input into a base URL: trims whitespace, strips a
-  /// trailing slash, and defaults to `https://` if no scheme was given.
-  static String normalizeServerUrl(String input) {
+  static final _scheme = RegExp(r'^(https?):/{0,2}', caseSensitive: false);
+
+  /// True if [input] starts with `http:` or `https:` (any case, with or
+  /// without the slashes), i.e. the user chose a scheme.
+  static bool hasScheme(String input) => _scheme.hasMatch(input.trim());
+
+  /// Normalizes user input into a base URL: trims whitespace, strips
+  /// trailing slashes, and writes a typed `http://`/`https://` in canonical
+  /// form (any case, slashes optional). Without a scheme it defaults to
+  /// `https://`; `SessionController.checkServer` may then fall back to `http://`.
+  static String normalizeServerUrl(
+    String input, {
+    String defaultScheme = 'https',
+  }) {
     var url = input.trim();
-    if (url.endsWith('/')) url = url.substring(0, url.length - 1);
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://$url';
-    }
-    return url;
+    final match = _scheme.firstMatch(url);
+    final scheme = match?.group(1)?.toLowerCase() ?? defaultScheme;
+    if (match != null) url = url.substring(match.end);
+    url = url.replaceAll(RegExp(r'/+$'), '');
+    return '$scheme://$url';
   }
 
   Dio _clientFor(String serverUrl) {

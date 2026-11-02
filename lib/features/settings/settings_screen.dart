@@ -52,7 +52,9 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.palette_outlined),
             title: Text(context.l10n.appearance),
-            subtitle: Text(skinByName(settings.skinId).id.localized(context.l10n)),
+            subtitle: Text(
+              skinByName(settings.skinId).id.localized(context.l10n),
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/appearance'),
           ),
@@ -105,9 +107,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           SwitchListTile(
             title: Text(context.l10n.allowSeekingOnLockScreen),
-            subtitle: Text(
-              context.l10n.showADraggableProgressBar,
-            ),
+            subtitle: Text(context.l10n.showADraggableProgressBar),
             value: settings.allowSeekOnMediaControls,
             onChanged: (v) =>
                 controller.save(settings.copyWith(allowSeekOnMediaControls: v)),
@@ -116,9 +116,15 @@ class SettingsScreen extends ConsumerWidget {
             title: Text(context.l10n.autoRewindOnResume),
             subtitle: Text(context.l10n.stepBackALittleWhen),
             trailing: DropdownButton<int>(
-              value: const [0, 3, 5, 10, 15, 30].contains(
-                    settings.autoRewindSeconds,
-                  )
+              value:
+                  const [
+                    0,
+                    3,
+                    5,
+                    10,
+                    15,
+                    30,
+                  ].contains(settings.autoRewindSeconds)
                   ? settings.autoRewindSeconds
                   : 0,
               underline: const SizedBox.shrink(),
@@ -129,11 +135,14 @@ class SettingsScreen extends ConsumerWidget {
               },
               items: [
                 for (final v in const [0, 3, 5, 10, 15, 30])
-                  DropdownMenuItem(value: v, child: Text(
+                  DropdownMenuItem(
+                    value: v,
+                    child: Text(
                       v == 0
                           ? context.l10n.autoRewindOff
                           : context.l10n.secondsShort(v),
-                    )),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -147,18 +156,14 @@ class SettingsScreen extends ConsumerWidget {
             ),
           SwitchListTile(
             title: Text(context.l10n.scaleElapsedTimeBySpeed),
-            subtitle: Text(
-              context.l10n.showNowPlayingSTime,
-            ),
+            subtitle: Text(context.l10n.showNowPlayingSTime),
             value: settings.scaleElapsedTimeBySpeed,
             onChanged: (v) =>
                 controller.save(settings.copyWith(scaleElapsedTimeBySpeed: v)),
           ),
           SwitchListTile(
             title: Text(context.l10n.showTracksTab),
-            subtitle: Text(
-              context.l10n.onNowPlayingAddA,
-            ),
+            subtitle: Text(context.l10n.onNowPlayingAddA),
             value: settings.showTracksTab,
             onChanged: (v) =>
                 controller.save(settings.copyWith(showTracksTab: v)),
@@ -170,7 +175,10 @@ class SettingsScreen extends ConsumerWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               runSpacing: 8,
               children: [
-                Text(context.l10n.timeDisplayTooltip, style: TextStyle(fontSize: 16)),
+                Text(
+                  context.l10n.timeDisplayTooltip,
+                  style: TextStyle(fontSize: 16),
+                ),
                 TimeDisplayModeSelector(),
               ],
             ),
@@ -230,9 +238,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           SwitchListTile(
             title: Text(context.l10n.startAutomaticallyAtNight),
-            subtitle: Text(
-              context.l10n.beginTheDefaultTimerWhen,
-            ),
+            subtitle: Text(context.l10n.beginTheDefaultTimerWhen),
             value: settings.sleepAutoWindow,
             onChanged: (v) =>
                 controller.save(settings.copyWith(sleepAutoWindow: v)),
@@ -270,9 +276,7 @@ class SettingsScreen extends ConsumerWidget {
           if (Platform.isAndroid)
             SwitchListTile(
               title: Text(context.l10n.treatMeteredWiFiLike),
-              subtitle: Text(
-                context.l10n.applyTheChoicesAboveTo,
-              ),
+              subtitle: Text(context.l10n.applyTheChoicesAboveTo),
               value: settings.treatMeteredAsCellular,
               onChanged: (v) =>
                   controller.save(settings.copyWith(treatMeteredAsCellular: v)),
@@ -281,18 +285,14 @@ class SettingsScreen extends ConsumerWidget {
           _SectionHeader(context.l10n.sectionLibrary),
           SwitchListTile(
             title: Text(context.l10n.rememberLibrarySection),
-            subtitle: Text(
-              context.l10n.reopenOnBooksAuthorsCollections,
-            ),
+            subtitle: Text(context.l10n.reopenOnBooksAuthorsCollections),
             value: settings.rememberLibrarySection,
             onChanged: (v) =>
                 controller.save(settings.copyWith(rememberLibrarySection: v)),
           ),
           SwitchListTile(
             title: Text(context.l10n.collapseSeries),
-            subtitle: Text(
-              context.l10n.showEachSeriesAsA,
-            ),
+            subtitle: Text(context.l10n.showEachSeriesAsA),
             value: settings.collapseSeries,
             onChanged: (v) =>
                 controller.save(settings.copyWith(collapseSeries: v)),
@@ -301,9 +301,7 @@ class SettingsScreen extends ConsumerWidget {
           _SectionHeader(context.l10n.sectionAccount),
           SwitchListTile(
             title: Text(context.l10n.maskServerAddress),
-            subtitle: Text(
-              context.l10n.hideTheAddressOnThe,
-            ),
+            subtitle: Text(context.l10n.hideTheAddressOnThe),
             value: settings.maskServerAddress,
             onChanged: (v) =>
                 controller.save(settings.copyWith(maskServerAddress: v)),
@@ -320,9 +318,8 @@ class SettingsScreen extends ConsumerWidget {
             title: Text(context.l10n.showOtherServerDownloads),
             subtitle: Text(context.l10n.showOtherServerDownloadsHint),
             value: settings.showOtherServerDownloads,
-            onChanged: (v) => controller.save(
-              settings.copyWith(showOtherServerDownloads: v),
-            ),
+            onChanged: (v) =>
+                controller.save(settings.copyWith(showOtherServerDownloads: v)),
           ),
 
           _SectionHeader(context.l10n.sectionUserInterface),
@@ -354,14 +351,12 @@ class SettingsScreen extends ConsumerWidget {
           ),
           ListTile(
             title: Text(context.l10n.language),
-            subtitle: Text(
-              context.l10n.englishTheOnlyLanguageTranslated,
-            ),
+            subtitle: Text(context.l10n.englishTheOnlyLanguageTranslated),
             trailing: Text(context.l10n.english),
           ),
 
           _SectionHeader(context.l10n.sectionEreader),
-          const EreaderSettingsPanel(),
+          const EreaderSettingsPanel(showTheme: false),
 
           if (Platform.isAndroid) ...[
             _SectionHeader(context.l10n.sectionAndroidAuto),
@@ -398,9 +393,7 @@ class SettingsScreen extends ConsumerWidget {
           const _PendingSyncTile(),
           SwitchListTile(
             title: Text(context.l10n.showSyncFailedIndicator),
-            subtitle: Text(
-              context.l10n.badgeOnThePlayerWhile,
-            ),
+            subtitle: Text(context.l10n.badgeOnThePlayerWhile),
             value: settings.showSyncIndicator,
             onChanged: (v) =>
                 controller.save(settings.copyWith(showSyncIndicator: v)),
@@ -409,9 +402,7 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.folder_outlined),
             title: Text(context.l10n.localMedia),
-            subtitle: Text(
-              context.l10n.importOnDeviceAudioFiles,
-            ),
+            subtitle: Text(context.l10n.importOnDeviceAudioFiles),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/local-media'),
           ),
@@ -490,9 +481,7 @@ class _BatteryOptimizationTileState extends State<_BatteryOptimizationTile>
       leading: const Icon(Icons.battery_charging_full_outlined),
       title: Text(context.l10n.unrestrictedBackgroundPlayback),
       subtitle: Text(
-        granted
-            ? context.l10n.batteryExempt
-            : context.l10n.batteryRecommended,
+        granted ? context.l10n.batteryExempt : context.l10n.batteryRecommended,
       ),
       trailing: granted
           ? Icon(
@@ -522,8 +511,9 @@ class _PendingSyncTile extends ConsumerWidget {
       trailing: count == 0
           ? null
           : TextButton(
-              onPressed: () =>
-                  ref.read(pendingSyncControllerProvider.notifier).flushPending(),
+              onPressed: () => ref
+                  .read(pendingSyncControllerProvider.notifier)
+                  .flushPending(),
               child: Text(context.l10n.retryNow),
             ),
     );
@@ -548,7 +538,10 @@ class _TimeOfDayTile extends StatelessWidget {
       title: Text(title),
       trailing: Text(time.format(context)),
       onTap: () async {
-        final picked = await showTimePicker(context: context, initialTime: time);
+        final picked = await showTimePicker(
+          context: context,
+          initialTime: time,
+        );
         if (picked != null) onChanged(picked.hour * 60 + picked.minute);
       },
     );
@@ -577,9 +570,18 @@ class _CellularPolicyTile extends StatelessWidget {
           if (v != null) onChanged(v);
         },
         items: [
-          DropdownMenuItem(value: CellularPolicy.always, child: Text(context.l10n.always)),
-          DropdownMenuItem(value: CellularPolicy.ask, child: Text(context.l10n.ask)),
-          DropdownMenuItem(value: CellularPolicy.never, child: Text(context.l10n.never)),
+          DropdownMenuItem(
+            value: CellularPolicy.always,
+            child: Text(context.l10n.always),
+          ),
+          DropdownMenuItem(
+            value: CellularPolicy.ask,
+            child: Text(context.l10n.ask),
+          ),
+          DropdownMenuItem(
+            value: CellularPolicy.never,
+            child: Text(context.l10n.never),
+          ),
         ],
       ),
     );

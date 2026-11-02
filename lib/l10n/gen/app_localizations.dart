@@ -898,6 +898,12 @@ abstract class AppLocalizations {
   /// **'Close'**
   String get close;
 
+  /// No description provided for @stopPlayback.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and close player'**
+  String get stopPlayback;
+
   /// No description provided for @queue.
   ///
   /// In en, this message translates to:
@@ -1273,7 +1279,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminNotYetImplemented.
   ///
   /// In en, this message translates to:
-  /// **'Admin — not yet implemented'**
+  /// **'Admin tools will be added later'**
   String get adminNotYetImplemented;
 
   /// No description provided for @jumpBack.
@@ -1477,7 +1483,7 @@ abstract class AppLocalizations {
   /// No description provided for @englishTheOnlyLanguageTranslated.
   ///
   /// In en, this message translates to:
-  /// **'English — the only language translated so far (Phase 9.8); the picker will grow as more ARB translations are added'**
+  /// **'English is the only language for now. More languages will be added later.'**
   String get englishTheOnlyLanguageTranslated;
 
   /// No description provided for @english.
@@ -1618,11 +1624,11 @@ abstract class AppLocalizations {
   /// **'Top Items'**
   String get topItems;
 
-  /// No description provided for @itemShortId.
+  /// No description provided for @byDayOfWeek.
   ///
   /// In en, this message translates to:
-  /// **'Item {id}…'**
-  String itemShortId(String id);
+  /// **'By day of week'**
+  String get byDayOfWeek;
 
   /// No description provided for @markedFinished.
   ///
@@ -2301,36 +2307,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter exact speed'**
   String get enterExactSpeed;
-
-  /// No description provided for @exactDuration.
-  ///
-  /// In en, this message translates to:
-  /// **'Exact duration'**
-  String get exactDuration;
-
-  /// No description provided for @exactDurationHint.
-  ///
-  /// In en, this message translates to:
-  /// **'e.g. 45, 1:30 or 1h30m'**
-  String get exactDurationHint;
-
-  /// No description provided for @hideExactDuration.
-  ///
-  /// In en, this message translates to:
-  /// **'Hide exact duration'**
-  String get hideExactDuration;
-
-  /// No description provided for @enterExactDuration.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter exact duration'**
-  String get enterExactDuration;
-
-  /// No description provided for @sleepInputError.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter between {min} and {max}.'**
-  String sleepInputError(String min, String max);
 
   /// No description provided for @startTimer.
   ///

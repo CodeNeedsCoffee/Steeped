@@ -416,6 +416,7 @@
     }
   },
   "close": "Close",
+  "stopPlayback": "Stop and close player",
   "queue": "Queue",
   "timeDisplayTooltip": "Time display",
   "sleepTimer": "Sleep Timer",
@@ -520,7 +521,7 @@
   "stats": "Stats",
   "history": "History",
   "rssFeeds": "RSS Feeds",
-  "adminNotYetImplemented": "Admin — not yet implemented",
+  "adminNotYetImplemented": "Admin tools will be added later",
   "jumpBack": "Jump back",
   "jumpForward": "Jump forward",
   "allowSeekingOnLockScreen": "Allow seeking on lock-screen controls",
@@ -554,7 +555,7 @@
   "keepScreenAwakeWhilePlaying": "Keep screen awake while playing",
   "lockToPortrait": "Lock to portrait",
   "language": "Language",
-  "englishTheOnlyLanguageTranslated": "English — the only language translated so far (Phase 9.8); the picker will grow as more ARB translations are added",
+  "englishTheOnlyLanguageTranslated": "English is the only language for now. More languages will be added later.",
   "english": "English",
   "itemsPerList": "Items per list",
   "howManyEntriesEachBrowse": "How many entries each browse list shows",
@@ -599,14 +600,7 @@
     }
   },
   "topItems": "Top Items",
-  "itemShortId": "Item {id}…",
-  "@itemShortId": {
-    "placeholders": {
-      "id": {
-        "type": "String"
-      }
-    }
-  },
+  "byDayOfWeek": "By day of week",
   "markedFinished": "Marked finished",
   "markedNotFinished": "Marked not finished",
   "durationHoursMinutes": "{hours}h {minutes}m",
@@ -919,21 +913,6 @@
   },
   "hideExactSpeed": "Hide exact speed",
   "enterExactSpeed": "Enter exact speed",
-  "exactDuration": "Exact duration",
-  "exactDurationHint": "e.g. 45, 1:30 or 1h30m",
-  "hideExactDuration": "Hide exact duration",
-  "enterExactDuration": "Enter exact duration",
-  "sleepInputError": "Enter between {min} and {max}.",
-  "@sleepInputError": {
-    "placeholders": {
-      "min": {
-        "type": "String"
-      },
-      "max": {
-        "type": "String"
-      }
-    }
-  },
   "startTimer": "Start timer",
   "sleepTimerEnded": "Sleep timer ended",
   "chapterEndsIn": "Chapter ends in {time}",

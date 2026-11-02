@@ -518,6 +518,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get close => 'Close';
 
   @override
+  String get stopPlayback => 'Stop and close player';
+
+  @override
   String get queue => 'Queue';
 
   @override
@@ -723,7 +726,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rssFeeds => 'RSS Feeds';
 
   @override
-  String get adminNotYetImplemented => 'Admin — not yet implemented';
+  String get adminNotYetImplemented => 'Admin tools will be added later';
 
   @override
   String get jumpBack => 'Jump back';
@@ -835,7 +838,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get englishTheOnlyLanguageTranslated =>
-      'English — the only language translated so far (Phase 9.8); the picker will grow as more ARB translations are added';
+      'English is the only language for now. More languages will be added later.';
 
   @override
   String get english => 'English';
@@ -919,9 +922,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get topItems => 'Top Items';
 
   @override
-  String itemShortId(String id) {
-    return 'Item $id…';
-  }
+  String get byDayOfWeek => 'By day of week';
 
   @override
   String get markedFinished => 'Marked finished';
@@ -1345,23 +1346,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enterExactSpeed => 'Enter exact speed';
-
-  @override
-  String get exactDuration => 'Exact duration';
-
-  @override
-  String get exactDurationHint => 'e.g. 45, 1:30 or 1h30m';
-
-  @override
-  String get hideExactDuration => 'Hide exact duration';
-
-  @override
-  String get enterExactDuration => 'Enter exact duration';
-
-  @override
-  String sleepInputError(String min, String max) {
-    return 'Enter between $min and $max.';
-  }
 
   @override
   String get startTimer => 'Start timer';
