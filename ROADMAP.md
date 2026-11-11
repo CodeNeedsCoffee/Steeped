@@ -335,8 +335,23 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
     page now trusts the reading position once there is one. The server flag itself stays set (PLAN.md J0).
   - **Fixed (cosmetic):** header and footer bars were 96% opaque and let text show through; now opaque. Rebuild to
     confirm.
-  - Still to check: scrubber, bookmarks, highlights, settings persistence, resume of a position written by the
-    official app (Frankenstein on the demo server).
+  - **Resume of a position written by the official app verified** (Frankenstein, 11%, epub.js CFI).
+  - **Verified on the emulator:** bookmark toggle, persisting across reopening, bookmarks sheet; contents sheet;
+    reading settings panel renders (mode, tap-to-turn, keep screen on, brightness, font, size, spacing, justify,
+    margins, theme).
+  - **Bug found and fixed (highlights never worked):** text drawn by `flutter_html` inside a list cannot be
+    selected by `SelectionArea` (confirmed with a widget test), so the long-press did nothing. Plain-text
+    paragraphs (only text and inline formatting) are now drawn as selectable rich text
+    (`selectable_paragraph.dart`); images, headings, lists and tables still use `Html` and are not selectable.
+    Verified on the emulator: long-press selects a word and shows Copy / Share / Select all / Read aloud /
+    **Highlight**; Highlight paints it and lists it under Highlights.
+  - **Bug found and fixed:** the highlight was painted on the first matching paragraph near the reader's position
+    rather than the one selected. It now uses the on-screen position of the selection. Verify on emulator.
+  - **Bug found and fixed:** the footer/bookmark chapter label stayed on the first chapter ("THE FULL PROJECT
+    GUTENBERG LICENSE") deep into a book; it now comes from the table of contents. Verified ("Chapter 1").
+  - **Known limits:** a word that occurs twice in the same paragraph highlights the first occurrence; headings and
+    paragraphs with images are not selectable; link taps in the new renderer are kept but untested on device.
+  - Still to check: scrubber drag, scroll mode, Light/Black themes, highlights surviving reopen.
 - **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7).
 - **Blocked on the demo server:** PDF reader, comic (CBZ) reader. Needs a library with those formats.
 

@@ -14,6 +14,7 @@ import 'data/ereader_settings.dart';
 import 'data/reading_position.dart';
 import 'ereader_settings_panel.dart';
 import 'reader_chrome.dart';
+import 'selectable_paragraph.dart';
 import 'state/ebook_providers.dart';
 import '../../l10n/l10n.dart';
 
@@ -45,52 +46,70 @@ ChaptersBuilder _safeChapterBuilder({
       int paragraphIndex,
       ExternalLinkPressed onExternalLinkPressed,
     ) {
-  onParagraphs(paragraphs);
-  if (paragraphs.isEmpty) return const SizedBox.shrink();
+      onParagraphs(paragraphs);
+      if (paragraphs.isEmpty) return const SizedBox.shrink();
 
-  final defaultBuilder = builders as EpubViewBuilders<DefaultBuilderOptions>;
-  final options = defaultBuilder.options;
+      final defaultBuilder =
+          builders as EpubViewBuilders<DefaultBuilderOptions>;
+      final options = defaultBuilder.options;
 
-  return Column(
-    children: <Widget>[
-      if (chapterIndex >= 0 && paragraphIndex == 0)
-        builders.chapterDividerBuilder(chapters[chapterIndex]),
-      Html(
-        data: _withHighlights(paragraphs[index].element, highlights()[index]),
-        onLinkTap: (href, attributes, element) =>
-            onExternalLinkPressed(href ?? ''),
-        style: {
-          'html': Style(
-            padding: HtmlPaddings.only(
-              top: (options.paragraphPadding as EdgeInsets?)?.top,
-              right: (options.paragraphPadding as EdgeInsets?)?.right,
-              bottom: (options.paragraphPadding as EdgeInsets?)?.bottom,
-              left: (options.paragraphPadding as EdgeInsets?)?.left,
-            ),
-          ).merge(Style.fromTextStyle(options.textStyle)),
-          if (justify) 'p': Style(textAlign: TextAlign.justify),
-          'mark': Style(
-            backgroundColor: const Color(0x66FFC83D),
-            color: options.textStyle.color,
-          ),
-        },
-        extensions: [
-          TagExtension(
-            tagsToExtend: {'img'},
-            builder: (imageContext) {
-              final bytes = _resolveImageBytes(
-                document,
-                imageContext.attributes['src'],
-              );
-              if (bytes == null) return const SizedBox.shrink();
-              return Image(image: MemoryImage(bytes));
-            },
-          ),
+      return Column(
+        children: <Widget>[
+          if (chapterIndex >= 0 && paragraphIndex == 0)
+            builders.chapterDividerBuilder(chapters[chapterIndex]),
+          isSelectableParagraph(paragraphs[index].element)
+              ? SelectableParagraph(
+                  html: _withHighlights(
+                    paragraphs[index].element,
+                    highlights()[index],
+                  ),
+                  style: options.textStyle,
+                  padding:
+                      (options.paragraphPadding as EdgeInsets?) ??
+                      EdgeInsets.zero,
+                  justify: justify,
+                  onLink: onExternalLinkPressed,
+                )
+              : Html(
+                  data: _withHighlights(
+                    paragraphs[index].element,
+                    highlights()[index],
+                  ),
+                  onLinkTap: (href, attributes, element) =>
+                      onExternalLinkPressed(href ?? ''),
+                  style: {
+                    'html': Style(
+                      padding: HtmlPaddings.only(
+                        top: (options.paragraphPadding as EdgeInsets?)?.top,
+                        right: (options.paragraphPadding as EdgeInsets?)?.right,
+                        bottom:
+                            (options.paragraphPadding as EdgeInsets?)?.bottom,
+                        left: (options.paragraphPadding as EdgeInsets?)?.left,
+                      ),
+                    ).merge(Style.fromTextStyle(options.textStyle)),
+                    if (justify) 'p': Style(textAlign: TextAlign.justify),
+                    'mark': Style(
+                      backgroundColor: const Color(0x66FFC83D),
+                      color: options.textStyle.color,
+                    ),
+                  },
+                  extensions: [
+                    TagExtension(
+                      tagsToExtend: {'img'},
+                      builder: (imageContext) {
+                        final bytes = _resolveImageBytes(
+                          document,
+                          imageContext.attributes['src'],
+                        );
+                        if (bytes == null) return const SizedBox.shrink();
+                        return Image(image: MemoryImage(bytes));
+                      },
+                    ),
+                  ],
+                ),
         ],
-      ),
-    ],
-  );
-};
+      );
+    };
 
 /// Wraps each highlighted snippet in `<mark>` inside a copy of the paragraph.
 /// Best effort: a snippet that spans inline tags (bold, links) inside one
@@ -104,8 +123,7 @@ String _withHighlights(dom.Element element, List<String>? snippets) {
         if (child is dom.Text) {
           final at = child.text.indexOf(snippet);
           if (at < 0) continue;
-          final mark = dom.Element.tag('mark')
-            ..append(dom.Text(snippet));
+          final mark = dom.Element.tag('mark')..append(dom.Text(snippet));
           final after = child.text.substring(at + snippet.length);
           final before = child.text.substring(0, at);
           final parent = child.parent!;
@@ -249,9 +267,10 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     final v = c?.currentValue;
     if (c == null || v == null) return _fraction;
     final pos = v.position;
-    final within = (-pos.itemLeadingEdge /
-            (pos.itemTrailingEdge - pos.itemLeadingEdge).clamp(0.001, 1e9))
-        .clamp(0.0, 1.0);
+    final within =
+        (-pos.itemLeadingEdge /
+                (pos.itemTrailingEdge - pos.itemLeadingEdge).clamp(0.001, 1e9))
+            .clamp(0.0, 1.0);
     return ((pos.index + within) / _estimatedTotal(c)).clamp(0.0, 1.0);
   }
 
@@ -271,13 +290,26 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     final v = _controller?.currentValue;
     if (v == null || !mounted) return;
     _checkResume(_controller!, v.position.index);
-    final title = v.chapter?.Title?.trim();
+    // epub_view's own `chapter` can stay on the first spine item (it showed the
+    // licence heading deep into a book), so name the chapter from the contents.
+    final title =
+        _titleAt(_controller!, v.position.index) ?? v.chapter?.Title?.trim();
     setState(() {
       _fraction = _currentFraction();
       _chapterLabel = (title != null && title.isNotEmpty)
           ? title
           : context.l10n.chapterNumber(v.chapterNumber);
     });
+  }
+
+  String? _titleAt(EpubController c, int index) {
+    String? title;
+    for (final e in c.tableOfContents()) {
+      if (e.startIndex > index) break;
+      final t = e.title?.trim();
+      if (t != null && t.isNotEmpty) title = t;
+    }
+    return title;
   }
 
   void _jumpToFraction(double f) {
@@ -351,7 +383,10 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     final existing = _bookmarks.where((b) => b.location == cfi).toList();
     setState(() {
       if (existing.isNotEmpty) {
-        _bookmarks = [for (final b in _bookmarks) if (b.location != cfi) b];
+        _bookmarks = [
+          for (final b in _bookmarks)
+            if (b.location != cfi) b,
+        ];
       } else {
         _bookmarks = [
           ..._bookmarks,
@@ -367,7 +402,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     await repo.saveBookmarks(widget.itemId, _bookmarks);
   }
 
-  Future<void> _addHighlight() async {
+  Future<void> _addHighlight([double? anchorY]) async {
     final c = _controller;
     final v = c?.currentValue;
     if (c == null || v == null || _paragraphs.isEmpty) return;
@@ -378,14 +413,23 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     for (final raw in _selectedText.split('\n')) {
       final text = raw.trim();
       if (text.length < 2) continue;
+      final onScreen = anchorY == null
+          ? null
+          : paragraphIndexAtY(anchorY, text);
+      if (onScreen != null) {
+        added.add(
+          EbookHighlight(
+            paragraph: onScreen,
+            text: text,
+            createdAt: DateTime.now(),
+          ),
+        );
+        continue;
+      }
       for (var i = from; i <= to; i++) {
         if (_paragraphs[i].element.text.contains(text)) {
           added.add(
-            EbookHighlight(
-              paragraph: i,
-              text: text,
-              createdAt: DateTime.now(),
-            ),
+            EbookHighlight(paragraph: i, text: text, createdAt: DateTime.now()),
           );
           break;
         }
@@ -409,7 +453,8 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   @override
   Widget build(BuildContext context) {
     final settings =
-        ref.watch(ereaderSettingsProvider).valueOrNull ?? const EreaderSettings();
+        ref.watch(ereaderSettingsProvider).valueOrNull ??
+        const EreaderSettings();
     final paged = settings.epubFlow == ReadingFlow.paged;
     final controller = _controller;
 
@@ -454,7 +499,12 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                   ContextMenuButtonItem(
                     label: context.l10n.highlight,
                     onPressed: () {
-                      _addHighlight();
+                      final a = state.contextMenuAnchors;
+                      _addHighlight(
+                        (a.primaryAnchor.dy +
+                                (a.secondaryAnchor?.dy ?? a.primaryAnchor.dy)) /
+                            2,
+                      );
                       state.hideToolbar();
                     },
                   ),
@@ -499,9 +549,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       actions: [
         if (controller != null) ...[
           IconButton(
-            icon: Icon(
-              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-            ),
+            icon: Icon(_isBookmarked ? Icons.bookmark : Icons.bookmark_border),
             tooltip: context.l10n.bookmarkThisPage,
             onPressed: _toggleBookmark,
           ),
@@ -539,7 +587,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                 left: chapter.type == 'subchapter' ? 40 : 16,
                 right: 16,
               ),
-              title: Text(chapter.title ?? context.l10n.chapterNumber(index + 1)),
+              title: Text(
+                chapter.title ?? context.l10n.chapterNumber(index + 1),
+              ),
               onTap: () {
                 controller.jumpTo(index: chapter.startIndex);
                 Navigator.pop(context);
@@ -617,7 +667,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                               children: [
                                 for (final h in _highlights)
                                   ListTile(
-                                    leading: const Icon(Icons.format_color_fill),
+                                    leading: const Icon(
+                                      Icons.format_color_fill,
+                                    ),
                                     title: Text(
                                       h.text,
                                       maxLines: 3,
@@ -663,8 +715,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) =>
-          const SingleChildScrollView(child: EreaderSettingsPanel(format: EreaderFormat.epub)),
+      builder: (context) => const SingleChildScrollView(
+        child: EreaderSettingsPanel(format: EreaderFormat.epub),
+      ),
     );
   }
 }
