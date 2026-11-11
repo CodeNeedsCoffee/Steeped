@@ -310,13 +310,16 @@ class _ItemDetailBody extends ConsumerWidget {
   /// Computing the fraction client-side keeps this display consistent with
   /// what's actually used to resume playback, instead of silently drifting
   /// stale relative to it.
-  /// Whole-percent ebook progress, 0 when unstarted. A finished book reads as
-  /// 100 rather than wherever the last page-turn left the fraction.
+  /// Whole-percent ebook progress, 0 when unstarted. A book marked finished with
+  /// no reading position reads as 100.
   int _ebookPercent(LibraryItemDetail item) {
     final p = item.progress;
     if (p == null) return 0;
-    if (p.isFinished) return 100;
-    return ((p.ebookProgress ?? 0) * 100).round().clamp(0, 100);
+    final fraction = p.ebookProgress ?? 0;
+    // A finished book that is being re-read keeps isFinished on the server, so
+    // trust the reading position once there is one.
+    if (p.isFinished && fraction == 0) return 100;
+    return (fraction * 100).round().clamp(0, 100);
   }
 
   double _displayProgressFraction(LibraryItemDetail item) {

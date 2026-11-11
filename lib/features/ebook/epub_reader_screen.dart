@@ -179,6 +179,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   List<EbookHighlight> _highlights = [];
   String _selectedText = '';
   double _fraction = 0;
+  // Where the book was meant to open; used when the saved CFI does not resolve.
+  double _startFraction = 0;
+  bool _resumeChecked = false;
   String _chapterLabel = '';
 
   @override
@@ -217,6 +220,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
         _controller = controller;
         _downloading = false;
         _fraction = start?.fraction ?? 0;
+        _startFraction = start?.fraction ?? 0;
       });
       _syncTimer = Timer.periodic(const Duration(seconds: 20), (_) => _sync());
     } catch (e) {
@@ -251,9 +255,22 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     return ((pos.index + within) / _estimatedTotal(c)).clamp(0.0, 1.0);
   }
 
+  /// epub_view writes the first spine item as `/6/0[...]` and cannot read that
+  /// back, so a saved CFI can silently fail and the book opens at the top. If
+  /// we were meant to open further in but landed on the first paragraph, jump
+  /// by the saved fraction instead.
+  void _checkResume(EpubController c, int index) {
+    if (_resumeChecked || _paragraphs.isEmpty) return;
+    _resumeChecked = true;
+    if (_startFraction > 0.003 && index == 0) {
+      c.jumpTo(index: (_startFraction * _paragraphs.length).floor());
+    }
+  }
+
   void _onMoved() {
     final v = _controller?.currentValue;
     if (v == null || !mounted) return;
+    _checkResume(_controller!, v.position.index);
     final title = v.chapter?.Title?.trim();
     setState(() {
       _fraction = _currentFraction();

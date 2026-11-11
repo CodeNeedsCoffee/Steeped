@@ -270,7 +270,7 @@ class _Bar extends StatelessWidget {
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 180),
         opacity: visible ? 1 : 0,
-        child: ColoredBox(color: color.withValues(alpha: 0.96), child: child),
+        child: ColoredBox(color: color, child: child),
       ),
     );
   }

@@ -324,9 +324,20 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
   - **Bug found and fixed:** progress jumped to 100% after one page turn because the book length was guessed from the
     table of contents. It now uses the real paragraph count. Verified: 0% after one turn at the start.
   - **Fixed:** a finished book's button said "Continue reading (100%)"; it now says "Read again". Verified.
-  - Still to check: scrubber, bookmarks, highlights, settings persistence, resume, server sync (V4).
-- **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7); page text shows faintly
-  behind the top bar when the book opens.
+  - **V4 sync and resume verified on the emulator (EPUB):** the position is sent to the server every 20 s and on
+    leaving the reader (the item page's progress bar changed after reading). Note the demo server gives every login
+    its own guest account, so check server state from the app, not from a separate curl login.
+  - **Bug found and fixed:** reopening could land on the first screen. `epub_view` writes the first spine item as
+    `/6/0[...]` and cannot parse it back (it swallows the error), so the saved position was ignored. The reader now
+    falls back to the saved fraction when the position does not land. Verified: left at ~1%, reopened in the same
+    part of the book (approximate: it resumes at the saved paragraph, not the exact scroll offset).
+  - **Fixed:** a re-read of a finished book showed "Read again"/100% because the server keeps `isFinished`; the item
+    page now trusts the reading position once there is one. The server flag itself stays set (PLAN.md J0).
+  - **Fixed (cosmetic):** header and footer bars were 96% opaque and let text show through; now opaque. Rebuild to
+    confirm.
+  - Still to check: scrubber, bookmarks, highlights, settings persistence, resume of a position written by the
+    official app (Frankenstein on the demo server).
+- **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7).
 - **Blocked on the demo server:** PDF reader, comic (CBZ) reader. Needs a library with those formats.
 
 ## To do
