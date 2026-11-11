@@ -4,14 +4,16 @@ import 'dart:typed_data';
 // ignore: implementation_imports
 import 'package:epub_view/src/data/models/paragraph.dart' show Paragraph;
 import 'package:epub_view/epub_view.dart' hide Image;
+import 'package:html/dom.dart' as dom;
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../library/state/library_providers.dart';
-import '../player/state/playback_controller.dart' show progressRepositoryProvider;
 import 'data/ereader_settings.dart';
+import 'data/reading_position.dart';
 import 'ereader_settings_panel.dart';
+import 'reader_chrome.dart';
 import 'state/ebook_providers.dart';
 import '../../l10n/l10n.dart';
 
@@ -27,17 +29,23 @@ import '../../l10n/l10n.dart';
 /// `_EpubViewState._chapterBuilder` (see its source for the original) with
 /// only the image lookup hardened to try a few path variants and fall back
 /// to an empty box instead of crashing the whole chapter.
-Widget _safeChapterBuilder(
-  BuildContext context,
-  EpubViewBuilders builders,
-  EpubBook document,
-  List<EpubChapter> chapters,
-  List<Paragraph> paragraphs,
-  int index,
-  int chapterIndex,
-  int paragraphIndex,
-  ExternalLinkPressed onExternalLinkPressed,
-) {
+ChaptersBuilder _safeChapterBuilder({
+  required bool justify,
+  required Map<int, List<String>> Function() highlights,
+  required void Function(List<Paragraph>) onParagraphs,
+}) =>
+    (
+      BuildContext context,
+      EpubViewBuilders builders,
+      EpubBook document,
+      List<EpubChapter> chapters,
+      List<Paragraph> paragraphs,
+      int index,
+      int chapterIndex,
+      int paragraphIndex,
+      ExternalLinkPressed onExternalLinkPressed,
+    ) {
+  onParagraphs(paragraphs);
   if (paragraphs.isEmpty) return const SizedBox.shrink();
 
   final defaultBuilder = builders as EpubViewBuilders<DefaultBuilderOptions>;
@@ -48,7 +56,7 @@ Widget _safeChapterBuilder(
       if (chapterIndex >= 0 && paragraphIndex == 0)
         builders.chapterDividerBuilder(chapters[chapterIndex]),
       Html(
-        data: paragraphs[index].element.outerHtml,
+        data: _withHighlights(paragraphs[index].element, highlights()[index]),
         onLinkTap: (href, attributes, element) =>
             onExternalLinkPressed(href ?? ''),
         style: {
@@ -60,6 +68,11 @@ Widget _safeChapterBuilder(
               left: (options.paragraphPadding as EdgeInsets?)?.left,
             ),
           ).merge(Style.fromTextStyle(options.textStyle)),
+          if (justify) 'p': Style(textAlign: TextAlign.justify),
+          'mark': Style(
+            backgroundColor: const Color(0x66FFC83D),
+            color: options.textStyle.color,
+          ),
         },
         extensions: [
           TagExtension(
@@ -77,6 +90,43 @@ Widget _safeChapterBuilder(
       ),
     ],
   );
+};
+
+/// Wraps each highlighted snippet in `<mark>` inside a copy of the paragraph.
+/// Best effort: a snippet that spans inline tags (bold, links) inside one
+/// paragraph isn't found as a single text run and simply isn't painted.
+String _withHighlights(dom.Element element, List<String>? snippets) {
+  if (snippets == null || snippets.isEmpty) return element.outerHtml;
+  final copy = element.clone(true);
+  for (final snippet in snippets) {
+    void walk(dom.Node node) {
+      for (final child in List<dom.Node>.of(node.nodes)) {
+        if (child is dom.Text) {
+          final at = child.text.indexOf(snippet);
+          if (at < 0) continue;
+          final mark = dom.Element.tag('mark')
+            ..append(dom.Text(snippet));
+          final after = child.text.substring(at + snippet.length);
+          final before = child.text.substring(0, at);
+          final parent = child.parent!;
+          final i = parent.nodes.indexOf(child);
+          parent.nodes
+            ..removeAt(i)
+            ..insertAll(i, [
+              if (before.isNotEmpty) dom.Text(before),
+              mark,
+              if (after.isNotEmpty) dom.Text(after),
+            ]);
+          return;
+        } else {
+          walk(child);
+        }
+      }
+    }
+
+    walk(copy);
+  }
+  return copy.outerHtml;
 }
 
 Uint8List? _resolveImageBytes(EpubBook document, String? src) {
@@ -100,7 +150,12 @@ Uint8List? _resolveImageBytes(EpubBook document, String? src) {
 }
 
 /// PLAN.md Phase 8.1/8.2: EPUB reader with table of contents, reading
-/// position sync (CFI-based), and ereader settings (font/theme/spacing).
+/// position sync, ereader settings, and (device-local) bookmarks/highlights.
+///
+/// Paged mode: [EpubView] only knows how to scroll, so "pages" are one
+/// viewport-height jumps of its underlying list (edge taps and swipes), with
+/// the list's own drag-scrolling switched off. A line can straddle a page
+/// boundary; a small overlap keeps it readable.
 class EpubReaderScreen extends ConsumerStatefulWidget {
   const EpubReaderScreen({required this.itemId, super.key});
 
@@ -116,7 +171,15 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   bool _downloading = true;
   String? _error;
   Timer? _syncTimer;
-  int _totalChapters = 1;
+  String _title = '';
+  final _bodyKey = GlobalKey();
+
+  List<Paragraph> _paragraphs = const [];
+  List<EbookBookmark> _bookmarks = [];
+  List<EbookHighlight> _highlights = [];
+  String _selectedText = '';
+  double _fraction = 0;
+  String _chapterLabel = '';
 
   @override
   void initState() {
@@ -126,128 +189,320 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
 
   Future<void> _load() async {
     final item = await ref.read(itemDetailProvider(widget.itemId).future);
+    _title = item.title;
     try {
-      final file = await ref
-          .read(ebookRepositoryProvider)
-          .ensureLocalFile(
-            item,
-            onProgress: (p) {
-              if (mounted) setState(() => _downloadProgress = p);
-            },
-          );
+      final repo = ref.read(ebookRepositoryProvider);
+      final file = await repo.ensureLocalFile(
+        item,
+        onProgress: (p) {
+          if (mounted) setState(() => _downloadProgress = p);
+        },
+      );
+      final start = await resolveStartPosition(
+        ref,
+        widget.itemId,
+        fromDetail: item.progress,
+      );
+      _bookmarks = await repo.loadBookmarks(widget.itemId);
+      _highlights = await repo.loadHighlights(widget.itemId);
       if (!mounted) return;
+      final cfi = start?.location;
       final controller = EpubController(
         document: EpubDocument.openFile(file),
-        epubCfi: item.progress?.ebookLocation,
+        // The official apps write epub.js CFIs; only hand ours a real CFI.
+        epubCfi: (cfi != null && cfi.startsWith('epubcfi')) ? cfi : null,
       );
-      controller.loadingState.addListener(() {
-        if (controller.loadingState.value == EpubViewLoadingState.success) {
-          _totalChapters = controller.tableOfContents().length.clamp(
-            1,
-            1 << 30,
-          );
-        }
-      });
+      controller.currentValueListenable.addListener(_onMoved);
       setState(() {
         _controller = controller;
         _downloading = false;
+        _fraction = start?.fraction ?? 0;
       });
       _syncTimer = Timer.periodic(const Duration(seconds: 20), (_) => _sync());
     } catch (e) {
+      // A cached copy that won't open may be truncated: drop it so retrying
+      // downloads a fresh one.
+      await ref.read(ebookRepositoryProvider).evict(item);
       if (mounted) setState(() => _error = e.toString());
     }
   }
 
+  /// Rough book length in paragraphs: the last chapter start plus an average
+  /// chapter. epub_view exposes no total, and the position math only needs to
+  /// be consistent with itself (it round-trips through [_jumpToFraction]).
+  int _estimatedTotal(EpubController c) {
+    final toc = c.tableOfContents();
+    if (toc.isEmpty) return 1;
+    final last = toc.last.startIndex;
+    final avg = toc.length > 1 ? last / (toc.length - 1) : 100;
+    return (last + avg).round().clamp(1, 1 << 30);
+  }
+
+  double _currentFraction() {
+    final c = _controller;
+    final v = c?.currentValue;
+    if (c == null || v == null) return _fraction;
+    final pos = v.position;
+    final within = (-pos.itemLeadingEdge /
+            (pos.itemTrailingEdge - pos.itemLeadingEdge).clamp(0.001, 1e9))
+        .clamp(0.0, 1.0);
+    return ((pos.index + within) / _estimatedTotal(c)).clamp(0.0, 1.0);
+  }
+
+  void _onMoved() {
+    final v = _controller?.currentValue;
+    if (v == null || !mounted) return;
+    final title = v.chapter?.Title?.trim();
+    setState(() {
+      _fraction = _currentFraction();
+      _chapterLabel = (title != null && title.isNotEmpty)
+          ? title
+          : context.l10n.chapterNumber(v.chapterNumber);
+    });
+  }
+
+  void _jumpToFraction(double f) {
+    final c = _controller;
+    if (c == null) return;
+    c.jumpTo(index: (f * _estimatedTotal(c)).floor());
+  }
+
   void _sync({bool isFinished = false}) {
     final controller = _controller;
-    final value = controller?.currentValue;
     final cfi = controller?.generateEpubCfi();
-    if (controller == null || value == null || cfi == null) return;
-    final fraction = ((value.chapterNumber + (value.progress / 100)) /
-            _totalChapters)
-        .clamp(0.0, 1.0);
-    ref
-        .read(progressRepositoryProvider)
-        .updateEbookProgress(
-          libraryItemId: widget.itemId,
-          ebookLocation: cfi,
-          ebookProgress: fraction,
-          isFinished: isFinished ? true : null,
-        )
-        .catchError((_) {
-          // Best-effort — matches the audio sync's silent-retry policy (5.9).
-        });
+    if (controller == null || controller.currentValue == null || cfi == null) {
+      return;
+    }
+    final fraction = _currentFraction();
+    saveReadingPosition(
+      ref,
+      itemId: widget.itemId,
+      location: cfi,
+      fraction: fraction,
+      isFinished: (isFinished || fraction >= 0.995) ? true : null,
+    );
   }
 
   @override
   void dispose() {
     _syncTimer?.cancel();
     _sync();
+    _controller?.currentValueListenable.removeListener(_onMoved);
     _controller?.dispose();
     super.dispose();
   }
 
+  ScrollPosition? _scrollPosition() {
+    final ctx = _bodyKey.currentContext;
+    if (ctx == null) return null;
+    ScrollPosition? found;
+    void visit(Element e) {
+      if (found != null) return;
+      if (e is StatefulElement && e.state is ScrollableState) {
+        found = (e.state as ScrollableState).position;
+        return;
+      }
+      e.visitChildren(visit);
+    }
+
+    (ctx as Element).visitChildren(visit);
+    return found;
+  }
+
+  void _turn(int direction) {
+    final pos = _scrollPosition();
+    if (pos == null) return;
+    // 92% of a viewport so the last line of a page repeats on the next.
+    pos.animateTo(
+      pos.pixels + direction * pos.viewportDimension * 0.92,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  bool get _isBookmarked {
+    final cfi = _controller?.generateEpubCfi();
+    return cfi != null && _bookmarks.any((b) => b.location == cfi);
+  }
+
+  Future<void> _toggleBookmark() async {
+    final cfi = _controller?.generateEpubCfi();
+    if (cfi == null) return;
+    final repo = ref.read(ebookRepositoryProvider);
+    final existing = _bookmarks.where((b) => b.location == cfi).toList();
+    setState(() {
+      if (existing.isNotEmpty) {
+        _bookmarks = [for (final b in _bookmarks) if (b.location != cfi) b];
+      } else {
+        _bookmarks = [
+          ..._bookmarks,
+          EbookBookmark(
+            location: cfi,
+            fraction: _fraction,
+            label: _chapterLabel,
+            createdAt: DateTime.now(),
+          ),
+        ];
+      }
+    });
+    await repo.saveBookmarks(widget.itemId, _bookmarks);
+  }
+
+  Future<void> _addHighlight() async {
+    final c = _controller;
+    final v = c?.currentValue;
+    if (c == null || v == null || _paragraphs.isEmpty) return;
+    final added = <EbookHighlight>[];
+    final from = (v.position.index - 3).clamp(0, _paragraphs.length - 1);
+    final to = (v.position.index + 25).clamp(0, _paragraphs.length - 1);
+    // A selection spanning paragraphs arrives as several lines of text.
+    for (final raw in _selectedText.split('\n')) {
+      final text = raw.trim();
+      if (text.length < 2) continue;
+      for (var i = from; i <= to; i++) {
+        if (_paragraphs[i].element.text.contains(text)) {
+          added.add(
+            EbookHighlight(
+              paragraph: i,
+              text: text,
+              createdAt: DateTime.now(),
+            ),
+          );
+          break;
+        }
+      }
+    }
+    if (added.isEmpty) return;
+    setState(() => _highlights = [..._highlights, ...added]);
+    await ref
+        .read(ebookRepositoryProvider)
+        .saveHighlights(widget.itemId, _highlights);
+  }
+
+  Map<int, List<String>> _highlightsByParagraph() {
+    final map = <int, List<String>>{};
+    for (final h in _highlights) {
+      (map[h.paragraph] ??= []).add(h.text);
+    }
+    return map;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final settingsAsync = ref.watch(ereaderSettingsProvider);
-    final settings = settingsAsync.valueOrNull ?? const EreaderSettings();
+    final settings =
+        ref.watch(ereaderSettingsProvider).valueOrNull ?? const EreaderSettings();
+    final paged = settings.epubFlow == ReadingFlow.paged;
+    final controller = _controller;
 
-    return Scaffold(
-      backgroundColor: settings.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: settings.backgroundColor,
-        foregroundColor: settings.textColor,
-        actions: [
-          if (_controller != null)
-            IconButton(
-              icon: const Icon(Icons.list),
-              tooltip: context.l10n.tableOfContents,
-              onPressed: () => _showToc(context, _controller!),
-            ),
-          IconButton(
-            icon: const Icon(Icons.text_fields),
-            tooltip: context.l10n.readingSettingsTooltip,
-            onPressed: () => _showSettings(context),
+    Widget body;
+    if (_error != null) {
+      body = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            context.l10n.failedToLoad(_error ?? ''),
+            style: TextStyle(color: settings.textColor),
           ),
-        ],
-      ),
-      body: _error != null
-          ? Center(
-              child: Text(
-                context.l10n.failedToLoad(_error ?? ''),
-                style: TextStyle(color: settings.textColor),
-              ),
-            )
-          : _downloading
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(
-                    value: _downloadProgress > 0 ? _downloadProgress : null,
-                    color: settings.textColor,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    context.l10n.downloadingBook,
-                    style: TextStyle(color: settings.textColor),
+        ),
+      );
+    } else if (_downloading || controller == null) {
+      body = Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(
+              value: _downloadProgress > 0 ? _downloadProgress : null,
+              color: settings.textColor,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              context.l10n.downloadingBook,
+              style: TextStyle(color: settings.textColor),
+            ),
+          ],
+        ),
+      );
+    } else {
+      body = ScrollConfiguration(
+        behavior: _PagedBehavior(paged: paged),
+        child: SelectionArea(
+          onSelectionChanged: (c) => _selectedText = c?.plainText ?? '',
+          contextMenuBuilder: (context, state) =>
+              AdaptiveTextSelectionToolbar.buttonItems(
+                anchors: state.contextMenuAnchors,
+                buttonItems: [
+                  ...state.contextMenuButtonItems,
+                  ContextMenuButtonItem(
+                    label: context.l10n.highlight,
+                    onPressed: () {
+                      _addHighlight();
+                      state.hideToolbar();
+                    },
                   ),
                 ],
               ),
-            )
-          : EpubView(
-              controller: _controller!,
+          child: KeyedSubtree(
+            key: _bodyKey,
+            child: EpubView(
+              controller: controller,
               builders: EpubViewBuilders<DefaultBuilderOptions>(
                 options: DefaultBuilderOptions(
                   textStyle: settings.textStyle(),
-                  paragraphPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                  paragraphPadding: EdgeInsets.symmetric(
+                    horizontal: settings.margin,
                     vertical: 4,
                   ),
                 ),
-                chapterBuilder: _safeChapterBuilder,
+                chapterBuilder: _safeChapterBuilder(
+                  justify: settings.justify,
+                  highlights: _highlightsByParagraph,
+                  onParagraphs: (p) => _paragraphs = p,
+                ),
               ),
             ),
+          ),
+        ),
+      );
+    }
+
+    return ReaderChrome(
+      settings: settings,
+      title: _title,
+      body: body,
+      // Leaves room under the bars the first time; tapping the middle hides
+      // them and the text keeps its place.
+      onPrev: paged ? () => _turn(-1) : null,
+      onNext: paged ? () => _turn(1) : null,
+      blockBodyGestures: false,
+      progress: controller == null ? null : _fraction,
+      onScrub: controller == null ? null : _jumpToFraction,
+      footerLabel: _chapterLabel,
+      actions: [
+        if (controller != null) ...[
+          IconButton(
+            icon: Icon(
+              _isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            ),
+            tooltip: context.l10n.bookmarkThisPage,
+            onPressed: _toggleBookmark,
+          ),
+          IconButton(
+            icon: const Icon(Icons.list),
+            tooltip: context.l10n.tableOfContents,
+            onPressed: () => _showToc(context, controller),
+          ),
+          IconButton(
+            icon: const Icon(Icons.collections_bookmark_outlined),
+            tooltip: context.l10n.bookmarksAndHighlights,
+            onPressed: () => _showNotes(context, controller),
+          ),
+        ],
+        IconButton(
+          icon: const Icon(Icons.text_fields),
+          tooltip: context.l10n.readingSettingsTooltip,
+          onPressed: () => _showSettings(context),
+        ),
+      ],
     );
   }
 
@@ -261,9 +516,13 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           itemBuilder: (context, index) {
             final chapter = toc[index];
             return ListTile(
+              contentPadding: EdgeInsets.only(
+                left: chapter.type == 'subchapter' ? 40 : 16,
+                right: 16,
+              ),
               title: Text(chapter.title ?? context.l10n.chapterNumber(index + 1)),
               onTap: () {
-                controller.scrollTo(index: chapter.startIndex);
+                controller.jumpTo(index: chapter.startIndex);
                 Navigator.pop(context);
               },
             );
@@ -273,10 +532,133 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     );
   }
 
+  void _showNotes(BuildContext context, EpubController controller) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheet) => DefaultTabController(
+          length: 2,
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.6,
+            child: Column(
+              children: [
+                TabBar(
+                  tabs: [
+                    Tab(text: context.l10n.bookmarks),
+                    Tab(text: context.l10n.highlights),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _bookmarks.isEmpty
+                          ? Center(child: Text(context.l10n.noBookmarksYet))
+                          : ListView(
+                              children: [
+                                for (final b in _bookmarks)
+                                  ListTile(
+                                    leading: const Icon(Icons.bookmark),
+                                    title: Text(
+                                      b.label.isEmpty
+                                          ? '${(b.fraction * 100).round()}%'
+                                          : b.label,
+                                    ),
+                                    subtitle: Text(
+                                      '${(b.fraction * 100).round()}%',
+                                    ),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.delete_outline),
+                                      onPressed: () async {
+                                        setState(
+                                          () => _bookmarks = [
+                                            for (final x in _bookmarks)
+                                              if (x != b) x,
+                                          ],
+                                        );
+                                        setSheet(() {});
+                                        await ref
+                                            .read(ebookRepositoryProvider)
+                                            .saveBookmarks(
+                                              widget.itemId,
+                                              _bookmarks,
+                                            );
+                                      },
+                                    ),
+                                    onTap: () {
+                                      controller.gotoEpubCfi(b.location);
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                              ],
+                            ),
+                      _highlights.isEmpty
+                          ? Center(child: Text(context.l10n.noHighlightsYet))
+                          : ListView(
+                              children: [
+                                for (final h in _highlights)
+                                  ListTile(
+                                    leading: const Icon(Icons.format_color_fill),
+                                    title: Text(
+                                      h.text,
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.delete_outline),
+                                      onPressed: () async {
+                                        setState(
+                                          () => _highlights = [
+                                            for (final x in _highlights)
+                                              if (x != h) x,
+                                          ],
+                                        );
+                                        setSheet(() {});
+                                        await ref
+                                            .read(ebookRepositoryProvider)
+                                            .saveHighlights(
+                                              widget.itemId,
+                                              _highlights,
+                                            );
+                                      },
+                                    ),
+                                    onTap: () {
+                                      controller.jumpTo(index: h.paragraph);
+                                      Navigator.pop(context);
+                                    },
+                                  ),
+                              ],
+                            ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showSettings(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => const EreaderSettingsPanel(),
+      isScrollControlled: true,
+      builder: (context) =>
+          const SingleChildScrollView(child: EreaderSettingsPanel(format: EreaderFormat.epub)),
     );
   }
+}
+
+/// Turns off finger-scrolling for paged mode; programmatic page turns still
+/// animate the same list.
+class _PagedBehavior extends ScrollBehavior {
+  const _PagedBehavior({required this.paged});
+
+  final bool paged;
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) => paged
+      ? const NeverScrollableScrollPhysics()
+      : super.getScrollPhysics(context);
 }

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 
+import '../../../models/media_progress.dart';
+
 /// PLAN.md Phase 5.9/5.10. Uses the sessionless `PATCH /api/me/progress/:id`
 /// endpoint (no `/play` session needed — see PLAN.md Phase 5 notes) for
 /// both periodic progress sync and marking an item finished/not finished.
@@ -84,6 +86,22 @@ class ProgressRepository {
     };
     if (isFinished != null) data['isFinished'] = isFinished;
     await _patchProgress('/api/me/progress/$libraryItemId', data);
+  }
+
+  /// Fresh server-side progress for one item (null when there is none yet).
+  /// The item-detail response can be minutes old, so readers ask again when
+  /// they open to pick up a position saved on another device.
+  Future<MediaProgress?> fetchProgress(String libraryItemId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/api/me/progress/$libraryItemId',
+      );
+      final data = res.data;
+      return data == null ? null : MediaProgress.fromJson(data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
   }
 
   /// QOL_PLAN C1: forget all progress for an item/episode. The server's

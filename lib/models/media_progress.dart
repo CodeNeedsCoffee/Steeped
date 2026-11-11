@@ -14,6 +14,7 @@ class MediaProgress {
     required this.isFinished,
     this.ebookLocation,
     this.ebookProgress,
+    this.lastUpdate,
   });
 
   factory MediaProgress.fromJson(Map<String, dynamic> json) {
@@ -27,6 +28,11 @@ class MediaProgress {
       // an EPUB CFI, which a bare `as String?` cast throws on.
       ebookLocation: json['ebookLocation']?.toString(),
       ebookProgress: (json['ebookProgress'] as num?)?.toDouble(),
+      lastUpdate: json['lastUpdate'] is num
+          ? DateTime.fromMillisecondsSinceEpoch(
+              (json['lastUpdate'] as num).toInt(),
+            )
+          : null,
     );
   }
 
@@ -36,4 +42,8 @@ class MediaProgress {
   final bool isFinished;
   final String? ebookLocation;
   final double? ebookProgress;
+
+  /// When the server last changed this row; used to pick the newer of the
+  /// server and on-device reading positions.
+  final DateTime? lastUpdate;
 }

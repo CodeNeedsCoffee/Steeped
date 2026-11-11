@@ -27,7 +27,7 @@ scaffolds by default have been removed — desktop and web are not targets for t
 
 ## Tech Stack
 
-Locked in during Phase 0 of the build plan — see `PLAN.md` (0.1–0.13) for full rationale on each.
+Locked in during Phase 0 of the build plan — see the old build plan (`git show a9e7ad8:PLAN.md`) (0.1–0.13) for full rationale on each.
 
 | Concern | Choice |
 |---|---|
@@ -47,8 +47,8 @@ Locked in during Phase 0 of the build plan — see `PLAN.md` (0.1–0.13) for fu
 
 ## Project Docs
 
-- [`PLAN.md`](PLAN.md) — the full, detailed build plan: phases, feature-parity checklist against the
-  reference Audiobookshelf app, and testing cadence.
+- [`PLAN.md`](PLAN.md) — the single plan: phased work, how each item is built and tested on the
+  virtual Android device, and the remaining roadmap.
 - [`ROADMAP.md`](ROADMAP.md) — a lightweight, at-a-glance status tracker, updated as work lands.
 
 ## Getting Started
@@ -60,4 +60,4 @@ flutter pub get
 flutter run
 ```
 
-See `PLAN.md` for architecture and tech-stack decisions as they're made.
+See `PLAN.md` for the plan; architecture and tech-stack decisions as they're made.

@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/storage/app_database.dart';
 import '../data/ebook_repository.dart';
+import '../../../models/media_progress.dart';
+import '../../player/state/playback_controller.dart' show progressRepositoryProvider;
 import '../data/ereader_settings.dart';
+import '../data/reading_position.dart';
 
 final ebookRepositoryProvider = Provider<EbookRepository>((ref) {
   return EbookRepository(ref.watch(dioProvider), ref.watch(appDatabaseProvider));
@@ -27,3 +30,67 @@ final ereaderSettingsProvider =
     AsyncNotifierProvider<EreaderSettingsController, EreaderSettings>(
       EreaderSettingsController.new,
     );
+
+/// Picks where to open a book: the newer of the server's position (fetched
+/// fresh, since the item-detail copy can be stale) and the one saved on this
+/// device. A failed or offline server lookup falls back to the local copy and
+/// then to whatever the item-detail response carried.
+Future<ReadingPosition?> resolveStartPosition(
+  WidgetRef ref,
+  String itemId, {
+  MediaProgress? fromDetail,
+}) async {
+  final repo = ref.read(ebookRepositoryProvider);
+  final local = await repo.loadPosition(itemId);
+  MediaProgress? server = fromDetail;
+  try {
+    server = await ref.read(progressRepositoryProvider).fetchProgress(itemId);
+  } catch (_) {
+    // Offline: keep the detail copy.
+  }
+  final serverPos = (server?.ebookLocation?.isNotEmpty ?? false)
+      ? ReadingPosition(
+          location: server!.ebookLocation!,
+          fraction: server.ebookProgress ?? 0,
+          updatedAt: server.lastUpdate ?? DateTime.fromMillisecondsSinceEpoch(0),
+        )
+      : null;
+  if (serverPos == null) return local;
+  if (local == null) return serverPos;
+  return local.updatedAt.isAfter(serverPos.updatedAt) ? local : serverPos;
+}
+
+/// Writes the position to the device first (so it survives going offline or a
+/// crash), then to the server. A server failure is swallowed: the local copy
+/// wins on the next open until the server catches up.
+Future<void> saveReadingPosition(
+  WidgetRef ref, {
+  required String itemId,
+  required String location,
+  required double fraction,
+  bool? isFinished,
+}) async {
+  final f = fraction.clamp(0.0, 1.0);
+  await ref
+      .read(ebookRepositoryProvider)
+      .savePosition(
+        itemId,
+        ReadingPosition(
+          location: location,
+          fraction: f,
+          updatedAt: DateTime.now(),
+        ),
+      );
+  try {
+    await ref
+        .read(progressRepositoryProvider)
+        .updateEbookProgress(
+          libraryItemId: itemId,
+          ebookLocation: location,
+          ebookProgress: f,
+          isFinished: isFinished,
+        );
+  } catch (_) {
+    // Best-effort — matches the audio sync's silent-retry policy (5.9).
+  }
+}

@@ -1596,4 +1596,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get more => 'More';
+
+  @override
+  String get readingProgress => 'Reading progress';
+
+  @override
+  String get highlight => 'Highlight';
+
+  @override
+  String get bookmarkThisPage => 'Bookmark this page';
+
+  @override
+  String get bookmarksAndHighlights => 'Bookmarks and highlights';
+
+  @override
+  String get highlights => 'Highlights';
+
+  @override
+  String get noHighlightsYet =>
+      'No highlights yet. Select text and choose Highlight.';
+
+  @override
+  String get epubReadingMode => 'Books (EPUB)';
+
+  @override
+  String get pdfReadingMode => 'PDF';
+
+  @override
+  String get comicReadingMode => 'Comics';
+
+  @override
+  String get pagedMode => 'Pages';
+
+  @override
+  String get scrollMode => 'Scroll';
+
+  @override
+  String get tapToTurnPages => 'Tap screen edges to turn pages';
+
+  @override
+  String get keepScreenOn => 'Keep screen on while reading';
+
+  @override
+  String get brightness => 'Brightness';
+
+  @override
+  String get justifyText => 'Justify text';
+
+  @override
+  String get margins => 'Margins';
+
+  @override
+  String readingPercent(int percent) {
+    return 'Continue reading ($percent%)';
+  }
 }

@@ -5,9 +5,12 @@ import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../library/state/library_providers.dart';
-import '../player/state/playback_controller.dart' show progressRepositoryProvider;
+import 'data/ereader_settings.dart';
+import 'ereader_settings_panel.dart';
+import 'reader_chrome.dart';
 import 'state/ebook_providers.dart';
 import '../../l10n/l10n.dart';
 
@@ -62,9 +65,12 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
   double _downloadProgress = 0;
   bool _extracting = false;
   String? _error;
-  int _currentPage = 0;
+  String _title = '';
+  int _currentPage = 0; // 0-based in memory, 1-based on the wire
   Timer? _syncTimer;
-  late final PageController _pageController;
+  PageController? _pageController;
+  final _listController = ItemScrollController();
+  final _positions = ItemPositionsListener.create();
 
   @override
   void initState() {
@@ -74,6 +80,7 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
 
   Future<void> _load() async {
     final item = await ref.read(itemDetailProvider(widget.itemId).future);
+    _title = item.title;
     try {
       final file = await ref
           .read(ebookRepositoryProvider)
@@ -87,102 +94,176 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
       setState(() => _extracting = true);
       final bytes = await File(file.path).readAsBytes();
       final pages = await compute(_decodeCbzPages, bytes);
+      final start = await resolveStartPosition(
+        ref,
+        widget.itemId,
+        fromDetail: item.progress,
+      );
       if (!mounted) return;
-      final startPage = int.tryParse(item.progress?.ebookLocation ?? '') ?? 0;
+      // The official apps store a 1-based page number.
+      final startPage = (int.tryParse(start?.location ?? '') ?? 1) - 1;
       _currentPage = startPage.clamp(0, (pages.length - 1).clamp(0, 1 << 30));
       _pageController = PageController(initialPage: _currentPage);
+      _positions.itemPositions.addListener(_onScrolled);
       setState(() {
         _pages = pages;
         _extracting = false;
       });
       _syncTimer = Timer.periodic(const Duration(seconds: 20), (_) => _sync());
     } catch (e) {
+      await ref.read(ebookRepositoryProvider).evict(item);
       if (mounted) setState(() => _error = e.toString());
     }
+  }
+
+  /// Scroll mode: the page occupying most of the top of the viewport.
+  void _onScrolled() {
+    final visible = _positions.itemPositions.value;
+    if (visible.isEmpty) return;
+    final top = visible
+        .where((p) => p.itemTrailingEdge > 0.2)
+        .reduce((a, b) => a.itemLeadingEdge < b.itemLeadingEdge ? a : b);
+    if (top.index != _currentPage && mounted) {
+      setState(() => _currentPage = top.index);
+    }
+  }
+
+  double get _fraction {
+    final n = _pages?.length ?? 0;
+    return n <= 1 ? 0 : (_currentPage / n).clamp(0.0, 1.0);
   }
 
   void _sync({bool isFinished = false}) {
     final pages = _pages;
     if (pages == null || pages.isEmpty) return;
-    final fraction = ((_currentPage + 1) / pages.length).clamp(0.0, 1.0);
-    ref
-        .read(progressRepositoryProvider)
-        .updateEbookProgress(
-          libraryItemId: widget.itemId,
-          ebookLocation: '$_currentPage',
-          ebookProgress: fraction,
-          isFinished: isFinished ? true : null,
-        )
-        .catchError((_) {});
+    saveReadingPosition(
+      ref,
+      itemId: widget.itemId,
+      location: '${_currentPage + 1}',
+      fraction: _fraction,
+      isFinished: (isFinished || _currentPage >= pages.length - 1) ? true : null,
+    );
+  }
+
+  void _goTo(int page) {
+    final n = _pages?.length ?? 0;
+    if (n == 0) return;
+    final p = page.clamp(0, n - 1);
+    if (_pageController?.hasClients ?? false) {
+      _pageController!.jumpToPage(p);
+    }
+    if (_listController.isAttached) _listController.jumpTo(index: p);
+    setState(() => _currentPage = p);
+    _sync();
   }
 
   @override
   void dispose() {
     _syncTimer?.cancel();
+    _positions.itemPositions.removeListener(_onScrolled);
     _sync();
-    if (_pages != null) _pageController.dispose();
+    _pageController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final settings =
+        ref.watch(ereaderSettingsProvider).valueOrNull ?? const EreaderSettings();
+    final scroll = settings.comicFlow == ReadingFlow.scroll;
     final pages = _pages;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: pages != null
-            ? Text(context.l10n.pageOfTotal(_currentPage + 1, pages.length))
-            : null,
-      ),
-      body: _error != null
-          ? Center(
-              child: Text(
-                context.l10n.failedToLoad(_error ?? ''),
-                style: const TextStyle(color: Colors.white),
-              ),
-            )
-          : pages == null
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(
-                    value: !_extracting && _downloadProgress > 0
-                        ? _downloadProgress
-                        : null,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _extracting
-                        ? context.l10n.extractingPages
-                        : context.l10n.downloadingEllipsis,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
-            )
-          : PageView.builder(
-              controller: _pageController,
-              itemCount: pages.length,
-              onPageChanged: (index) {
-                setState(() => _currentPage = index);
-                _sync();
-              },
-              // Confirmed live: an InteractiveViewer here (for pinch-zoom)
-              // silently breaks page-swiping — its ScaleGestureRecognizer
-              // claims every single-finger drag from the gesture arena
-              // before PageView ever sees it, and `panEnabled: false` only
-              // suppresses the resulting pan translation, not the claim
-              // itself (see InteractiveViewer._onScaleStart). Reliable
-              // paging matters more than pinch-zoom here, so it's dropped
-              // rather than shipping swipes that silently don't work.
-              itemBuilder: (context, index) => Center(
-                child: Image.memory(pages[index], fit: BoxFit.contain),
+
+    final Widget body = _error != null
+        ? Center(
+            child: Text(
+              context.l10n.failedToLoad(_error ?? ''),
+              style: const TextStyle(color: Colors.white),
+            ),
+          )
+        : pages == null
+        ? Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  value: !_extracting && _downloadProgress > 0
+                      ? _downloadProgress
+                      : null,
+                  color: Colors.white,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _extracting
+                      ? context.l10n.extractingPages
+                      : context.l10n.downloadingEllipsis,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          )
+        : scroll
+        // Continuous vertical strip: pages stack at full width.
+        ? ScrollablePositionedList.builder(
+            key: const ValueKey('scroll'),
+            itemCount: pages.length,
+            initialScrollIndex: _currentPage,
+            itemScrollController: _listController,
+            itemPositionsListener: _positions,
+            itemBuilder: (context, i) => Image.memory(
+              pages[i],
+              fit: BoxFit.fitWidth,
+              width: double.infinity,
+              gaplessPlayback: true,
+            ),
+          )
+        // Confirmed live: an InteractiveViewer here (for pinch-zoom)
+        // silently breaks page-swiping — see git history — so paged mode
+        // stays a plain PageView.
+        : PageView.builder(
+            key: const ValueKey('paged'),
+            controller: PageController(initialPage: _currentPage),
+            itemCount: pages.length,
+            onPageChanged: (index) {
+              setState(() => _currentPage = index);
+              _sync();
+            },
+            itemBuilder: (context, index) => Center(
+              child: Image.memory(pages[index], fit: BoxFit.contain),
+            ),
+          );
+
+    return ReaderChrome(
+      // Comics stay on black whatever the text theme is.
+      settings: settings.copyWith(theme: EreaderTheme.black),
+      title: _title,
+      body: body,
+      // In paged mode the PageView owns swipes; edge taps jump a page. In
+      // scroll mode taps only toggle the bars.
+      onPrev: pages == null || scroll ? null : () => _goTo(_currentPage - 1),
+      onNext: pages == null || scroll ? null : () => _goTo(_currentPage + 1),
+      progress: pages == null ? null : _fraction,
+      onScrub: pages == null
+          ? null
+          : (f) => _goTo((f * pages.length).floor()),
+      footerLabel: pages == null
+          ? null
+          : context.l10n.pageOfTotal(_currentPage + 1, pages.length),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.tune),
+          tooltip: context.l10n.readingSettingsTooltip,
+          onPressed: () => showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            builder: (_) => const SingleChildScrollView(
+              child: EreaderSettingsPanel(
+                format: EreaderFormat.comic,
+                showTheme: false,
               ),
             ),
+          ),
+        ),
+      ],
     );
   }
 }

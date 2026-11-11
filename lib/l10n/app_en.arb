@@ -1089,5 +1089,29 @@
     }
   },
   "addAccountTitle": "Add server or account",
-  "more": "More"
+  "more": "More",
+  "readingProgress": "Reading progress",
+  "highlight": "Highlight",
+  "bookmarkThisPage": "Bookmark this page",
+  "bookmarksAndHighlights": "Bookmarks and highlights",
+  "highlights": "Highlights",
+  "noHighlightsYet": "No highlights yet. Select text and choose Highlight.",
+  "epubReadingMode": "Books (EPUB)",
+  "pdfReadingMode": "PDF",
+  "comicReadingMode": "Comics",
+  "pagedMode": "Pages",
+  "scrollMode": "Scroll",
+  "tapToTurnPages": "Tap screen edges to turn pages",
+  "keepScreenOn": "Keep screen on while reading",
+  "brightness": "Brightness",
+  "justifyText": "Justify text",
+  "margins": "Margins",
+  "readingPercent": "Continue reading ({percent}%)",
+  "@readingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  }
 }

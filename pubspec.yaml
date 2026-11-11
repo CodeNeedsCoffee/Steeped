@@ -58,6 +58,12 @@ dependencies:
   # safe custom chapterBuilder that works around a real crash in epub_view
   # 3.2.0's default image-tag handler — see epub_reader_screen.dart.
   flutter_html: ^3.0.0
+  # Dart-team package, already in the lockfile via flutter_html/epub_view;
+  # used to wrap highlighted text in the EPUB paragraph DOM.
+  html: ^0.15.6
+  # Google-published; already pulled in by epub_view. Drives the comic
+  # reader's scroll mode with jump-to-page.
+  scrollable_positioned_list: ^0.3.8
   pdfx: ^2.9.2
   archive: ^3.6.1
   wakelock_plus: ^1.7.0

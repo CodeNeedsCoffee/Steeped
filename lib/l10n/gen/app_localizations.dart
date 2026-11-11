@@ -2709,6 +2709,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More'**
   String get more;
+
+  /// No description provided for @readingProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading progress'**
+  String get readingProgress;
+
+  /// No description provided for @highlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight'**
+  String get highlight;
+
+  /// No description provided for @bookmarkThisPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmark this page'**
+  String get bookmarkThisPage;
+
+  /// No description provided for @bookmarksAndHighlights.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmarks and highlights'**
+  String get bookmarksAndHighlights;
+
+  /// No description provided for @highlights.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlights'**
+  String get highlights;
+
+  /// No description provided for @noHighlightsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No highlights yet. Select text and choose Highlight.'**
+  String get noHighlightsYet;
+
+  /// No description provided for @epubReadingMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Books (EPUB)'**
+  String get epubReadingMode;
+
+  /// No description provided for @pdfReadingMode.
+  ///
+  /// In en, this message translates to:
+  /// **'PDF'**
+  String get pdfReadingMode;
+
+  /// No description provided for @comicReadingMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Comics'**
+  String get comicReadingMode;
+
+  /// No description provided for @pagedMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Pages'**
+  String get pagedMode;
+
+  /// No description provided for @scrollMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll'**
+  String get scrollMode;
+
+  /// No description provided for @tapToTurnPages.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap screen edges to turn pages'**
+  String get tapToTurnPages;
+
+  /// No description provided for @keepScreenOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep screen on while reading'**
+  String get keepScreenOn;
+
+  /// No description provided for @brightness.
+  ///
+  /// In en, this message translates to:
+  /// **'Brightness'**
+  String get brightness;
+
+  /// No description provided for @justifyText.
+  ///
+  /// In en, this message translates to:
+  /// **'Justify text'**
+  String get justifyText;
+
+  /// No description provided for @margins.
+  ///
+  /// In en, this message translates to:
+  /// **'Margins'**
+  String get margins;
+
+  /// No description provided for @readingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue reading ({percent}%)'**
+  String readingPercent(int percent);
 }
 
 class _AppLocalizationsDelegate

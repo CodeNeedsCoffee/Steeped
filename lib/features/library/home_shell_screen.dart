@@ -46,6 +46,10 @@ class HomeShellScreen extends ConsumerWidget {
     if (session is! SessionAuthenticated) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+    // Every state before the real shell exists (loading, empty, failed) still
+    // gets the account menu, so an older or half-configured server can never
+    // leave you with no way to log out or switch servers.
+    const escapeBar = _EscapeAppBar();
 
     // Activates the global background_downloader update listener (Phase
     // 6.1) — no UI here, just needs to be watched somewhere near app root.
@@ -59,6 +63,7 @@ class HomeShellScreen extends ConsumerWidget {
 
     return librariesAsync.when(
       loading: () => const Scaffold(
+        appBar: escapeBar,
         body: Center(child: CircularProgressIndicator()),
       ),
       // A "Retry" action here is a defensive safety net, not just for
@@ -77,8 +82,10 @@ class HomeShellScreen extends ConsumerWidget {
       error: (error, _) {
         final cachedAsync = ref.watch(cachedLibrariesProvider);
         return cachedAsync.when(
-          loading: () =>
-              const Scaffold(body: Center(child: CircularProgressIndicator())),
+          loading: () => const Scaffold(
+            appBar: escapeBar,
+            body: Center(child: CircularProgressIndicator()),
+          ),
           error: (_, _) => _NoLibrariesFallback(error: error),
           data: (cachedLibraries) {
             // Never fetched successfully on this device, so there's no
@@ -107,6 +114,7 @@ class HomeShellScreen extends ConsumerWidget {
       data: (libraries) {
         if (libraries.isEmpty) {
           return Scaffold(
+            appBar: escapeBar,
             body: Center(child: Text(context.l10n.noLibrariesOnThisServer)),
           );
         }
@@ -140,6 +148,7 @@ class _NoLibrariesFallback extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
+      appBar: const _EscapeAppBar(),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -158,6 +167,34 @@ class _NoLibrariesFallback extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Minimal header for the states where the real shell can't be built (see
+/// [HomeShellScreen]): account switcher, settings and a direct log out.
+class _EscapeAppBar extends ConsumerWidget implements PreferredSizeWidget {
+  const _EscapeAppBar();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AppBar(
+      actions: [
+        const ProfileMenuButton(),
+        IconButton(
+          icon: const Icon(Icons.settings_outlined),
+          tooltip: context.l10n.settings,
+          onPressed: () => context.push('/settings'),
+        ),
+        IconButton(
+          icon: const Icon(Icons.logout),
+          tooltip: context.l10n.logOut,
+          onPressed: () => ref.read(sessionControllerProvider.notifier).logout(),
+        ),
+      ],
     );
   }
 }

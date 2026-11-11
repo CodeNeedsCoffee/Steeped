@@ -225,7 +225,11 @@ class _ItemDetailBody extends ConsumerWidget {
               OutlinedButton.icon(
                 onPressed: () => _openReader(context, item),
                 icon: const Icon(Icons.menu_book),
-                label: Text(context.l10n.read),
+                label: Text(
+                  _ebookPercent(item) > 0
+                      ? context.l10n.readingPercent(_ebookPercent(item))
+                      : context.l10n.read,
+                ),
               ),
             ],
             if (item.tracks.isNotEmpty && ref.watch(canDownloadProvider)) ...[
@@ -304,9 +308,23 @@ class _ItemDetailBody extends ConsumerWidget {
   /// Computing the fraction client-side keeps this display consistent with
   /// what's actually used to resume playback, instead of silently drifting
   /// stale relative to it.
+  /// Whole-percent ebook progress, 0 when unstarted. A finished book reads as
+  /// 100 rather than wherever the last page-turn left the fraction.
+  int _ebookPercent(LibraryItemDetail item) {
+    final p = item.progress;
+    if (p == null) return 0;
+    if (p.isFinished) return 100;
+    return ((p.ebookProgress ?? 0) * 100).round().clamp(0, 100);
+  }
+
   double _displayProgressFraction(LibraryItemDetail item) {
     final progress = item.progress;
     if (progress == null) return 0;
+    // Ebook-only items carry their position in `ebookProgress`; the server's
+    // `progress`/currentTime stay at 0 for them.
+    if (item.tracks.isEmpty && item.hasEbook) {
+      return (progress.ebookProgress ?? 0).clamp(0.0, 1.0);
+    }
     final duration = item.duration;
     if (duration == null || duration <= 0) return progress.progress;
     return (progress.currentTime / duration).clamp(0, 1);

@@ -8,6 +8,7 @@ import '../../../core/storage/app_database.dart';
 import '../../../models/ebook_file.dart';
 import '../../../models/library_item_detail.dart';
 import 'ereader_settings.dart';
+import 'reading_position.dart';
 
 /// PLAN.md Phase 8: fetches an item's `ebookFile` bytes (served by the same
 /// generic `GET /api/items/:id/file/:ino` endpoint audio tracks use —
@@ -55,16 +56,113 @@ class EbookRepository {
       return file;
     }
 
+    // `/ebook` (no file id) serves the item's primary ebook, exactly like the
+    // official web and mobile apps. The older `/file/:ino` route 404s whenever
+    // the cached `ino` is stale (a rescan or file replace changes it), which
+    // showed up as an intermittent "Failed to load ... 404" in the readers.
     final response = await _dio.get<List<int>>(
-      '/api/items/${item.id}/file/${ebookFile.ino}',
+      '/api/items/${item.id}/ebook',
       options: Options(responseType: ResponseType.bytes),
       onReceiveProgress: (received, total) {
         if (total <= 0 || onProgress == null) return;
         onProgress(received / total);
       },
     );
-    await file.writeAsBytes(response.data ?? const []);
+    final bytes = response.data ?? const <int>[];
+    if (bytes.isEmpty) throw StateError('The server sent an empty ebook file');
+    await file.writeAsBytes(bytes);
     return file;
+  }
+
+  /// Drops the cached copy so the next [ensureLocalFile] re-downloads it —
+  /// used when a cached file fails to open (truncated or replaced on the
+  /// server).
+  Future<void> evict(LibraryItemDetail item) async {
+    final ebookFile = item.ebookFile;
+    if (ebookFile == null) return;
+    final file = await _cacheFileFor(item.id, ebookFile);
+    if (await file.exists()) await file.delete();
+  }
+
+  /// Last-known reading position per item, kept on the device so "pick up
+  /// where you left off" works offline and before the server has caught up.
+  Future<ReadingPosition?> loadPosition(String itemId) async {
+    final row =
+        await (_db.select(
+          _db.keyValueEntries,
+        )..where((t) => t.key.equals('ereader_pos:$itemId'))).getSingleOrNull();
+    if (row == null) return null;
+    try {
+      return ReadingPosition.fromJson(
+        jsonDecode(row.value) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> savePosition(String itemId, ReadingPosition position) {
+    return _db
+        .into(_db.keyValueEntries)
+        .insertOnConflictUpdate(
+          KeyValueEntriesCompanion.insert(
+            key: 'ereader_pos:$itemId',
+            value: jsonEncode(position.toJson()),
+          ),
+        );
+  }
+
+  /// Bookmarks are device-local (the server has no field for them).
+  Future<List<EbookBookmark>> loadBookmarks(String itemId) async {
+    final row =
+        await (_db.select(
+          _db.keyValueEntries,
+        )..where((t) => t.key.equals('ereader_bm:$itemId'))).getSingleOrNull();
+    if (row == null) return const [];
+    try {
+      return (jsonDecode(row.value) as List)
+          .map((e) => EbookBookmark.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> saveBookmarks(String itemId, List<EbookBookmark> bookmarks) {
+    return _db
+        .into(_db.keyValueEntries)
+        .insertOnConflictUpdate(
+          KeyValueEntriesCompanion.insert(
+            key: 'ereader_bm:$itemId',
+            value: jsonEncode([for (final b in bookmarks) b.toJson()]),
+          ),
+        );
+  }
+
+  Future<List<EbookHighlight>> loadHighlights(String itemId) async {
+    final row =
+        await (_db.select(
+          _db.keyValueEntries,
+        )..where((t) => t.key.equals('ereader_hl:$itemId'))).getSingleOrNull();
+    if (row == null) return const [];
+    try {
+      return (jsonDecode(row.value) as List)
+          .map((e) => EbookHighlight.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> saveHighlights(String itemId, List<EbookHighlight> items) {
+    return _db
+        .into(_db.keyValueEntries)
+        .insertOnConflictUpdate(
+          KeyValueEntriesCompanion.insert(
+            key: 'ereader_hl:$itemId',
+            value: jsonEncode([for (final h in items) h.toJson()]),
+          ),
+        );
   }
 
   static const _settingsKey = 'ereader_settings';

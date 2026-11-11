@@ -7,6 +7,10 @@ enum EreaderFontFamily { sans, serif }
 
 enum EreaderTheme { light, dark, black }
 
+/// Page-turn style. EPUB and PDF default to [paged]; comics to [scroll]
+/// (long strips read better scrolling).
+enum ReadingFlow { paged, scroll }
+
 class EreaderSettings {
   const EreaderSettings({
     this.fontFamily = EreaderFontFamily.sans,
@@ -14,6 +18,14 @@ class EreaderSettings {
     this.bold = false,
     this.lineSpacing = 1.25,
     this.theme = EreaderTheme.dark,
+    this.epubFlow = ReadingFlow.paged,
+    this.pdfFlow = ReadingFlow.paged,
+    this.comicFlow = ReadingFlow.scroll,
+    this.justify = false,
+    this.margin = 16,
+    this.brightness = 1.0,
+    this.keepScreenOn = true,
+    this.tapToTurn = true,
   });
 
   factory EreaderSettings.fromJson(Map<String, dynamic> json) {
@@ -29,14 +41,42 @@ class EreaderSettings {
         (t) => t.name == json['theme'],
         orElse: () => EreaderTheme.dark,
       ),
+      epubFlow: _flow(json['epubFlow'], ReadingFlow.paged),
+      pdfFlow: _flow(json['pdfFlow'], ReadingFlow.paged),
+      comicFlow: _flow(json['comicFlow'], ReadingFlow.scroll),
+      justify: json['justify'] as bool? ?? false,
+      margin: (json['margin'] as num?)?.toDouble() ?? 16,
+      brightness: (json['brightness'] as num?)?.toDouble() ?? 1.0,
+      keepScreenOn: json['keepScreenOn'] as bool? ?? true,
+      tapToTurn: json['tapToTurn'] as bool? ?? true,
     );
   }
+
+  static ReadingFlow _flow(Object? raw, ReadingFlow fallback) =>
+      ReadingFlow.values.firstWhere(
+        (f) => f.name == raw,
+        orElse: () => fallback,
+      );
 
   final EreaderFontFamily fontFamily;
   final double fontScale;
   final bool bold;
   final double lineSpacing;
   final EreaderTheme theme;
+  final ReadingFlow epubFlow;
+  final ReadingFlow pdfFlow;
+  final ReadingFlow comicFlow;
+  final bool justify;
+
+  /// Horizontal text margin in logical pixels.
+  final double margin;
+
+  /// 0.2..1.0; below 1 dims the reader with an overlay (no system permission).
+  final double brightness;
+  final bool keepScreenOn;
+
+  /// Tap the left/right edge of the page to turn it.
+  final bool tapToTurn;
 
   Map<String, dynamic> toJson() => {
     'fontFamily': fontFamily.name,
@@ -44,6 +84,14 @@ class EreaderSettings {
     'bold': bold,
     'lineSpacing': lineSpacing,
     'theme': theme.name,
+    'epubFlow': epubFlow.name,
+    'pdfFlow': pdfFlow.name,
+    'comicFlow': comicFlow.name,
+    'justify': justify,
+    'margin': margin,
+    'brightness': brightness,
+    'keepScreenOn': keepScreenOn,
+    'tapToTurn': tapToTurn,
   };
 
   EreaderSettings copyWith({
@@ -52,6 +100,14 @@ class EreaderSettings {
     bool? bold,
     double? lineSpacing,
     EreaderTheme? theme,
+    ReadingFlow? epubFlow,
+    ReadingFlow? pdfFlow,
+    ReadingFlow? comicFlow,
+    bool? justify,
+    double? margin,
+    double? brightness,
+    bool? keepScreenOn,
+    bool? tapToTurn,
   }) {
     return EreaderSettings(
       fontFamily: fontFamily ?? this.fontFamily,
@@ -59,6 +115,14 @@ class EreaderSettings {
       bold: bold ?? this.bold,
       lineSpacing: lineSpacing ?? this.lineSpacing,
       theme: theme ?? this.theme,
+      epubFlow: epubFlow ?? this.epubFlow,
+      pdfFlow: pdfFlow ?? this.pdfFlow,
+      comicFlow: comicFlow ?? this.comicFlow,
+      justify: justify ?? this.justify,
+      margin: margin ?? this.margin,
+      brightness: brightness ?? this.brightness,
+      keepScreenOn: keepScreenOn ?? this.keepScreenOn,
+      tapToTurn: tapToTurn ?? this.tapToTurn,
     );
   }
 

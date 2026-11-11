@@ -1,8 +1,9 @@
 # Steeped: Modern Audiobooks — Roadmap
 
-A quick-glance status tracker. For the full detailed checklist (sub-tasks, feature-parity ledger, testing
-cadence) see [`PLAN.md`](PLAN.md) — this file is just the "where are we" summary, meant to be hand-updated
-as work lands.
+A quick-glance status tracker. The only plan is [`PLAN.md`](PLAN.md); this file is the running log of what was
+built and verified, plus the **To do** list for anything the automated run did not finish or test.
+(Entries below that cite "`PLAN.md` Phase N" refer to the **old build plan**, replaced on 2026-11-10 by the
+current `PLAN.md`; read the old one with `git show a9e7ad8:PLAN.md`.)
 
 Platforms: **Android + iOS only.**
 
@@ -226,7 +227,7 @@ Status legend: ⚪ Not started · 🟡 In progress · 🟢 Done
 
 ## Quality-of-life pass (branch `qol-features`, 2026-10-07)
 
-Everything in `QOL_PLAN.md` that doesn't need admin permissions or a Mac, done in the plan's order. All
+Everything in `PLAN.md` that doesn't need admin permissions or a Mac, done in the plan's order. All
 uncommitted. Verified on Linux (unit/widget tests plus integration tests against audiobooks.dev and a
 second local Audiobookshelf); **audio behaviour is unit-tested only and still needs a phone check**.
 
@@ -308,6 +309,21 @@ server was reasoned about, not exercised.
   pin still blocks `flutter_launcher_icons`/`flutter_native_splash`.
 
 ## To do
+
+Maintained by the PLAN.md automated run: anything not built, not tested on the emulator, or needing the real Pixel is
+logged here with the reason. Seeded 2026-11-10:
+
+- **Emulator not yet verified.** `tool/emulator.sh` (AVD `steeped_test`, `-gpu host`) has not completed a boot yet;
+  the first emulator run must confirm it boots and that the debug APK installs. Software GPU modes segfault.
+- **Phase H (ebook reader) is built but only checked with unit tests and `flutter analyze`**, not on a device or
+  emulator. The E-book progress item below is covered by H2/H3/H9 once this is exercised.
+- **Phase H7-H10 are open** (hide Play where there is no audio, dictionary/search/time-left, offline position queue,
+  true EPUB pagination). **Phases G (streaks), I (listening sessions) and K (remaining roadmap)** are plan-only; the ebook<->audiobook link is not in the plan yet.
+- **Known risk, not fixed:** on an item with both audio and ebook the progress row is shared, so a reader's
+  `isFinished` (at >= 99.5%) can mark the audiobook finished; fix this first when the ebook<->audiobook link is added to the plan.
+
+- **Chromecast (Android) skipped** by decision 2026-11-10: needs a Cast SDK package, which conflicts with the
+  first-party-only dependency rule. Revisit if that rule is relaxed (PLAN.md K3).
 
 - **E-book progress isn't syncing** (reported 2026-11-02). `epub_reader_screen.dart:171`,
   `comic_reader_screen.dart:110` and `pdf_reader_screen.dart:75` call
