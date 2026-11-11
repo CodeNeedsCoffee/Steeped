@@ -370,6 +370,11 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 - **Pages/Scroll switch verified by unit test; emulator re-check pending:** changing the mode while reading did
   nothing until the book was reopened; `PagedScrollBehavior.shouldNotify` fixes it (test fails without the fix).
 - **Scrubber verified:** tap to 50% jumps to "Chapter 14 - 50%". Light theme verified; Black not looked at.
+- **H7 verified on the emulator:** an ebook-only item (Pride and Prejudice) shows only "Read again" (no disabled
+  Play); an audiobook still shows Play and Download. Still showing Play: the "Play all" buttons on series and
+  collection pages when every book in them is an ebook (not changed).
+- **Noticed, not fixed:** an audiobook's description shows raw `<br />` tags, and its details line ends with a
+  stray "· 0" (probably an empty published year).
 - **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7).
 - **Blocked on the demo server:** PDF reader, comic (CBZ) reader. Needs a library with those formats.
 

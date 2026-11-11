@@ -221,6 +221,9 @@ class LibraryItemDetail {
   final double? duration;
   final List<BookChapter> chapters;
   final bool hasEbook;
+
+  /// An ebook with no audio files: there is nothing to play.
+  bool get isEbookOnly => hasEbook && tracks.isEmpty && episodes.isEmpty;
   final MediaProgress? progress;
   final List<AudioTrack> tracks;
 

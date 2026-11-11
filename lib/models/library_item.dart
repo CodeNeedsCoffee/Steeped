@@ -18,6 +18,7 @@ class LibraryItem {
     required this.seriesName,
     required this.duration,
     required this.hasEbook,
+    this.hasAudio = true,
     this.libraryId,
     this.seriesSequence,
     this.collapsedSeries,
@@ -44,6 +45,8 @@ class LibraryItem {
           ? null
           : (media['duration'] as num?)?.toDouble(),
       hasEbook: !isPodcast && media['ebookFormat'] != null,
+      // Absent on older servers/shapes: assume audio so Play is never hidden by mistake.
+      hasAudio: isPodcast || ((media['numAudioFiles'] as num?) ?? 1) > 0,
       libraryId: json['libraryId']?.toString(),
       // Only present when the item came from an author page's series group.
       seriesSequence: metadata['series'] is Map<String, dynamic>
@@ -68,6 +71,9 @@ class LibraryItem {
   final String? seriesName;
   final double? duration; // seconds, books only in this minified shape
   final bool hasEbook;
+
+  /// False for ebook-only items, which have nothing to play.
+  final bool hasAudio;
   final String? libraryId;
 
   /// Position within the series this item was grouped under (author pages).

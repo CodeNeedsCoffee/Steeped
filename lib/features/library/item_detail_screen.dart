@@ -198,6 +198,7 @@ class _ItemDetailBody extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            if (!item.isEbookOnly)
             FilledButton.icon(
               onPressed: item.tracks.isEmpty || isLoadingPlay
                   ? null
@@ -221,7 +222,7 @@ class _ItemDetailBody extends ConsumerWidget {
               label: Text(context.l10n.play),
             ),
             if (item.hasEbook) ...[
-              const SizedBox(width: 12),
+              if (!item.isEbookOnly) const SizedBox(width: 12),
               OutlinedButton.icon(
                 onPressed: () => _openReader(context, item),
                 icon: const Icon(Icons.menu_book),

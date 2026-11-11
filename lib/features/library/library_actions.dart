@@ -294,7 +294,7 @@ Future<void> showItemQuickActions(
                 ? null
                 : Text(item.authorOrPublisherName!),
           ),
-          if (isBook)
+          if (isBook && item.hasAudio)
             ListTile(
               leading: const Icon(Icons.play_arrow),
               title: Text(context.l10n.play),
