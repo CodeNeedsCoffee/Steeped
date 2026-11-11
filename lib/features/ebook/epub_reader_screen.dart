@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:epub_view/src/data/models/paragraph.dart' show Paragraph;
 import 'package:epub_view/epub_view.dart' hide Image;
 import 'package:html/dom.dart' as dom;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -508,7 +509,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       );
     } else {
       body = ScrollConfiguration(
-        behavior: _PagedBehavior(paged: paged),
+        behavior: PagedScrollBehavior(paged: paged),
         child: SelectionArea(
           onSelectionChanged: (c) => _selectedText = c?.plainText ?? '',
           contextMenuBuilder: (context, state) =>
@@ -748,8 +749,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
 
 /// Turns off finger-scrolling for paged mode; programmatic page turns still
 /// animate the same list.
-class _PagedBehavior extends ScrollBehavior {
-  const _PagedBehavior({required this.paged});
+@visibleForTesting
+class PagedScrollBehavior extends ScrollBehavior {
+  const PagedScrollBehavior({required this.paged});
 
   final bool paged;
 
@@ -757,4 +759,11 @@ class _PagedBehavior extends ScrollBehavior {
   ScrollPhysics getScrollPhysics(BuildContext context) => paged
       ? const NeverScrollableScrollPhysics()
       : super.getScrollPhysics(context);
+
+  // Without this the scrollables below keep the physics they were built with,
+  // so switching Pages/Scroll while reading did nothing until the book was
+  // reopened.
+  @override
+  bool shouldNotify(covariant PagedScrollBehavior oldDelegate) =>
+      paged != oldDelegate.paged;
 }
