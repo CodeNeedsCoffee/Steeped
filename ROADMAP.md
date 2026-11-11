@@ -346,7 +346,16 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
     Verified on the emulator: long-press selects a word and shows Copy / Share / Select all / Read aloud /
     **Highlight**; Highlight paints it and lists it under Highlights.
   - **Bug found and fixed:** the highlight was painted on the first matching paragraph near the reader's position
-    rather than the one selected. It now uses the on-screen position of the selection. Verify on emulator.
+    rather than the one selected. It now uses the on-screen position of the selection. Verified on the emulator
+    (selected the second "mind" of two in adjacent paragraphs; the highlight landed on it). Highlights also persist
+    across leaving and reopening the book.
+  - **Bug found and fixed (cross-app sync):** `epub_view` writes every saved position as `/6/0[<anchor>]`, which
+    is not a real spine position, so the official app and AudioBooth could not resume from a position this app
+    wrote. The package step is now rewritten from the book's spine (e.g. `/6/16[item9]!/4/2[pgepubid00007]/8`).
+    Verified in the app's database on the emulator. NOT verified: that the official app actually opens at that spot
+    (needs the official app or a second client); bookmarks created before this fix keep the old value.
+  - **Resume hardened:** if the saved position lands more than 8 points from the saved fraction (or at the very
+    top), the reader jumps by the fraction instead.
   - **Bug found and fixed:** the footer/bookmark chapter label stayed on the first chapter ("THE FULL PROJECT
     GUTENBERG LICENSE") deep into a book; it now comes from the table of contents. Verified ("Chapter 1").
   - **Known limits:** a word that occurs twice in the same paragraph highlights the first occurrence; headings and

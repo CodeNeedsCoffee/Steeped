@@ -82,7 +82,6 @@ Future<void> saveReadingPosition(
           updatedAt: DateTime.now(),
         ),
       );
-  debugPrint('[ebook-sync] saved locally, patching $itemId');
   try {
     await ref
         .read(progressRepositoryProvider)
@@ -92,7 +91,6 @@ Future<void> saveReadingPosition(
           ebookProgress: f,
           isFinished: isFinished,
         );
-    debugPrint('[ebook-sync] PATCH ok for $itemId');
   } catch (e) {
     // Best-effort — matches the audio sync's silent-retry policy (5.9).
     debugPrint('[ebook-sync] PATCH failed for $itemId: $e');

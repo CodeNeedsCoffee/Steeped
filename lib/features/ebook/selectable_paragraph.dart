@@ -52,7 +52,7 @@ int? paragraphIndexAtY(double y, String snippet) {
   for (final state in _live) {
     final index = state.widget.index;
     final box = state.context.findRenderObject();
-    if (index == null || box is! RenderBox || !box.attached) continue;
+    if (box is! RenderBox || !box.attached) continue;
     final top = box.localToGlobal(Offset.zero).dy;
     if (y >= top - 4 &&
         y <= top + box.size.height + 4 &&
@@ -72,7 +72,7 @@ class SelectableParagraph extends StatefulWidget {
     required this.padding,
     required this.justify,
     this.onLink,
-    this.index,
+    required this.index,
     super.key,
   });
 
@@ -83,7 +83,7 @@ class SelectableParagraph extends StatefulWidget {
   final ValueChanged<String>? onLink;
 
   /// This paragraph's position in the book, used to place highlights.
-  final int? index;
+  final int index;
 
   @override
   State<SelectableParagraph> createState() => _SelectableParagraphState();

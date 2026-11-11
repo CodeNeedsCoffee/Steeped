@@ -23,6 +23,7 @@ SelectableParagraph _para(String html, {ValueChanged<String>? onLink}) =>
       padding: EdgeInsets.zero,
       justify: false,
       onLink: onLink,
+      index: 0,
     );
 
 void main() {

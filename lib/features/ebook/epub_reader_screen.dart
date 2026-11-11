@@ -13,6 +13,7 @@ import '../library/state/library_providers.dart';
 import 'data/ereader_settings.dart';
 import 'data/reading_position.dart';
 import 'ereader_settings_panel.dart';
+import 'epub_cfi_fix.dart';
 import 'reader_chrome.dart';
 import 'selectable_paragraph.dart';
 import 'state/ebook_providers.dart';
@@ -34,6 +35,7 @@ ChaptersBuilder _safeChapterBuilder({
   required bool justify,
   required Map<int, List<String>> Function() highlights,
   required void Function(List<Paragraph>) onParagraphs,
+  required void Function(EpubBook, List<EpubChapter>) onBook,
 }) =>
     (
       BuildContext context,
@@ -47,6 +49,7 @@ ChaptersBuilder _safeChapterBuilder({
       ExternalLinkPressed onExternalLinkPressed,
     ) {
       onParagraphs(paragraphs);
+      onBook(document, chapters);
       if (paragraphs.isEmpty) return const SizedBox.shrink();
 
       final defaultBuilder =
@@ -69,6 +72,7 @@ ChaptersBuilder _safeChapterBuilder({
                       EdgeInsets.zero,
                   justify: justify,
                   onLink: onExternalLinkPressed,
+                  index: index,
                 )
               : Html(
                   data: _withHighlights(
@@ -193,6 +197,8 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   final _bodyKey = GlobalKey();
 
   List<Paragraph> _paragraphs = const [];
+  EpubBook? _book;
+  List<EpubChapter> _chapters = const [];
   List<EbookBookmark> _bookmarks = [];
   List<EbookHighlight> _highlights = [];
   String _selectedText = '';
@@ -274,6 +280,18 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     return ((pos.index + within) / _estimatedTotal(c)).clamp(0.0, 1.0);
   }
 
+  /// The reader's position as a CFI other EPUB readers can resume from.
+  String? _currentCfi() {
+    final raw = _controller?.generateEpubCfi();
+    final book = _book;
+    if (raw == null || book == null) return raw;
+    final at = _controller?.currentValue?.position.index;
+    final fallback = (at != null && at >= 0 && at < _paragraphs.length)
+        ? _paragraphs[at].chapterIndex
+        : null;
+    return fixSpineStep(raw, book, _chapters, fallbackChapterIndex: fallback);
+  }
+
   /// epub_view writes the first spine item as `/6/0[...]` and cannot read that
   /// back, so a saved CFI can silently fail and the book opens at the top. If
   /// we were meant to open further in but landed on the first paragraph, jump
@@ -281,7 +299,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   void _checkResume(EpubController c, int index) {
     if (_resumeChecked || _paragraphs.isEmpty) return;
     _resumeChecked = true;
-    if (_startFraction > 0.003 && index == 0) {
+    final landed = _currentFraction();
+    if (_startFraction > 0.003 &&
+        (index == 0 || (landed - _startFraction).abs() > 0.08)) {
       c.jumpTo(index: (_startFraction * _paragraphs.length).floor());
     }
   }
@@ -320,7 +340,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
 
   void _sync({bool isFinished = false}) {
     final controller = _controller;
-    final cfi = controller?.generateEpubCfi();
+    final cfi = _currentCfi();
     if (controller == null || controller.currentValue == null || cfi == null) {
       return;
     }
@@ -372,12 +392,12 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   }
 
   bool get _isBookmarked {
-    final cfi = _controller?.generateEpubCfi();
+    final cfi = _currentCfi();
     return cfi != null && _bookmarks.any((b) => b.location == cfi);
   }
 
   Future<void> _toggleBookmark() async {
-    final cfi = _controller?.generateEpubCfi();
+    final cfi = _currentCfi();
     if (cfi == null) return;
     final repo = ref.read(ebookRepositoryProvider);
     final existing = _bookmarks.where((b) => b.location == cfi).toList();
@@ -526,6 +546,10 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                   justify: settings.justify,
                   highlights: _highlightsByParagraph,
                   onParagraphs: (p) => _paragraphs = p,
+                  onBook: (b, c) {
+                    _book = b;
+                    _chapters = c;
+                  },
                 ),
               ),
             ),
