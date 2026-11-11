@@ -375,6 +375,15 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
   collection pages when every book in them is an ebook (not changed).
 - **Noticed, not fixed:** an audiobook's description shows raw `<br />` tags, and its details line ends with a
   stray "· 0" (probably an empty published year).
+- **Phase I (listening sessions) was already built; verified on the emulator:** `/play` -> `sync` -> `close` against
+  the demo server raised today's listening stats and created a History session, and the item's progress moved with
+  it (so the session sync and the progress PATCH write the same value). In the app, ~1 minute of playback (the emulator
+  plays silently) created a History row, today's bar, "Days listened 1" and "Current streak 1 day". The server's day
+  key (2026-11-12) was ahead of the local date (11-11) and the Stats chart still placed it on today.
+  The account menu ("Add server or account", "Manage accounts") and the Settings screen (separate jump lengths,
+  lock-screen seek, auto-rewind) render. Not checked: the offline session queue (needs airplane mode), audio-dependent
+  behaviour.
+- **Plan correction:** the old sessions plan I merged in had gone stale; Phase I was marked unbuilt in error.
 - **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7).
 - **Blocked on the demo server:** PDF reader, comic (CBZ) reader. Needs a library with those formats.
 

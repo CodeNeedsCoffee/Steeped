@@ -284,7 +284,17 @@ Today an ebook-only item (EPUB, PDF, comic with no audio files) still shows a gr
 - **Tests:** widget test for the item page with (audio only, ebook only, both): Play visible, Read visible, primary
   button correct; unit test for the `hasAudio` parse with and without the field (older servers).
 
-## Phase I: Listening sessions (prerequisite for streaks and History)
+## Phase I: Listening sessions (prerequisite for streaks and History) - BUILT, verified 2026-11-11
+
+**Status correction (2026-11-11):** this phase was already built in the committed code
+(`listening_session_repository.dart`, `listening_session_tracker.dart` with `listening_session_tracker_test.dart`,
+the `PendingListeningSessions` table and its upload in `pending_sync_controller.dart`); the text below was merged in
+from a stale plan and described it as unbuilt. Verified this run: I0 (the endpoints behave as described) and I7
+(about a minute of playback on the emulator produced a History row, today's bar, "Days listened 1" and a 1-day
+streak). Not re-verified: I4 offline queue upload, and the midnight/timezone edge (the server's day key was
+already "tomorrow" locally; the Stats chart handled it with the existing anchor). Treat I1-I7 as done unless a
+check below fails; only I4's emulator check and I5's timezone rule remain open.
+
 
 Merged from the former `SESSIONS_PLAN.md` on 2026-11-10. Written from knowledge of the Audiobookshelf API; **nothing
 below is verified yet**, which is what step I0 is for. Do this before Phase G: the streak has nothing to count without it.
@@ -448,7 +458,7 @@ artwork) · 10.5 / 10.7 Android Auto settings and voice -> F5 · 2.5 contrast an
 
 ## Suggested order
 
-A (A1, A4, A3, A5, A2) -> B1 -> B2/B3/B4 -> C1/C2 -> B6/B5 -> D1/D2/D4/D3/D5 -> F3 -> F1/F2 -> E1 -> F5 -> F4 -> E2. Phase I (listening sessions) goes after C and before G, since streaks and History need real sessions: I0 -> I1 -> I2/I3 -> I5 -> I6/I7, with I4 (offline queue) after E2. Phase G (streaks) comes next: G1 -> G2/G3 -> G4 -> G5, with the G6 spike last. Phase J (linking): J0 -> J1 -> J2 -> J3 -> J4 -> J7, with J5/J6 (Precise) last. Phase V (verification) runs before all of this. Phase H: H7 is a small, quick win and can go first; H8-H10 are optional follow-ups to the reader.
+A (A1, A4, A3, A5, A2) -> B1 -> B2/B3/B4 -> C1/C2 -> B6/B5 -> D1/D2/D4/D3/D5 -> F3 -> F1/F2 -> E1 -> F5 -> F4 -> E2. Phase I (listening sessions) is already built (see its status note); only the I4 offline-queue check and the I5 timezone rule remain. Phase G (streaks) comes next: G1 -> G2/G3 -> G4 -> G5, with the G6 spike last. Phase J (linking): J0 -> J1 -> J2 -> J3 -> J4 -> J7, with J5/J6 (Precise) last. Phase V (verification) runs before all of this. Phase H: H7 is a small, quick win and can go first; H8-H10 are optional follow-ups to the reader.
 Small, high-visibility items first; the two large items (E2 multi-server, F4 translations) last.
 
 ## Settings matrix (every preference gets a control)
