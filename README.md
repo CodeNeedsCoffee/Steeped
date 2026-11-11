@@ -11,6 +11,16 @@ the Audiobookshelf team. It's a third-party client that talks to your own Audiob
 public API — full credit to that project for the server, the API, and the reference client this one aims
 for feature parity with.
 
+## Get Steeped
+
+| Platform | Where | Status |
+|---|---|---|
+| iOS (stable) | [App Store](https://apps.apple.com/us/app/steeped-modern-audiobooks/id6797693643) | Live. Builds from `main` are submitted to App Review automatically. |
+| iOS (preview) | [TestFlight public beta](https://testflight.apple.com/join/xESRcEcP) | Every push to the `preview` branch is built and sent to beta testers. |
+| Android | Google Play | Work in progress, not publicly available yet. |
+
+You need your own Audiobookshelf server to use the app.
+
 ## Why "Steeped"
 
 Two meanings, on purpose:

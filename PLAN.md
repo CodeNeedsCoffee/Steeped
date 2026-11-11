@@ -1,4 +1,4 @@
-# Steeped Plan (branch `qol-features`)
+# Steeped Plan (branch `qol-run`)
 
 Everything that isn't blocked by admin permissions or Mac/Apple access. Written 2026-10-07.
 Blocked and out of scope here: add podcast, podcast auto-download, RSS feeds, primary/supplementary ebooks,

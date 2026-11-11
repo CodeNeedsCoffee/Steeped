@@ -1,0 +1,47 @@
+# Submits the iOS build to App Review on every push to main. The build itself is
+# made by Xcode Cloud (ios/ci_scripts); this workflow waits for the run that
+# matches this commit, then submits it through the App Store Connect API.
+#
+# Required repository secrets (Settings > Secrets and variables > Actions):
+#   ASC_KEY_ID       App Store Connect API key ID
+#   ASC_ISSUER_ID    issuer ID (Users and Access > Integrations > App Store Connect API)
+#   ASC_PRIVATE_KEY  full contents of the AuthKey_XXXX.p8 file (App Manager role or above)
+#
+# Apple allows one version in review at a time. If one is already in flight, or
+# the build's version is already released (pubspec `version:` not bumped), the
+# job fails with a message saying so rather than touching anything.
+name: iOS submit for review
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-submit
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install "pyjwt[crypto]"
+
+      - name: Submit to App Review
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          ASC_APP_ID: "6797693643"
+          RELEASE_NOTES: ${{ github.event.head_commit.message }}
+        run: python .github/scripts/submit_for_review.py
