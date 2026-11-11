@@ -150,21 +150,27 @@ class _NoLibrariesFallback extends ConsumerWidget {
     return Scaffold(
       appBar: const _EscapeAppBar(),
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(context.l10n.failedToLoadLibraries(error)),
-            const SizedBox(height: 12),
-            FilledButton.tonal(
-              onPressed: () => ref.invalidate(librariesProvider),
-              child: Text(context.l10n.retry),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () => context.push('/downloads'),
-              child: Text(context.l10n.viewDownloads),
-            ),
-          ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                context.l10n.failedToLoadLibraries(error),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonal(
+                onPressed: () => ref.invalidate(librariesProvider),
+                child: Text(context.l10n.retry),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () => context.push('/downloads'),
+                child: Text(context.l10n.viewDownloads),
+              ),
+            ],
+          ),
         ),
       ),
     );

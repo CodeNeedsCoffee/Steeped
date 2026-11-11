@@ -361,6 +361,15 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
   - **Known limits:** a word that occurs twice in the same paragraph highlights the first occurrence; headings and
     paragraphs with images are not selectable; link taps in the new renderer are kept but untested on device.
   - Still to check: scrubber drag, scroll mode, Light/Black themes, highlights surviving reopen.
+- **V2 stuck-header fix verified on the emulator.** A stand-in server (forwards to the demo server, but returns no
+  libraries or a 500 for `/api/libraries`) reproduced the half-configured server: the empty state shows
+  "No libraries on this server." and the failed state shows the error with Retry and View Downloads, both with the
+  account, settings and log out buttons in the header; log out returns to "Connect to Server". The failed state's
+  raw error text ran edge to edge; it is now padded and centered (not re-checked on the emulator).
+- **V6:** `flutter test` (234 tests) and `flutter analyze` (no errors; 22 existing deprecation notices) pass.
+- **Pages/Scroll switch verified by unit test; emulator re-check pending:** changing the mode while reading did
+  nothing until the book was reopened; `PagedScrollBehavior.shouldNotify` fixes it (test fails without the fix).
+- **Scrubber verified:** tap to 50% jumps to "Chapter 14 - 50%". Light theme verified; Black not looked at.
 - **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7).
 - **Blocked on the demo server:** PDF reader, comic (CBZ) reader. Needs a library with those formats.
 
