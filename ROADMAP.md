@@ -308,6 +308,27 @@ server was reasoned about, not exercised.
 - Whenever real app-icon artwork exists: revisit Phase 9.9, including whether `epub_view`'s `image` ^3.x
   pin still blocks `flutter_launcher_icons`/`flutter_native_splash`.
 
+## Run log (PLAN.md automated run, started 2026-11-11)
+
+Emulator: AVD `steeped_test` (Android 35, headless, `-gpu host`), debug APK from the `qol-run` worktree, demo server
+audiobooks.dev. Audio output is off, so playback is not audible. The demo server has only EPUBs (5, one an EPUB3 Media
+Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
+
+- **V1 verified:** emulator boots, APK installs and launches, login works, library switcher and Books library load.
+- **V3 EPUB reader, partly verified on the emulator:**
+  - Opens and renders; header, footer scrubber, chapter label and percent show.
+  - **Bug found and fixed:** edge taps never turned the page and the middle tap never toggled the bars, because the
+    EPUB body's `SelectionArea` won the gesture arena against the reader's tap handler. Taps are now read from raw
+    pointer events (`reader_chrome.dart`). Verified: right-edge tap advances; regression tests added
+    (`reader_chrome_test.dart`).
+  - **Bug found and fixed:** progress jumped to 100% after one page turn because the book length was guessed from the
+    table of contents. It now uses the real paragraph count. Verified: 0% after one turn at the start.
+  - **Fixed:** a finished book's button said "Continue reading (100%)"; it now says "Read again". Verified.
+  - Still to check: scrubber, bookmarks, highlights, settings persistence, resume, server sync (V4).
+- **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7); page text shows faintly
+  behind the top bar when the book opens.
+- **Blocked on the demo server:** PDF reader, comic (CBZ) reader. Needs a library with those formats.
+
 ## To do
 
 Maintained by the PLAN.md automated run: anything not built, not tested on the emulator, or needing the real Pixel is

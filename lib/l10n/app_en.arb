@@ -99,6 +99,7 @@
   "discardProgressButton": "Discard progress",
   "play": "Play",
   "read": "Read",
+  "readAgain": "Read again",
   "narratedBy": "Narrated by {join}",
   "@narratedBy": {
     "placeholders": {

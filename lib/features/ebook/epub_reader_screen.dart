@@ -227,10 +227,12 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     }
   }
 
-  /// Rough book length in paragraphs: the last chapter start plus an average
-  /// chapter. epub_view exposes no total, and the position math only needs to
-  /// be consistent with itself (it round-trips through [_jumpToFraction]).
+  /// Book length in paragraphs. The chapter builder hands over the whole
+  /// paragraph list once the book renders, so use that; the table-of-contents
+  /// guess (last chapter start plus an average chapter) only covers the first
+  /// frames, and it is wrong for books whose contents page links into one file.
   int _estimatedTotal(EpubController c) {
+    if (_paragraphs.isNotEmpty) return _paragraphs.length;
     final toc = c.tableOfContents();
     if (toc.isEmpty) return 1;
     final last = toc.last.startIndex;

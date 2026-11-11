@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -88,8 +89,29 @@ class _ReaderChromeState extends State<ReaderChrome> {
     );
   }
 
-  void _onTap(TapUpDetails d, double width) {
-    final x = d.localPosition.dx / width;
+  // Taps are read from raw pointer events rather than a gesture recogniser:
+  // the EPUB body keeps a SelectionArea (for highlights) that wins the gesture
+  // arena, so an onTapUp on this widget never fired there.
+  Offset? _downAt;
+  Duration? _downTime;
+
+  void _onPointerDown(PointerDownEvent e) {
+    _downAt = e.localPosition;
+    _downTime = e.timeStamp;
+  }
+
+  void _onPointerUp(PointerUpEvent e, double width) {
+    final at = _downAt;
+    final t = _downTime;
+    _downAt = null;
+    _downTime = null;
+    if (at == null || t == null) return;
+    final isTap = (e.localPosition - at).distance < kTouchSlop &&
+        e.timeStamp - t < const Duration(milliseconds: 350);
+    if (isTap) _onTap(e.localPosition.dx / width);
+  }
+
+  void _onTap(double x) {
     if (widget.settings.tapToTurn && x < 0.25) {
       widget.onPrev?.call();
     } else if (widget.settings.tapToTurn && x > 0.75) {
@@ -114,21 +136,25 @@ class _ReaderChromeState extends State<ReaderChrome> {
         children: [
           Positioned.fill(
             child: LayoutBuilder(
-              builder: (context, c) => GestureDetector(
+              builder: (context, c) => Listener(
                 behavior: HitTestBehavior.translucent,
-                onTapUp: (d) => _onTap(d, c.maxWidth),
-                onHorizontalDragEnd: widget.blockBodyGestures
-                    ? (d) {
-                        final v = d.primaryVelocity ?? 0;
-                        if (v < -150) widget.onNext?.call();
-                        if (v > 150) widget.onPrev?.call();
-                      }
-                    : null,
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    top: _showBars ? 0 : MediaQuery.paddingOf(context).top,
+                onPointerDown: _onPointerDown,
+                onPointerUp: (e) => _onPointerUp(e, c.maxWidth),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragEnd: widget.blockBodyGestures
+                      ? (d) {
+                          final v = d.primaryVelocity ?? 0;
+                          if (v < -150) widget.onNext?.call();
+                          if (v > 150) widget.onPrev?.call();
+                        }
+                      : null,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: _showBars ? 0 : MediaQuery.paddingOf(context).top,
+                    ),
+                    child: body,
                   ),
-                  child: body,
                 ),
               ),
             ),

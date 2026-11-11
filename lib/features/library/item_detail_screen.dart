@@ -226,9 +226,11 @@ class _ItemDetailBody extends ConsumerWidget {
                 onPressed: () => _openReader(context, item),
                 icon: const Icon(Icons.menu_book),
                 label: Text(
-                  _ebookPercent(item) > 0
-                      ? context.l10n.readingPercent(_ebookPercent(item))
-                      : context.l10n.read,
+                  _ebookPercent(item) >= 100
+                      ? context.l10n.readAgain
+                      : _ebookPercent(item) > 0
+                          ? context.l10n.readingPercent(_ebookPercent(item))
+                          : context.l10n.read,
                 ),
               ),
             ],

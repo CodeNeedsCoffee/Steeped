@@ -418,6 +418,12 @@ abstract class AppLocalizations {
   /// **'Read'**
   String get read;
 
+  /// No description provided for @readAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Read again'**
+  String get readAgain;
+
   /// No description provided for @narratedBy.
   ///
   /// In en, this message translates to:

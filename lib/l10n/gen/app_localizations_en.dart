@@ -193,6 +193,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get read => 'Read';
 
   @override
+  String get readAgain => 'Read again';
+
+  @override
   String narratedBy(Object join) {
     return 'Narrated by $join';
   }
