@@ -424,21 +424,21 @@ off Android and disabled with an explanation when no on-device recogniser exists
 ## Phase K: Remaining roadmap (merged from the old build plan's unchecked items, 2026-11-10)
 
 The old build plan (`git show a9e7ad8:PLAN.md`) held the build history; its open items live here. I compared every unchecked
-box in it against this plan. Some of its "Deferred" notes are stale (for example 4.6 filter/sort and the Authors /
-Collections / Playlists sections already exist, per D1), so confirm in the app before building anything below.
+box in it against this plan. Some of its "Deferred" notes are stale: K1, K2 and K8 below turned out to be built already, as are filter/sort and the
+Authors / Collections / Playlists sections (D1). Check the code before building anything below.
 
 ### New work (not covered by phases A-J)
 
 | # | Old plan ref | Item | Notes | Size |
 |---|---------|------|-------|------|
-| K1 | 5.8 | Audio bookmarks | The server stores them (`time` + `title`, per user); list, add, rename, delete and jump from Now Playing. Pairs with the device-only ebook bookmarks in H5. | M |
-| K2 | 4.7 | Search: Authors / Narrators / Tags / Genres | `GET /api/libraries/:id/search` already returns these groups; needs a destination for each tap (author page exists; others filter the library). | M |
+| K1 | 5.8 | **Built (found in code 2026-11-11; not re-verified on the emulator).** Audio bookmarks | The server stores them (`time` + `title`, per user); list, add, rename, delete and jump from Now Playing. Pairs with the device-only ebook bookmarks in H5. | M |
+| K2 | 4.7 | **Built (found in code 2026-11-11; not re-verified).** Search: Authors / Narrators / Tags / Genres | `GET /api/libraries/:id/search` already returns these groups; needs a destination for each tap (author page exists; others filter the library). | M |
 | K3 | 11.1 | Chromecast (Android only) | **Skipped for now (decided 2026-11-10); tracked in ROADMAP To do.** Needs a Cast SDK package, which breaks the first-party-only rule. | XL |
 | K4 | 11.2 | Home-screen / lock-screen playback widget | Android App Widget in Kotlin (no package); iOS widget needs the Mac. | L |
 | K5 | 11.3 | Tablet / foldable layouts | Responsive breakpoints for Home, detail and Now Playing. | L |
 | K6 | 11.4 | More skins | After F1 (theme variants) so each skin gets light/dark/black for free. | M |
 | K7 | 11.5 | Custom-time playback start and other power-user options | Seen in the reference app; scope when picked up. | S |
-| K8 | 5.13 | Keep-screen-awake toggle for Now Playing | Small; `wakelock_plus` is already used by the reader. Lock-player UI and MP3 index seeking stay excluded (see the top of this file). | S |
+| K8 | 5.13 | **Built (setting `keepScreenAwake` exists; not re-verified).** Keep-screen-awake toggle for Now Playing | Small; `wakelock_plus` is already used by the reader. Lock-player UI and MP3 index seeking stay excluded (see the top of this file). | S |
 | K9 | 12.3 | Versioning / changelog convention | Doc plus a release checklist. | S |
 | K10 | 2.5 | Shared skin-aware widget set (buttons, sheets, tab bar) | Overlaps the F1 colour audit; do together. | M |
 

@@ -384,6 +384,10 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
   lock-screen seek, auto-rewind) render. Not checked: the offline session queue (needs airplane mode), audio-dependent
   behaviour.
 - **Plan correction:** the old sessions plan I merged in had gone stale; Phase I was marked unbuilt in error.
+- **Audit of "not built" items against the code (2026-11-11):** already built, not re-verified on the emulator: K1 audio
+  bookmarks, K2 search by author/narrator/genre/tag, K8 keep-screen-awake setting, the Stats streak count. Genuinely
+  not built: K7 (custom-time start), K9 (changelog), G1-G6 reading streaks and Home chip, H8-H10, Phase J. Unknown:
+  K4 widget, K5 tablet layouts, K6 more skins, K10 shared widgets (not found in code).
 - **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7).
 - **Blocked on the demo server:** PDF reader, comic (CBZ) reader. Needs a library with those formats.
 
