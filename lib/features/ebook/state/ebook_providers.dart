@@ -61,6 +61,13 @@ Future<ReadingPosition?> resolveStartPosition(
   return local.updatedAt.isAfter(serverPos.updatedAt) ? local : serverPos;
 }
 
+/// Whether a reader should send `isFinished: true`. An item that also has
+/// audio shares one progress row between the audiobook and the ebook, so
+/// reaching the end of the ebook must not mark the audiobook finished.
+/// Returns null (leave the server flag alone) rather than false.
+bool? ebookFinishedFlag({required bool reachedEnd, required bool hasAudio}) =>
+    reachedEnd && !hasAudio ? true : null;
+
 /// Writes the position to the device first (so it survives going offline or a
 /// crash), then to the server. A server failure is swallowed: the local copy
 /// wins on the next open until the server catches up.

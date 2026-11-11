@@ -32,6 +32,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   String? _error;
   Timer? _syncTimer;
   String _title = '';
+  bool _hasAudio = false;
   int _page = 1;
   int _pageCount = 1;
 
@@ -44,6 +45,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   Future<void> _load() async {
     final item = await ref.read(itemDetailProvider(widget.itemId).future);
     _title = item.title;
+    _hasAudio = item.tracks.isNotEmpty;
     try {
       final repo = ref.read(ebookRepositoryProvider);
       final file = await repo.ensureLocalFile(
@@ -86,9 +88,11 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
       itemId: widget.itemId,
       location: '${controller.page}',
       fraction: _fraction,
-      isFinished: (isFinished || controller.page >= _pageCount && _pageCount > 1)
-          ? true
-          : null,
+      isFinished: ebookFinishedFlag(
+        reachedEnd:
+            isFinished || (controller.page >= _pageCount && _pageCount > 1),
+        hasAudio: _hasAudio,
+      ),
     );
   }
 

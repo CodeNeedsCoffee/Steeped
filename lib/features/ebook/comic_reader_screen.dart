@@ -66,6 +66,7 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
   bool _extracting = false;
   String? _error;
   String _title = '';
+  bool _hasAudio = false;
   int _currentPage = 0; // 0-based in memory, 1-based on the wire
   Timer? _syncTimer;
   PageController? _pageController;
@@ -81,6 +82,7 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
   Future<void> _load() async {
     final item = await ref.read(itemDetailProvider(widget.itemId).future);
     _title = item.title;
+    _hasAudio = item.tracks.isNotEmpty;
     try {
       final file = await ref
           .read(ebookRepositoryProvider)
@@ -141,7 +143,10 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
       itemId: widget.itemId,
       location: '${_currentPage + 1}',
       fraction: _fraction,
-      isFinished: (isFinished || _currentPage >= pages.length - 1) ? true : null,
+      isFinished: ebookFinishedFlag(
+        reachedEnd: isFinished || _currentPage >= pages.length - 1,
+        hasAudio: _hasAudio,
+      ),
     );
   }
 

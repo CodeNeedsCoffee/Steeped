@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:epub_view/src/data/models/paragraph.dart' show Paragraph;
 import 'package:epub_view/epub_view.dart' hide Image;
 import 'package:html/dom.dart' as dom;
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -204,6 +203,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   List<EbookHighlight> _highlights = [];
   String _selectedText = '';
   double _fraction = 0;
+  bool _hasAudio = false;
   // Where the book was meant to open; used when the saved CFI does not resolve.
   double _startFraction = 0;
   bool _resumeChecked = false;
@@ -218,6 +218,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   Future<void> _load() async {
     final item = await ref.read(itemDetailProvider(widget.itemId).future);
     _title = item.title;
+    _hasAudio = item.tracks.isNotEmpty;
     try {
       final repo = ref.read(ebookRepositoryProvider);
       final file = await repo.ensureLocalFile(
@@ -351,7 +352,10 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       itemId: widget.itemId,
       location: cfi,
       fraction: fraction,
-      isFinished: (isFinished || fraction >= 0.995) ? true : null,
+      isFinished: ebookFinishedFlag(
+        reachedEnd: isFinished || fraction >= 0.995,
+        hasAudio: _hasAudio,
+      ),
     );
   }
 

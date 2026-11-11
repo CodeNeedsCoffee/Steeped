@@ -402,7 +402,7 @@ off Android and disabled with an explanation when no on-device recogniser exists
 
 | # | Item | Approach | Size |
 |---|------|----------|------|
-| J0 | Fix the shared `isFinished` | Readers send `isFinished` only on an explicit "Mark finished" or the audiobook's own finish, not at >= 99.5%; audio sync must not un-finish an ebook-finished item. Verify against the server first. | S |
+| J0 | **Built 2026-11-11 (unit-tested; not exercised on a device).** Fix the shared `isFinished` | Readers send `isFinished` only on an explicit "Mark finished" or the audiobook's own finish, not at >= 99.5%; audio sync must not un-finish an ebook-finished item. Verify against the server first. | S |
 | J1 | Link model + auto-suggest | `ItemLinks` table (schema bump with the existing backup), candidate matching, confirm / unlink UI on the item page | M |
 | J2 | Switch buttons | "Read" / "Listen" on the item page and Now Playing / reader menus, using the link (or the same item) | S |
 | J3 | `SyncStrategy` + Estimated mode | Chapter/TOC matching and interpolation as pure functions with tests; settings row (Off / Estimated / Precise) | M |

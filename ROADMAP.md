@@ -388,6 +388,10 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
   bookmarks, K2 search by author/narrator/genre/tag, K8 keep-screen-awake setting, the Stats streak count. Genuinely
   not built: K7 (custom-time start), K9 (changelog), G1-G6 reading streaks and Home chip, H8-H10, Phase J. Unknown:
   K4 widget, K5 tablet layouts, K6 more skins, K10 shared widgets (not found in code).
+- **J0 built:** the readers now send `isFinished: true` only when the item has no audio (`ebookFinishedFlag`), so
+  finishing the ebook half of a combined item no longer marks the audiobook finished. Not covered: the server itself
+  clears `isFinished` when audio progress moves on an item whose flag was set by the ebook (server behaviour; the
+  client can't prevent it). No combined audio+ebook item exists on the demo server to try it on.
 - **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7).
 - **Blocked on the demo server:** PDF reader, comic (CBZ) reader. Needs a library with those formats.
 
@@ -402,8 +406,8 @@ logged here with the reason. Seeded 2026-11-10:
   emulator. The E-book progress item below is covered by H2/H3/H9 once this is exercised.
 - **Phase H7-H10 are open** (hide Play where there is no audio, dictionary/search/time-left, offline position queue,
   true EPUB pagination). **Phases G (streaks), I (listening sessions) and K (remaining roadmap)** are plan-only; the ebook<->audiobook link is not in the plan yet.
-- **Known risk, not fixed:** on an item with both audio and ebook the progress row is shared, so a reader's
-  `isFinished` (at >= 99.5%) can mark the audiobook finished; fix this first when the ebook<->audiobook link is added to the plan.
+- **Known risk, now mitigated (J0):** a reader's `isFinished` on a combined audio+ebook item could mark the audiobook
+  finished; readers no longer send it for items with audio.
 
 - **Chromecast (Android) skipped** by decision 2026-11-10: needs a Cast SDK package, which conflicts with the
   first-party-only dependency rule. Revisit if that rule is relaxed (PLAN.md K3).
