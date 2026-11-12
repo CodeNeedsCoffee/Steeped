@@ -264,8 +264,8 @@ H7 onward is open. See the debug APK note in the project memory for how fixes re
 | H5 | Bookmarks and highlights (device-only: the server has no ebook support for either) | Built |
 | H6 | Stuck screens on a half-configured server: header, account menu and log out on the empty / failed / loading Home states | Built |
 | **H7** | **Hide the Play button on ebook-only items** (see below) | **Open** |
-| H8 | Dictionary lookup, in-book text search, time-left estimate | Open |
-| H9 | Offline queue for reading-position syncs (a failed sync is only retried on the next change today) | Open |
+| H8 | Dictionary lookup, in-book text search, time-left estimate | **Search and time-left built 2026-11-12; dictionary not built** (an in-app lookup would send the word to a third-party service and need a store disclosure; Android's selection menu already offers the system's Define/Translate where installed) |
+| H9 | Offline queue for reading-position syncs (a failed sync is only retried on the next change today) | **Built 2026-11-12** |
 | H10 | True EPUB pagination (needs a custom renderer; `epub_view` can only scroll, so "pages" are screen-height jumps today) | Open, large |
 
 ### H7: hide Play where there is no audio
@@ -442,7 +442,7 @@ Authors / Collections / Playlists sections (D1). Check the code before building 
 | K6 | 11.4 | More skins | After F1 (theme variants) so each skin gets light/dark/black for free. | M |
 | K7 | 11.5 | Custom-time playback start and other power-user options | Seen in the reference app; scope when picked up. | S |
 | K8 | 5.13 | **Built (setting `keepScreenAwake` exists; not re-verified).** Keep-screen-awake toggle for Now Playing | Small; `wakelock_plus` is already used by the reader. Lock-player UI and MP3 index seeking stay excluded (see the top of this file). | S |
-| K9 | 12.3 | Versioning / changelog convention | Doc plus a release checklist. | S |
+| K9 | 12.3 | **Built 2026-11-12** Versioning / changelog convention | `CHANGELOG.md` and `RELEASING.md` (versioning, changelog rule, release checklist including Phase L). | S |
 | K10 | 2.5 | Shared skin-aware widget set (buttons, sheets, tab bar) | Overlaps the F1 colour audit; do together. | M |
 
 ### Already covered elsewhere in this plan

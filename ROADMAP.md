@@ -485,6 +485,10 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 - **J2 done:** Listen action in the PDF and comic readers (PDF and comics map by overall fraction and open at the mapped
   page), and a Read action in Now Playing for a linked audiobook (uses the live playback position). Not yet looked
   at on the emulator.
+- **H8 partly done:** in-book search (bottom sheet, tap a passage to jump) and a time-left estimate in the EPUB footer
+  (about 250 words a minute, from the text length) are built and verified on the emulator. No in-app dictionary: it would send
+  words to a third-party service (a store disclosure) and Android's selection menu already has system Define/Translate
+  where installed. **K9 done:** `CHANGELOG.md` and `RELEASING.md`.
 - **Also:** "Play all" on collections and playlists skips ebook-only books (button disabled when nothing is playable);
   descriptions render as plain text (no raw `<br />`); a published year of 0 is hidden.
 
