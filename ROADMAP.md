@@ -451,6 +451,20 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 - **Verified on the emulator:** the suggestion "Alchemised, SenLinYu, Matched by author and title" appears and the link
   saves ("Linked ebook"). Read/Listen were not pressed on the real server, because they write progress there.
 
+### EPUB reader showed only chapter headings (Alchemised), fixed 2026-11-12
+
+- **Cause:** `epub_view` builds pages only from the table of contents. Alchemised splits every chapter into
+  `chapterNNN_split_000.xhtml` (the heading, 802 bytes) and `_split_001.xhtml` (the text) and lists only the heading, so
+  the text was dropped (the book's text was 83 KB instead of 2.5 MB).
+- **Fix:** `epub_loader.dart` appends the spine files a contents entry is followed by (and that the contents do not list)
+  to that entry. Used by the reader and by the linking chapter spans (which had been sizing chapters by their headings).
+  Checked on the real file and in the reader: chapter 68 text now shows, at the position mapped from the audio.
+- **Known limit:** positions written to the server (CFIs) for text inside a merged file point at the chapter's heading
+  file, so another app resuming from them lands at that chapter start, not the exact paragraph. Front matter before the
+  first contents entry is still not shown.
+- **Also fixed:** the book page now refetches its progress when Now Playing closes, when playback starts or stops,
+  so a rewound book no longer keeps saying "Finished" (checked: it now shows "84% complete").
+
 ## To do
 
 - G5: milestone toast at 7/30/100/365, at-risk banner, 7-day dot row on Stats.
