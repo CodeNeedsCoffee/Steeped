@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'library_icon.dart';
 import '../streaks/streak_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -329,16 +330,28 @@ class _LibraryPicker extends ConsumerWidget {
     final selected = libraries.firstWhere((l) => l.id == selectedId);
     return PopupMenuButton<String>(
       initialValue: selectedId,
+      tooltip: selected.name,
       onSelected: (id) => ref.read(selectedLibraryIdProvider.notifier).state = id,
       itemBuilder: (context) => libraries
-          .map((l) => PopupMenuItem(value: l.id, child: Text(l.name)))
+          .map(
+            (l) => PopupMenuItem(
+              value: l.id,
+              child: Row(
+                children: [
+                  Icon(libraryIconFor(l.icon)),
+                  const SizedBox(width: 12),
+                  Flexible(child: Text(l.name, overflow: TextOverflow.ellipsis)),
+                ],
+              ),
+            ),
+          )
           .toList(),
+      // Collapsed it is just the icon, which leaves the bar room for the
+      // connection badge, streak and actions; the menu shows icon and name.
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Flexible(
-            child: Text(selected.name, overflow: TextOverflow.ellipsis),
-          ),
+          Icon(libraryIconFor(selected.icon)),
           const Icon(Icons.arrow_drop_down),
         ],
       ),
