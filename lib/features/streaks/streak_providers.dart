@@ -16,6 +16,16 @@ final readingDaysStoreProvider = Provider<ReadingDaysStore>(
   ),
 );
 
+final streakMilestoneStoreProvider = Provider<StreakMilestoneStore>(
+  (ref) => StreakMilestoneStore(
+    ref.watch(appDatabaseProvider),
+    profileId: ref.watch(activeProfileIdProvider) ?? '',
+  ),
+);
+
+/// The day (`YYYY-MM-DD`) the at-risk banner was dismissed, for this run.
+final streakBannerDismissedProvider = StateProvider<String?>((ref) => null);
+
 final readingDaysProvider = FutureProvider.autoDispose<Map<String, int>>(
   (ref) => ref.watch(readingDaysStoreProvider).load(),
 );

@@ -175,4 +175,22 @@ void main() {
       expect(open.atRisk, isTrue);
     },
   );
+
+  test('recent shows the last 7 days, today last', () {
+    final r = run(['2026-11-05', '2026-11-08', '2026-11-11'], rules: noForgive);
+    expect(r.recent, [true, false, false, true, false, false, true]);
+  });
+
+  test('milestones: the largest newly reached one, once', () {
+    int? m(int cur, int last, {bool weekly = false}) =>
+        milestoneToCelebrate(current: cur, lastCelebrated: last, weekly: weekly);
+    expect(m(6, 0), isNull);
+    expect(m(7, 0), 7);
+    expect(m(7, 7), isNull);
+    expect(m(31, 7), 30);
+    expect(m(40, 30), isNull);
+    expect(m(3, 30), isNull); // streak restarted below the old milestone
+    expect(m(7, 30), 7); // and reaching 7 again is celebrated again
+    expect(m(4, 0, weekly: true), 4);
+  });
 }

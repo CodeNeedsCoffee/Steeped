@@ -55,6 +55,11 @@ class StatsScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               _WeekdayChart(totals: stats.weekdaySecondsMonFirst),
               const SizedBox(height: 24),
+              if (ref.watch(streakProvider).valueOrNull case final st?)
+                if (st.recent.isNotEmpty) ...[
+                  _StreakDots(recent: st.recent),
+                  const SizedBox(height: 16),
+                ],
               GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
@@ -271,6 +276,46 @@ class _StatTile extends StatelessWidget {
           Text(label, style: Theme.of(context).textTheme.labelSmall),
         ],
       ),
+    );
+  }
+}
+
+/// The last 7 days as dots (today on the right): filled when the day met the
+/// streak bar, outlined when not.
+class _StreakDots extends StatelessWidget {
+  const _StreakDots({required this.recent});
+
+  final List<bool> recent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final today = DateTime.now();
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        for (var i = 0; i < recent.length; i++)
+          Column(
+            children: [
+              Icon(
+                recent[i] ? Icons.circle : Icons.circle_outlined,
+                size: 20,
+                color: recent[i] ? scheme.primary : scheme.outline,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                MaterialLocalizations.of(context).narrowWeekdays[
+                    DateTime(
+                          today.year,
+                          today.month,
+                          today.day - (recent.length - 1 - i),
+                        ).weekday %
+                        7],
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
+      ],
     );
   }
 }

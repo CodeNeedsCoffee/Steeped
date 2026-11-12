@@ -1,5 +1,6 @@
 
 import 'library_icon.dart';
+import '../streaks/streak_banner.dart';
 import '../streaks/streak_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -243,7 +244,8 @@ class _HomeShellTabs extends ConsumerWidget {
     final topInset =
         MediaQuery.paddingOf(context).top + kToolbarHeight + kTextTabBarHeight + 16;
 
-    return DefaultTabController(
+    return StreakMilestoneListener(
+      child: DefaultTabController(
       length: tabs.length,
       child: Scaffold(
         // PLAN.md Phase 2.2: the shelves need to actually scroll *behind*
@@ -292,6 +294,7 @@ class _HomeShellTabs extends ConsumerWidget {
           ],
         ),
         bottomNavigationBar: const MiniPlayer(),
+      ),
       ),
     );
   }
@@ -433,6 +436,7 @@ class _HomeTab extends ConsumerWidget {
       child: ListView(
         padding: EdgeInsets.fromLTRB(0, topInset, 0, 16),
         children: [
+          const StreakBanner(),
           // PLAN.md Phase 7.6: quick access to the newest episodes across a
           // podcast library.
           if (isPodcast) ...[

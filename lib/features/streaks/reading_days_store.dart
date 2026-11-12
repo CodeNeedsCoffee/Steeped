@@ -74,3 +74,29 @@ class ReadingClock {
   /// Forget the last touch (the reader was backgrounded or closed).
   void pause() => _last = null;
 }
+
+/// The last streak milestone the user was congratulated for, per profile, so
+/// each one is shown once.
+class StreakMilestoneStore {
+  StreakMilestoneStore(this._db, {this.profileId = ''});
+
+  final AppDatabase _db;
+  final String profileId;
+
+  String get _key => profileId.isEmpty
+      ? 'streak_milestone'
+      : profileScopedKey(profileId, 'streak_milestone');
+
+  Future<int> load() async {
+    final row = await (_db.select(
+      _db.keyValueEntries,
+    )..where((t) => t.key.equals(_key))).getSingleOrNull();
+    return int.tryParse(row?.value ?? '') ?? 0;
+  }
+
+  Future<void> save(int milestone) => _db
+      .into(_db.keyValueEntries)
+      .insertOnConflictUpdate(
+        KeyValueEntriesCompanion.insert(key: _key, value: '$milestone'),
+      );
+}

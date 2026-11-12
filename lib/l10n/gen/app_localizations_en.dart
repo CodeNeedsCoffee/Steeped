@@ -1140,6 +1140,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get longestStreak => 'Longest streak';
 
   @override
+  String streakBanner(String unit) {
+    return 'Keep your $unit streak going: listen or read today';
+  }
+
+  @override
+  String streakMilestone(String unit) {
+    return '$unit in a row. Nicely done!';
+  }
+
+  @override
   String get linkSyncMode => 'Switch position';
 
   @override

@@ -27,6 +27,7 @@ class StreakResult {
     required this.todayDone,
     required this.atRisk,
     required this.savedDays,
+    this.recent = const [],
   });
 
   static const none = StreakResult(
@@ -36,6 +37,9 @@ class StreakResult {
     atRisk: false,
     savedDays: 0,
   );
+
+  /// Whether each of the last 7 days (oldest first, today last) met the bar.
+  final List<bool> recent;
 
   /// Days (or weeks in weekly mode) in the current streak.
   final int current;
@@ -89,9 +93,20 @@ StreakResult computeStreak({
   if (keys.isEmpty) return StreakResult.none;
   final first = DateTime(keys.first.year, keys.first.month, keys.first.day);
 
-  return rules.weekly
+  final result = rules.weekly
       ? _weekly(first, today, active)
       : _daily(first, today, active, rules.forgiveMissedDay);
+  return StreakResult(
+    current: result.current,
+    longest: result.longest,
+    todayDone: result.todayDone,
+    atRisk: result.atRisk,
+    savedDays: result.savedDays,
+    recent: [
+      for (var i = 6; i >= 0; i--)
+        active(DateTime(today.year, today.month, today.day - i)),
+    ],
+  );
 }
 
 StreakResult _daily(
@@ -170,4 +185,24 @@ StreakResult _weekly(
     atRisk: !done && run > 0,
     savedDays: 0,
   );
+}
+
+/// Streak lengths worth a one-time message: days, or weeks in weekly mode.
+List<int> streakMilestones({required bool weekly}) =>
+    weekly ? const [4, 12, 26, 52] : const [7, 30, 100, 365];
+
+/// The milestone to celebrate now: the largest one the streak has reached that
+/// was not already celebrated, or null. A streak that fell below the last
+/// celebrated milestone has started over, so [lastCelebrated] no longer holds.
+int? milestoneToCelebrate({
+  required int current,
+  required int lastCelebrated,
+  required bool weekly,
+}) {
+  final base = current < lastCelebrated ? 0 : lastCelebrated;
+  int? best;
+  for (final m in streakMilestones(weekly: weekly)) {
+    if (current >= m && m > base) best = m;
+  }
+  return best;
 }

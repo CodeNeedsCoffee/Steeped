@@ -1900,6 +1900,18 @@ abstract class AppLocalizations {
   /// **'Longest streak'**
   String get longestStreak;
 
+  /// No description provided for @streakBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep your {unit} streak going: listen or read today'**
+  String streakBanner(String unit);
+
+  /// No description provided for @streakMilestone.
+  ///
+  /// In en, this message translates to:
+  /// **'{unit} in a row. Nicely done!'**
+  String streakMilestone(String unit);
+
   /// No description provided for @linkSyncMode.
   ///
   /// In en, this message translates to:
