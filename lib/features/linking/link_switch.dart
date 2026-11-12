@@ -16,6 +16,17 @@ SyncMode _modeOf(String name) => SyncMode.values.firstWhere(
   orElse: () => SyncMode.estimated,
 );
 
+/// Chapters of the ebook: an EPUB's table of contents sized by text; a PDF or
+/// comic has none, so it is one span and maps by overall fraction.
+Future<List<ChapterSpan>> _ebookSpans(
+  WidgetRef ref,
+  LibraryItemDetail ebook,
+) async {
+  if (ebook.ebookFile?.isEpub != true) return const [ChapterSpan('', 0, 1)];
+  final file = await ref.read(ebookRepositoryProvider).ensureLocalFile(ebook);
+  return epubChapterSpans(file);
+}
+
 List<ChapterSpan> _audioSpans(LibraryItemDetail audio) => [
   for (final c in audio.chapters) ChapterSpan(c.title, c.start, c.end),
 ];
@@ -36,15 +47,12 @@ Future<void> switchToEbook(
     final seconds = audio.progress?.currentTime ?? 0;
     // Only map from a spot the user has actually reached.
     if (seconds > 0) {
-      final file = await ref
-          .read(ebookRepositoryProvider)
-          .ensureLocalFile(ebook);
       final from = _audioSpans(audio).isNotEmpty
           ? _audioSpans(audio)
           : [ChapterSpan('', 0, audio.duration!)];
       final result = strategyFor(
         mode,
-      ).map(seconds, from, await epubChapterSpans(file));
+      ).map(seconds, from, await _ebookSpans(ref, ebook));
       if (result != null) {
         ref
             .read(pendingEbookJumpProvider.notifier)
@@ -73,15 +81,12 @@ Future<void> switchToAudio(
       fromDetail: ebook.progress,
     );
     if (position != null && position.fraction > 0) {
-      final file = await ref
-          .read(ebookRepositoryProvider)
-          .ensureLocalFile(ebook);
       final to = _audioSpans(audio).isNotEmpty
           ? _audioSpans(audio)
           : [ChapterSpan('', 0, audio.duration!)];
       startAt = strategyFor(
         mode,
-      ).map(position.fraction, await epubChapterSpans(file), to)?.position;
+      ).map(position.fraction, await _ebookSpans(ref, ebook), to)?.position;
     }
   }
   await ref

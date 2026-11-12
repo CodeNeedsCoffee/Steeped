@@ -1,4 +1,6 @@
 import 'dart:async';
+import '../linking/link_providers.dart';
+import '../linking/linked_listen_action.dart';
 import '../streaks/streak_providers.dart';
 import 'dart:io';
 
@@ -108,7 +110,15 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
       );
       if (!mounted) return;
       // The official apps store a 1-based page number.
-      final startPage = (int.tryParse(start?.location ?? '') ?? 1) - 1;
+      var startPage = (int.tryParse(start?.location ?? '') ?? 1) - 1;
+      // A switch from the linked audiobook picked the spot (a fraction).
+      final jump = ref.read(pendingEbookJumpProvider)[widget.itemId];
+      if (jump != null) {
+        ref
+            .read(pendingEbookJumpProvider.notifier)
+            .update((m) => {...m}..remove(widget.itemId));
+        startPage = (jump * pages.length).floor();
+      }
       _currentPage = startPage.clamp(0, (pages.length - 1).clamp(0, 1 << 30));
       _pageController = PageController(initialPage: _currentPage);
       _positions.itemPositions.addListener(_onScrolled);
@@ -262,6 +272,7 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
           ? null
           : context.l10n.pageOfTotal(_currentPage + 1, pages.length),
       actions: [
+        LinkedListenAction(itemId: widget.itemId, saveFirst: _sync),
         IconButton(
           icon: const Icon(Icons.tune),
           tooltip: context.l10n.readingSettingsTooltip,

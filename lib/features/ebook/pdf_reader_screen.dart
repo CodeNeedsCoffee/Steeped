@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../linking/link_providers.dart';
+import '../linking/linked_listen_action.dart';
 import '../streaks/streak_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -66,10 +68,22 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
       );
       if (!mounted) return;
       _page = (int.tryParse(start?.location ?? '') ?? 1).clamp(1, 1 << 30);
-      final controller = PdfController(
-        document: PdfDocument.openFile(file.path),
-        initialPage: _page,
-      );
+      // A switch from the linked audiobook picked the spot (a fraction).
+      final jump = ref.read(pendingEbookJumpProvider)[widget.itemId];
+      if (jump != null) {
+        ref
+            .read(pendingEbookJumpProvider.notifier)
+            .update((m) => {...m}..remove(widget.itemId));
+      }
+      final document = PdfDocument.openFile(file.path);
+      final controller = PdfController(document: document, initialPage: _page);
+      if (jump != null) {
+        document.then((d) {
+          if (mounted) {
+            controller.jumpToPage((jump * d.pagesCount).floor().clamp(0, d.pagesCount - 1) + 1);
+          }
+        });
+      }
       setState(() {
         _controller = controller;
         _downloading = false;
@@ -172,6 +186,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
           : (f) => c.jumpToPage((f * _pageCount).floor().clamp(0, _pageCount - 1) + 1),
       footerLabel: context.l10n.pageOfTotal(_page, _pageCount),
       actions: [
+        LinkedListenAction(itemId: widget.itemId, saveFirst: _sync),
         IconButton(
           icon: const Icon(Icons.text_fields),
           tooltip: context.l10n.readingSettingsTooltip,
