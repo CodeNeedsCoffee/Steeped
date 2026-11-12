@@ -47,10 +47,16 @@ String normalizeTitle(String value) {
 String _normalizeId(String? v) =>
     (v ?? '').toUpperCase().replaceAll(RegExp(r'[^0-9A-Z]'), '');
 
-/// Authors compare as a set of normalised names, so "A, B" equals "B, A".
+/// The title before a subtitle ("Alchemised: A Novel" -> "alchemised").
+String mainTitle(String value) =>
+    normalizeTitle(value.split(RegExp(r'\s[-–—]\s|:')).first);
+
+/// Authors compare as a set of names with spaces and punctuation removed, so
+/// "A, B" equals "B, A" and "Sen Lin Yu" equals "SenLinYu".
 Set<String> _authors(String? v) => {
-  for (final part in (v ?? '').split(RegExp(r',|&| and ')))
-    if (normalizeTitle(part).isNotEmpty) normalizeTitle(part),
+  for (final part in (v ?? '').split(RegExp(r',|&|;| and ')))
+    if (normalizeTitle(part).replaceAll(' ', '').isNotEmpty)
+      normalizeTitle(part).replaceAll(' ', ''),
 };
 
 /// Why [a] and [b] are the same book, or null when they are not.
@@ -60,7 +66,7 @@ LinkReason? matchReason(LinkKey a, LinkKey b) {
   final ai = _normalizeId(a.isbn), bi = _normalizeId(b.isbn);
   if (ai.isNotEmpty && ai == bi) return LinkReason.isbn;
 
-  final at = normalizeTitle(a.title), bt = normalizeTitle(b.title);
+  final at = mainTitle(a.title), bt = mainTitle(b.title);
   if (at.isEmpty || at != bt) return null;
   final au = _authors(a.author), bu = _authors(b.author);
   if (au.isEmpty || bu.isEmpty || au.intersection(bu).isEmpty) return null;

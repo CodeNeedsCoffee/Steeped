@@ -1,3 +1,16 @@
+/// Audio files in a book's `media`: the minified `numAudioFiles`, else the
+/// expanded `audioFiles`/`tracks` list (search results on older servers), else
+/// assume there is audio so Play is never hidden by mistake.
+num _audioFileCount(Map<String, dynamic> media) {
+  final n = media['numAudioFiles'];
+  if (n is num) return n;
+  for (final key in ['audioFiles', 'tracks']) {
+    final list = media[key];
+    if (list is List) return list.length;
+  }
+  return 1;
+}
+
 /// A single entry from `GET /api/libraries/:id/items` (`results[]`) or a
 /// `type: 'book'|'episode'|'podcast'` personalized shelf's `entities[]`.
 /// Server shape is `LibraryItemMinified` (book or podcast media) — see
@@ -46,9 +59,11 @@ class LibraryItem {
       duration: isPodcast
           ? null
           : (media['duration'] as num?)?.toDouble(),
-      hasEbook: !isPodcast && media['ebookFormat'] != null,
+      hasEbook:
+          !isPodcast &&
+          (media['ebookFormat'] != null || media['ebookFile'] != null),
       // Absent on older servers/shapes: assume audio so Play is never hidden by mistake.
-      hasAudio: isPodcast || ((media['numAudioFiles'] as num?) ?? 1) > 0,
+      hasAudio: isPodcast || _audioFileCount(media) > 0,
       asin: isPodcast ? null : metadata['asin']?.toString(),
       isbn: isPodcast ? null : metadata['isbn']?.toString(),
       libraryId: json['libraryId']?.toString(),

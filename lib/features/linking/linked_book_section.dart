@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n.dart';
+import '../../models/library_item.dart';
 import '../../models/library_item_detail.dart';
 import '../library/state/library_providers.dart';
 import 'item_links_store.dart';
@@ -98,66 +99,120 @@ class LinkedBookSection extends ConsumerWidget {
   Future<void> _suggest(BuildContext context, WidgetRef ref) {
     return showDialog<void>(
       context: context,
-      builder: (ctx) => Consumer(
-        builder: (ctx, ref, _) {
-          final suggestions = ref.watch(linkSuggestionsProvider(item.id));
-          return AlertDialog(
-            title: Text(ctx.l10n.linkBookPick),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: suggestions.when(
+      builder: (_) => _LinkDialog(item: item),
+    );
+  }
+}
+
+class _LinkDialog extends ConsumerStatefulWidget {
+  const _LinkDialog({required this.item});
+
+  final LibraryItemDetail item;
+
+  @override
+  ConsumerState<_LinkDialog> createState() => _LinkDialogState();
+}
+
+class _LinkDialogState extends ConsumerState<_LinkDialog> {
+  final _controller = TextEditingController();
+  String _query = '';
+
+  bool get _isAudio => !widget.item.isEbookOnly;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _link(LibraryItem other, LinkSource source) async {
+    final item = widget.item;
+    await ref
+        .read(itemLinksStoreProvider)
+        .save(
+          ItemLink(
+            audioItemId: _isAudio ? item.id : other.id,
+            ebookItemId: _isAudio ? other.id : item.id,
+            source: source,
+          ),
+        );
+    ref.invalidate(itemLinkProvider(item.id));
+    ref.invalidate(itemLinkProvider(other.id));
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  Widget _tile(LibraryItem b, LinkSource source, {LinkReason? reason}) =>
+      ListTile(
+        title: Text(b.title),
+        subtitle: Text(
+          [
+            if (b.authorOrPublisherName != null) b.authorOrPublisherName!,
+            if (reason != null)
+              context.l10n.linkBookMatchedBy(_reasonLabel(context, reason)),
+          ].join(' · '),
+        ),
+        onTap: () => _link(b, source),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final searching = _query.isNotEmpty;
+    final results = searching
+        ? ref
+              .watch(linkSearchProvider((widget.item.id, _query)))
+              .whenData(
+                (list) => [for (final b in list) _tile(b, LinkSource.manual)],
+              )
+        : ref
+              .watch(linkSuggestionsProvider(widget.item.id))
+              .whenData(
+                (list) => [
+                  for (final s in list)
+                    _tile(s.item, LinkSource.auto, reason: s.reason),
+                ],
+              );
+    return AlertDialog(
+      title: Text(context.l10n.linkBookPick),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Flexible(
+              child: results.when(
                 loading: () => const SizedBox(
                   height: 64,
                   child: Center(child: CircularProgressIndicator()),
                 ),
-                error: (e, _) => Text(ctx.l10n.failedToLoad(e)),
-                data: (list) => list.isEmpty
-                    ? Text(ctx.l10n.linkBookNone)
-                    : ListView(
-                        shrinkWrap: true,
-                        children: [
-                          for (final s in list)
-                            ListTile(
-                              title: Text(s.item.title),
-                              subtitle: Text(
-                                [
-                                  if (s.item.authorOrPublisherName != null)
-                                    s.item.authorOrPublisherName!,
-                                  ctx.l10n.linkBookMatchedBy(
-                                    _reasonLabel(ctx, s.reason),
-                                  ),
-                                ].join(' · '),
-                              ),
-                              onTap: () async {
-                                final audioId = _isAudio ? item.id : s.item.id;
-                                final ebookId = _isAudio ? s.item.id : item.id;
-                                await ref
-                                    .read(itemLinksStoreProvider)
-                                    .save(
-                                      ItemLink(
-                                        audioItemId: audioId,
-                                        ebookItemId: ebookId,
-                                        source: LinkSource.auto,
-                                      ),
-                                    );
-                                ref.invalidate(itemLinkProvider(item.id));
-                                ref.invalidate(itemLinkProvider(s.item.id));
-                                if (ctx.mounted) Navigator.of(ctx).pop();
-                              },
-                            ),
-                        ],
-                      ),
+                error: (e, _) => Text(context.l10n.failedToLoad(e)),
+                data: (tiles) => tiles.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(context.l10n.linkBookNone),
+                      )
+                    : ListView(shrinkWrap: true, children: tiles),
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _controller,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                labelText: context.l10n.linkBookSearch,
+                suffixIcon: const Icon(Icons.search),
               ),
-            ],
-          );
-        },
+              onSubmitted: (v) => setState(() => _query = v.trim()),
+            ),
+          ],
+        ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+        ),
+      ],
     );
   }
 }

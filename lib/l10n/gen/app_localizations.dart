@@ -1954,6 +1954,12 @@ abstract class AppLocalizations {
   /// **'No matching book found'**
   String get linkBookNone;
 
+  /// No description provided for @linkBookSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by title'**
+  String get linkBookSearch;
+
   /// No description provided for @linkBookPick.
   ///
   /// In en, this message translates to:

@@ -1169,6 +1169,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkBookNone => 'No matching book found';
 
   @override
+  String get linkBookSearch => 'Search by title';
+
+  @override
   String get linkBookPick => 'Link to this book?';
 
   @override

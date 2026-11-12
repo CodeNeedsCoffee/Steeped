@@ -102,4 +102,30 @@ void main() {
       expect([for (final c in out) c.key.id], ['a', 'i', 't']);
     },
   );
+
+  test('a subtitle on one side still matches', () {
+    expect(
+      matchReason(
+        k('a', 'Alchemised', author: 'SenLinYu'),
+        k('b', 'Alchemised: A Novel', author: 'SenLinYu'),
+      ),
+      LinkReason.authorTitle,
+    );
+  });
+
+  test('author spelled with and without spaces matches', () {
+    expect(
+      matchReason(
+        k('a', 'Alchemised', author: 'SenLinYu'),
+        k('b', 'Alchemised', author: 'Sen Lin Yu'),
+      ),
+      LinkReason.authorTitle,
+    );
+  });
+
+  test('mainTitle drops a subtitle', () {
+    expect(mainTitle('Alchemised: A Novel'), 'alchemised');
+    expect(mainTitle('Dune - Book One'), 'dune');
+    expect(mainTitle('The Hobbit'), 'hobbit');
+  });
 }
