@@ -265,22 +265,7 @@ class _HomeShellTabs extends ConsumerWidget {
               ),
             ),
             const StreakChip(),
-            const ProfileMenuButton(),
-            IconButton(
-              icon: const Icon(Icons.search),
-              tooltip: context.l10n.search,
-              onPressed: () => context.push('/search/$libraryId'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.download_done_outlined),
-              tooltip: context.l10n.downloads,
-              onPressed: () => context.push('/downloads'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              tooltip: context.l10n.settings,
-              onPressed: () => context.push('/settings'),
-            ),
+            _HomeMenu(libraryId: libraryId),
           ],
           bottom: TabBar(tabs: tabs),
         ),
@@ -310,6 +295,37 @@ class _HomeShellTabs extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// The one menu at the top right of Home: account, search, downloads and
+/// settings, so the bar keeps its room for the library icon and the badge.
+class _HomeMenu extends StatelessWidget {
+  const _HomeMenu({required this.libraryId});
+
+  final String libraryId;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: context.l10n.menu,
+      icon: const Icon(Icons.menu),
+      onSelected: (route) => context.push(route),
+      itemBuilder: (context) => [
+        _item('/account', Icons.account_circle_outlined, context.l10n.account),
+        _item('/search/$libraryId', Icons.search, context.l10n.search),
+        _item('/downloads', Icons.download_done_outlined, context.l10n.downloads),
+        _item('/settings', Icons.settings_outlined, context.l10n.settings),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _item(String route, IconData icon, String label) =>
+      PopupMenuItem(
+        value: route,
+        child: Row(
+          children: [Icon(icon), const SizedBox(width: 12), Text(label)],
+        ),
+      );
 }
 
 class _LibraryPicker extends ConsumerWidget {

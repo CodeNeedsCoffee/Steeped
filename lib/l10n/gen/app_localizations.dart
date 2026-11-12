@@ -2806,6 +2806,12 @@ abstract class AppLocalizations {
   /// **'Accounts'**
   String get accounts;
 
+  /// No description provided for @menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get menu;
+
   /// No description provided for @addServerOrAccount.
   ///
   /// In en, this message translates to:

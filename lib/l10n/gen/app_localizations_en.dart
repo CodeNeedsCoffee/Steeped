@@ -1664,6 +1664,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accounts => 'Accounts';
 
   @override
+  String get menu => 'Menu';
+
+  @override
   String get addServerOrAccount => 'Add server or account';
 
   @override
