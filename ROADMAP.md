@@ -441,12 +441,9 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 Maintained by the PLAN.md automated run: anything not built, not tested on the emulator, or needing the real Pixel is
 logged here with the reason. Seeded 2026-11-10:
 
-- **Emulator not yet verified.** `tool/emulator.sh` (AVD `steeped_test`, `-gpu host`) has not completed a boot yet;
-  the first emulator run must confirm it boots and that the debug APK installs. Software GPU modes segfault.
-- **Phase H (ebook reader) is built but only checked with unit tests and `flutter analyze`**, not on a device or
-  emulator. The E-book progress item below is covered by H2/H3/H9 once this is exercised.
-- **Phase H7-H10 are open** (hide Play where there is no audio, dictionary/search/time-left, offline position queue,
-  true EPUB pagination). **Phases G (streaks), I (listening sessions) and K (remaining roadmap)** are plan-only; the ebook<->audiobook link is not in the plan yet.
+- **Emulator works** (`tool/emulator.sh`, AVD `steeped_test`, `-gpu host`); stop it during `flutter build` to avoid the OOM killer.
+- **Still open from the original list:** H8-H10 (dictionary/search/time-left, offline position queue, true EPUB
+  pagination), K4-K7/K9, and the Phase A-F re-checks on the emulator. Phase I is built and verified.
 - **Known risk, now mitigated (J0):** a reader's `isFinished` on a combined audio+ebook item could mark the audiobook
   finished; readers no longer send it for items with audio.
 
