@@ -470,7 +470,7 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 - G5: milestone toast at 7/30/100/365, at-risk banner, 7-day dot row on Stats.
 - G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).
 - G7: streak reminders (local, opt-in, off by default). Back in scope 2026-11-12; build after G5. Needs the settings keys and an explanation before the permission prompt.
-- L1-L7: update the website's policies and pages (L7; publish before submitting, the policy URL goes in both consoles; the site is not in this repo), the Google Play Console (Data safety, foreground service, battery-optimisation and notification/microphone declarations) and App Store Connect (App Privacy, background audio, notifications), the store text and screenshots, and the privacy policy for the new permissions and data uses. Needs the user (console access); I prepare the inventory and wording. See PLAN.md Phase L.
+- L1-L7: update the website's policies and pages (L7; the Steeped-Site repo, `src/worker/pages/privacy.ts`; publish before submitting, the policy URL goes in both consoles), the Google Play Console (Data safety, foreground service, battery-optimisation and notification/microphone declarations) and App Store Connect (App Privacy, background audio, notifications), the store text and screenshots, and the privacy policy for the new permissions and data uses. Needs the user (console access); I prepare the inventory and wording. See PLAN.md Phase L.
 - J2: Read switch in Now Playing, and Listen in the PDF/comic readers (item page and EPUB reader done).
 - J4: confirm on the real Pixel that a Listen switch starts at the mapped time and that both progress rows update.
 - J5/J6: Precise mode spike and build.
