@@ -465,11 +465,33 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 - **Also fixed:** the book page now refetches its progress when Now Playing closes, when playback starts or stops,
   so a rewound book no longer keeps saying "Finished" (checked: it now shows "84% complete").
 
+### Streak extras, reminders, ebook queue and other fixes, built 2026-11-12
+
+- **G5 done:** a 7-day dot row under the Stats tiles, a dismissible at-risk banner on Home (from 5 pm, only with a streak
+  running and today empty), a one-time milestone message at 7/30/100/365 days (4/12/26/52 weeks in weekly mode).
+  Unit-tested; the banner has widget tests. Not yet looked at on the emulator.
+- **G7 built (Android):** opt-in reminder (Settings -> Streaks): an explanation dialog first, then the system permission
+  (it was already requested at app start for the playback notification, so no new prompt or manifest permission);
+  time picker (default 7 pm), quiet hours (10 pm-8 am), "Send a test reminder". A small Kotlin channel sets one
+  inexact alarm (`setAndAllowWhileIdle`, so no exact-alarm permission); `ReminderReceiver` posts the notification.
+  Rules (unit-tested): off by default, none once the day is done, none without a streak, none in quiet hours, stops
+  after 3 ignored in a row. Verified on the emulator: the test reminder appeared with the flame icon and text.
+  **Limits:** alarms do not survive a reboot (rescheduled on the next app start; adding RECEIVE_BOOT_COMPLETED
+  would be another permission); the time is fixed, not derived from the user's habits; iOS is not built (needs the Mac,
+  a Swift channel on `UNUserNotificationCenter`).
+- **H9 done:** reading positions that fail to upload are kept in a per-profile queue and retried by the sync controller
+  (app start, reconnect, every 3 min); a queued position older than what the server holds is dropped, not pushed over
+  it. Unit-tested (store); the flush itself is not exercised on a device.
+- **J2 done:** Listen action in the PDF and comic readers (PDF and comics map by overall fraction and open at the mapped
+  page), and a Read action in Now Playing for a linked audiobook (uses the live playback position). Not yet looked
+  at on the emulator.
+- **Also:** "Play all" on collections and playlists skips ebook-only books (button disabled when nothing is playable);
+  descriptions render as plain text (no raw `<br />`); a published year of 0 is hidden.
+
 ## To do
 
-- G5: milestone toast at 7/30/100/365, at-risk banner, 7-day dot row on Stats.
 - G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).
-- G7: streak reminders (local, opt-in, off by default). Back in scope 2026-11-12; build after G5. Needs the settings keys and an explanation before the permission prompt.
+- G7 on iOS (needs the Mac), reschedule-after-reboot decision, habit-based reminder time.
 - L1-L7: update the website's policies and pages (L7; the Steeped-Site repo, `src/worker/pages/privacy.ts`; publish before submitting, the policy URL goes in both consoles), the Google Play Console (Data safety, foreground service, battery-optimisation and notification/microphone declarations) and App Store Connect (App Privacy, background audio, notifications), the store text and screenshots, and the privacy policy for the new permissions and data uses. Needs the user (console access); I prepare the inventory and wording. See PLAN.md Phase L.
 - J2: Read switch in Now Playing, and Listen in the PDF/comic readers (item page and EPUB reader done).
 - J4: confirm on the real Pixel that a Listen switch starts at the mapped time and that both progress rows update.
