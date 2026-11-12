@@ -26,7 +26,6 @@ class AppSettings {
     this.cellularStreaming = CellularPolicy.always,
     this.cellularDownloads = CellularPolicy.always,
     this.treatMeteredAsCellular = false,
-    this.showNetworkType = true,
     this.confirmSwitchWhilePlaying = true,
     this.showOtherServerDownloads = true,
     this.maskServerAddress = false,
@@ -86,7 +85,6 @@ class AppSettings {
         json['allowCellularDownloads'],
       ),
       treatMeteredAsCellular: json['treatMeteredAsCellular'] as bool? ?? false,
-      showNetworkType: json['showNetworkType'] as bool? ?? true,
       confirmSwitchWhilePlaying:
           json['confirmSwitchWhilePlaying'] as bool? ?? true,
       showOtherServerDownloads:
@@ -157,9 +155,7 @@ class AppSettings {
   final CellularPolicy cellularDownloads;
 
   /// Data: apply the cellular policy to metered Wi-Fi (a phone hotspot) too.
-  /// User Interface: label the Live badge with the network type.
   final bool treatMeteredAsCellular;
-  final bool showNetworkType;
 
   /// Account: ask before switching servers/accounts while something is
   /// playing; list downloads that came from other servers too.
@@ -260,7 +256,6 @@ class AppSettings {
     'cellularStreaming': cellularStreaming.name,
     'cellularDownloads': cellularDownloads.name,
     'treatMeteredAsCellular': treatMeteredAsCellular,
-    'showNetworkType': showNetworkType,
     'confirmSwitchWhilePlaying': confirmSwitchWhilePlaying,
     'showOtherServerDownloads': showOtherServerDownloads,
     'maskServerAddress': maskServerAddress,
@@ -303,7 +298,6 @@ class AppSettings {
     CellularPolicy? cellularStreaming,
     CellularPolicy? cellularDownloads,
     bool? treatMeteredAsCellular,
-    bool? showNetworkType,
     bool? confirmSwitchWhilePlaying,
     bool? showOtherServerDownloads,
     bool? maskServerAddress,
@@ -347,7 +341,6 @@ class AppSettings {
       cellularDownloads: cellularDownloads ?? this.cellularDownloads,
       treatMeteredAsCellular:
           treatMeteredAsCellular ?? this.treatMeteredAsCellular,
-      showNetworkType: showNetworkType ?? this.showNetworkType,
       confirmSwitchWhilePlaying:
           confirmSwitchWhilePlaying ?? this.confirmSwitchWhilePlaying,
       showOtherServerDownloads:

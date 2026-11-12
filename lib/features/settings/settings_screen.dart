@@ -324,14 +324,6 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           _SectionHeader(context.l10n.sectionUserInterface),
-          if (Platform.isAndroid)
-            SwitchListTile(
-              title: Text(context.l10n.showNetworkTypeOnThe),
-              subtitle: Text(context.l10n.forExampleLiveMetered),
-              value: settings.showNetworkType,
-              onChanged: (v) =>
-                  controller.save(settings.copyWith(showNetworkType: v)),
-            ),
           SwitchListTile(
             title: Text(context.l10n.hapticFeedback),
             value: settings.hapticFeedbackEnabled,

@@ -1438,18 +1438,6 @@ abstract class AppLocalizations {
   /// **'Show each series as a single tile in the Books grid'**
   String get showEachSeriesAsA;
 
-  /// No description provided for @showNetworkTypeOnThe.
-  ///
-  /// In en, this message translates to:
-  /// **'Show network type on the Live badge'**
-  String get showNetworkTypeOnThe;
-
-  /// No description provided for @forExampleLiveMetered.
-  ///
-  /// In en, this message translates to:
-  /// **'For example \"Live (metered)\"'**
-  String get forExampleLiveMetered;
-
   /// No description provided for @maskServerAddress.
   ///
   /// In en, this message translates to:
@@ -2325,18 +2313,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Library'**
   String get tabLibrary;
-
-  /// No description provided for @liveCellular.
-  ///
-  /// In en, this message translates to:
-  /// **'Live (cellular)'**
-  String get liveCellular;
-
-  /// No description provided for @liveMetered.
-  ///
-  /// In en, this message translates to:
-  /// **'Live (metered)'**
-  String get liveMetered;
 
   /// No description provided for @live.
   ///

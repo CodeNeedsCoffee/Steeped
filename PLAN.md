@@ -468,7 +468,6 @@ Small, high-visibility items first; the two large items (E2 multi-server, F4 tra
 | Jump back / jump forward seconds (A1) | Playback | 30 / 30 (migrated from today's value) |
 | Cellular streaming / downloads: Ask, Always, Never (A2) | Data | Always (today's behaviour) |
 | Treat metered Wi-Fi like cellular (E1) | Data | Off |
-| Show network type on the Live badge (E1) | User Interface | On |
 | Mask server address (A3) | Account | Off |
 | Allow seeking on lock-screen controls (A5) | Playback | On |
 | Auto-rewind amount; scale after long pauses (B1) | Playback | Off; off |

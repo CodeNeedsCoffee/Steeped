@@ -815,12 +815,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show each series as a single tile in the Books grid';
 
   @override
-  String get showNetworkTypeOnThe => 'Show network type on the Live badge';
-
-  @override
-  String get forExampleLiveMetered => 'For example \"Live (metered)\"';
-
-  @override
   String get maskServerAddress => 'Mask server address';
 
   @override
@@ -1371,12 +1365,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tabLibrary => 'Library';
-
-  @override
-  String get liveCellular => 'Live (cellular)';
-
-  @override
-  String get liveMetered => 'Live (metered)';
 
   @override
   String get live => 'Live';

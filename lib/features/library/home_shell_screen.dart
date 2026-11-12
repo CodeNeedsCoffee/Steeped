@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/network/connectivity_service.dart';
 import '../../core/network/cover_image_url.dart';
 import '../../core/network/socket_service.dart';
 import '../../core/storage/app_database.dart';
@@ -26,7 +25,6 @@ import '../player/mini_player.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/pending_sync_controller.dart';
 import '../player/state/playback_controller.dart';
-import '../settings/state/settings_providers.dart';
 import 'library_actions.dart';
 import 'library_browse_tab.dart';
 import 'state/library_providers.dart';
@@ -264,10 +262,6 @@ class _HomeShellTabs extends ConsumerWidget {
               child: Center(
                 child: _ConnectionBadge(
                   status: ref.watch(socketServiceProvider),
-                  network: ref.watch(networkKindProvider).valueOrNull,
-                  showNetwork:
-                      ref.watch(appSettingsProvider).valueOrNull?.showNetworkType ??
-                      true,
                 ),
               ),
             ),
@@ -943,26 +937,16 @@ class _OfflineTabPlaceholder extends ConsumerWidget {
 }
 
 class _ConnectionBadge extends StatelessWidget {
-  const _ConnectionBadge({
-    required this.status,
-    required this.network,
-    required this.showNetwork,
-  });
+  const _ConnectionBadge({required this.status});
 
   final SocketConnectionStatus status;
-  final NetworkKind? network;
-  final bool showNetwork;
 
   @override
   Widget build(BuildContext context) {
     final (color, label) = switch (status) {
       SocketConnectionStatus.authenticated => (
         Colors.greenAccent,
-        switch (showNetwork && Platform.isAndroid ? network : null) {
-          NetworkKind.cellular => context.l10n.liveCellular,
-          NetworkKind.meteredWifi => context.l10n.liveMetered,
-          _ => context.l10n.live,
-        },
+        context.l10n.live,
       ),
       SocketConnectionStatus.connected => (Colors.amber, context.l10n.connecting),
       SocketConnectionStatus.connecting => (Colors.amber, context.l10n.connecting),
