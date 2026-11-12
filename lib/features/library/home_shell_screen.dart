@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 
 import 'library_icon.dart';
 import '../streaks/streak_chip.dart';
