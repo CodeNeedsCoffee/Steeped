@@ -13,6 +13,7 @@ import '../library/state/library_providers.dart';
 import 'data/ereader_settings.dart';
 import 'data/reading_position.dart';
 import '../linking/link_providers.dart';
+import '../linking/link_switch.dart';
 import 'ereader_settings_panel.dart';
 import 'epub_cfi_fix.dart';
 import 'reader_chrome.dart';
@@ -606,6 +607,13 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
             onPressed: () => _showNotes(context, controller),
           ),
         ],
+        if (ref.watch(itemLinkProvider(widget.itemId)).valueOrNull
+            case final link? when link.ebookItemId == widget.itemId)
+          IconButton(
+            icon: const Icon(Icons.headphones),
+            tooltip: context.l10n.listenLinked,
+            onPressed: () => _listenLinked(link.audioItemId),
+          ),
         IconButton(
           icon: const Icon(Icons.text_fields),
           tooltip: context.l10n.readingSettingsTooltip,
@@ -613,6 +621,15 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
         ),
       ],
     );
+  }
+
+  /// Saves where we are, then starts the linked audiobook at the matching spot.
+  Future<void> _listenLinked(String audioId) async {
+    _sync();
+    final audio = await ref.read(itemDetailProvider(audioId).future);
+    final ebook = await ref.read(itemDetailProvider(widget.itemId).future);
+    if (!mounted) return;
+    await switchToAudio(context, ref, audio: audio, ebook: ebook);
   }
 
   void _showToc(BuildContext context, EpubController controller) {
