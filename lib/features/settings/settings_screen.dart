@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import '../linking/sync_strategy.dart' show SyncMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -357,6 +358,37 @@ class SettingsScreen extends ConsumerWidget {
 
           _SectionHeader(context.l10n.sectionEreader),
           const EreaderSettingsPanel(showTheme: false),
+
+          _SectionHeader(context.l10n.sectionLinkedBooks),
+          ListTile(
+            title: Text(context.l10n.linkSyncMode),
+            subtitle: Text(
+              settings.linkSyncMode == SyncMode.off.name
+                  ? context.l10n.linkSyncOffHint
+                  : context.l10n.linkSyncEstimatedHint,
+            ),
+            trailing: DropdownButton<String>(
+              value: settings.linkSyncMode == SyncMode.off.name
+                  ? SyncMode.off.name
+                  : SyncMode.estimated.name,
+              underline: const SizedBox.shrink(),
+              onChanged: (v) {
+                if (v != null) {
+                  controller.save(settings.copyWith(linkSyncMode: v));
+                }
+              },
+              items: [
+                DropdownMenuItem(
+                  value: SyncMode.off.name,
+                  child: Text(context.l10n.linkSyncOff),
+                ),
+                DropdownMenuItem(
+                  value: SyncMode.estimated.name,
+                  child: Text(context.l10n.linkSyncEstimated),
+                ),
+              ],
+            ),
+          ),
 
           if (Platform.isAndroid) ...[
             _SectionHeader(context.l10n.sectionAndroidAuto),

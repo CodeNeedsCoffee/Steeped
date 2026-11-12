@@ -44,6 +44,7 @@ class AppSettings {
     this.autoRewindScale = false,
     this.sleepFadeOut = true,
     this.sleepFadeSeconds = 10,
+    this.linkSyncMode = 'estimated',
     this.sleepChime = false,
     this.sleepExtendMinutes = 5,
     this.sleepAutoWindow = false,
@@ -102,6 +103,7 @@ class AppSettings {
       autoRewindScale: json['autoRewindScale'] as bool? ?? false,
       sleepFadeOut: json['sleepFadeOut'] as bool? ?? true,
       sleepFadeSeconds: json['sleepFadeSeconds'] as int? ?? 10,
+      linkSyncMode: json['linkSyncMode'] as String? ?? 'estimated',
       sleepChime: json['sleepChime'] as bool? ?? false,
       sleepExtendMinutes: json['sleepExtendMinutes'] as int? ?? 5,
       sleepAutoWindow: json['sleepAutoWindow'] as bool? ?? false,
@@ -198,6 +200,10 @@ class AppSettings {
   /// since midnight; the window may cross midnight).
   final bool sleepFadeOut;
   final int sleepFadeSeconds;
+
+  /// Linked ebook/audiobook: how a switch finds the matching spot. A
+  /// `SyncMode` name: `off` or `estimated` (`precise` is added with J6).
+  final String linkSyncMode;
   final bool sleepChime;
   final int sleepExtendMinutes;
   final bool sleepAutoWindow;
@@ -257,6 +263,7 @@ class AppSettings {
     'autoRewindScale': autoRewindScale,
     'sleepFadeOut': sleepFadeOut,
     'sleepFadeSeconds': sleepFadeSeconds,
+    'linkSyncMode': linkSyncMode,
     'sleepChime': sleepChime,
     'sleepExtendMinutes': sleepExtendMinutes,
     'sleepAutoWindow': sleepAutoWindow,
@@ -295,6 +302,7 @@ class AppSettings {
     bool? autoRewindScale,
     bool? sleepFadeOut,
     int? sleepFadeSeconds,
+    String? linkSyncMode,
     bool? sleepChime,
     int? sleepExtendMinutes,
     bool? sleepAutoWindow,
@@ -341,6 +349,7 @@ class AppSettings {
       autoRewindScale: autoRewindScale ?? this.autoRewindScale,
       sleepFadeOut: sleepFadeOut ?? this.sleepFadeOut,
       sleepFadeSeconds: sleepFadeSeconds ?? this.sleepFadeSeconds,
+      linkSyncMode: linkSyncMode ?? this.linkSyncMode,
       sleepChime: sleepChime ?? this.sleepChime,
       sleepExtendMinutes: sleepExtendMinutes ?? this.sleepExtendMinutes,
       sleepAutoWindow: sleepAutoWindow ?? this.sleepAutoWindow,

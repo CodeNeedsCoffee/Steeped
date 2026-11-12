@@ -494,7 +494,7 @@ class PlaybackController extends Notifier<void> {
   /// since it's faster and uses no data. This is also what makes offline
   /// playback genuinely work with zero connectivity: [downloadRepo]
   /// rebuilds the whole playable item from local rows, no network call.
-  Future<void> playItem(String itemId) async {
+  Future<void> playItem(String itemId, {double? startAt}) async {
     ref.read(playbackLoadingIdProvider.notifier).state = itemId;
     _resetPlaybackHealth();
     try {
@@ -530,7 +530,8 @@ class PlaybackController extends Notifier<void> {
       await _handler.loadItem(
         item: item,
         sourceUris: sourceUris,
-        startPosition: await _resolveStartPosition(item),
+        // A switch from the linked ebook picks the spot; otherwise resume.
+        startPosition: startAt ?? await _resolveStartPosition(item),
         artUri: _artUriFor(item, session),
       );
       _handler.onItemFinished = () => _onFinished(item);

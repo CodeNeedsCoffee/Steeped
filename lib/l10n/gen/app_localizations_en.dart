@@ -1076,6 +1076,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionEreader => 'Ereader';
 
   @override
+  String get sectionLinkedBooks => 'Linked books';
+
+  @override
+  String get linkSyncMode => 'Switch position';
+
+  @override
+  String get linkSyncOff => 'Off';
+
+  @override
+  String get linkSyncEstimated => 'Estimated';
+
+  @override
+  String get linkSyncOffHint =>
+      'Switching opens the other format where you left it';
+
+  @override
+  String get linkSyncEstimatedHint =>
+      'Switching jumps to the matching chapter and spot';
+
+  @override
+  String get linkedEbook => 'Linked ebook';
+
+  @override
+  String get linkedAudiobook => 'Linked audiobook';
+
+  @override
+  String get linkBook => 'Link ebook or audiobook';
+
+  @override
+  String get linkBookNone => 'No matching book found';
+
+  @override
+  String get linkBookPick => 'Link to this book?';
+
+  @override
+  String linkBookMatchedBy(String reason) {
+    return 'Matched by $reason';
+  }
+
+  @override
+  String get linkReasonAsin => 'ASIN';
+
+  @override
+  String get linkReasonIsbn => 'ISBN';
+
+  @override
+  String get linkReasonAuthorTitle => 'author and title';
+
+  @override
+  String get unlinkBook => 'Unlink';
+
+  @override
+  String get listenLinked => 'Listen';
+
+  @override
+  String get readLinked => 'Read';
+
+  @override
   String get sectionAndroidAuto => 'Android Auto';
 
   @override

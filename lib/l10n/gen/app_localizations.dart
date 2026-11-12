@@ -1816,6 +1816,114 @@ abstract class AppLocalizations {
   /// **'Ereader'**
   String get sectionEreader;
 
+  /// No description provided for @sectionLinkedBooks.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked books'**
+  String get sectionLinkedBooks;
+
+  /// No description provided for @linkSyncMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch position'**
+  String get linkSyncMode;
+
+  /// No description provided for @linkSyncOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get linkSyncOff;
+
+  /// No description provided for @linkSyncEstimated.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated'**
+  String get linkSyncEstimated;
+
+  /// No description provided for @linkSyncOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching opens the other format where you left it'**
+  String get linkSyncOffHint;
+
+  /// No description provided for @linkSyncEstimatedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching jumps to the matching chapter and spot'**
+  String get linkSyncEstimatedHint;
+
+  /// No description provided for @linkedEbook.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked ebook'**
+  String get linkedEbook;
+
+  /// No description provided for @linkedAudiobook.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked audiobook'**
+  String get linkedAudiobook;
+
+  /// No description provided for @linkBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Link ebook or audiobook'**
+  String get linkBook;
+
+  /// No description provided for @linkBookNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching book found'**
+  String get linkBookNone;
+
+  /// No description provided for @linkBookPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Link to this book?'**
+  String get linkBookPick;
+
+  /// No description provided for @linkBookMatchedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Matched by {reason}'**
+  String linkBookMatchedBy(String reason);
+
+  /// No description provided for @linkReasonAsin.
+  ///
+  /// In en, this message translates to:
+  /// **'ASIN'**
+  String get linkReasonAsin;
+
+  /// No description provided for @linkReasonIsbn.
+  ///
+  /// In en, this message translates to:
+  /// **'ISBN'**
+  String get linkReasonIsbn;
+
+  /// No description provided for @linkReasonAuthorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'author and title'**
+  String get linkReasonAuthorTitle;
+
+  /// No description provided for @unlinkBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlink'**
+  String get unlinkBook;
+
+  /// No description provided for @listenLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen'**
+  String get listenLinked;
+
+  /// No description provided for @readLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Read'**
+  String get readLinked;
+
   /// No description provided for @sectionAndroidAuto.
   ///
   /// In en, this message translates to:

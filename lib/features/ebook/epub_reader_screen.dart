@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../library/state/library_providers.dart';
 import 'data/ereader_settings.dart';
 import 'data/reading_position.dart';
+import '../linking/link_providers.dart';
 import 'ereader_settings_panel.dart';
 import 'epub_cfi_fix.dart';
 import 'reader_chrome.dart';
@@ -227,11 +228,23 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           if (mounted) setState(() => _downloadProgress = p);
         },
       );
-      final start = await resolveStartPosition(
+      var start = await resolveStartPosition(
         ref,
         widget.itemId,
         fromDetail: item.progress,
       );
+      // A switch from the linked audiobook picked the spot (opens by fraction).
+      final jump = ref.read(pendingEbookJumpProvider)[widget.itemId];
+      if (jump != null) {
+        ref
+            .read(pendingEbookJumpProvider.notifier)
+            .update((m) => {...m}..remove(widget.itemId));
+        start = ReadingPosition(
+          location: '',
+          fraction: jump,
+          updatedAt: DateTime.now(),
+        );
+      }
       _bookmarks = await repo.loadBookmarks(widget.itemId);
       _highlights = await repo.loadHighlights(widget.itemId);
       if (!mounted) return;

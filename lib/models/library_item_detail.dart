@@ -100,6 +100,8 @@ class LibraryItemDetail {
     this.episodes = const [],
     this.episodeId,
     this.ebookFile,
+    this.asin,
+    this.isbn,
     this.isLocalOnly = false,
     this.localCoverPath,
   });
@@ -196,6 +198,8 @@ class LibraryItemDetail {
               .map(AudioTrack.fromJson)
               .toList() ??
           const [],
+      asin: metadata['asin']?.toString(),
+      isbn: metadata['isbn']?.toString(),
       ebookFile: media['ebookFile'] == null
           ? null
           : EbookFile.fromJson(media['ebookFile'] as Map<String, dynamic>),
@@ -238,6 +242,8 @@ class LibraryItemDetail {
   /// Populated for a book item with `media.ebookFile` — covers both text
   /// ebooks and comic archives (PLAN.md Phase 8).
   final EbookFile? ebookFile;
+  final String? asin;
+  final String? isbn;
 
   /// PLAN.md Phase 6.8: true only for a [LocalMediaRepository]-built item —
   /// an on-device file that never came from the server. No server item id
@@ -267,6 +273,9 @@ class LibraryItemDetail {
     seriesName: series.isEmpty ? null : series.first.name,
     duration: duration,
     hasEbook: hasEbook,
+    hasAudio: !isEbookOnly,
+    asin: asin,
+    isbn: isbn,
     libraryId: libraryId,
   );
 

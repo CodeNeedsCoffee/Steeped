@@ -19,6 +19,8 @@ class LibraryItem {
     required this.duration,
     required this.hasEbook,
     this.hasAudio = true,
+    this.asin,
+    this.isbn,
     this.libraryId,
     this.seriesSequence,
     this.collapsedSeries,
@@ -47,6 +49,8 @@ class LibraryItem {
       hasEbook: !isPodcast && media['ebookFormat'] != null,
       // Absent on older servers/shapes: assume audio so Play is never hidden by mistake.
       hasAudio: isPodcast || ((media['numAudioFiles'] as num?) ?? 1) > 0,
+      asin: isPodcast ? null : metadata['asin']?.toString(),
+      isbn: isPodcast ? null : metadata['isbn']?.toString(),
       libraryId: json['libraryId']?.toString(),
       // Only present when the item came from an author page's series group.
       seriesSequence: metadata['series'] is Map<String, dynamic>
@@ -74,6 +78,10 @@ class LibraryItem {
 
   /// False for ebook-only items, which have nothing to play.
   final bool hasAudio;
+
+  /// Identifiers used to link an ebook item to its audiobook item.
+  final String? asin;
+  final String? isbn;
   final String? libraryId;
 
   /// Position within the series this item was grouped under (author pages).

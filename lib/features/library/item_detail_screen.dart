@@ -10,6 +10,7 @@ import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../auth/state/permission_providers.dart';
 import '../player/discard_progress_dialog.dart';
+import '../linking/linked_book_section.dart';
 import 'library_actions.dart';
 import 'series_detail_screen.dart';
 import '../downloads/state/download_controller.dart';
@@ -241,6 +242,7 @@ class _ItemDetailBody extends ConsumerWidget {
             ],
           ],
         ),
+        LinkedBookSection(item: item),
         if (item.genres.isNotEmpty) ...[
           const SizedBox(height: 20),
           Wrap(
