@@ -395,8 +395,29 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 - **Known, not fixed:** the disabled Play button still shows on ebook-only items (PLAN.md H7).
 - **Blocked on the demo server:** PDF reader, comic (CBZ) reader. Needs a library with those formats.
 
+### Phase J: linking (J1-J4), built and checked on the emulator 2026-11-12
+
+- **Built:** `ItemLinks` stored in the existing key-value table (one JSON list per server profile, no schema bump),
+  ASIN -> ISBN -> author + title matching (`link_matching.dart`), `SyncStrategy` with Off and Estimated
+  (`sync_strategy.dart`: chapter-title match, interpolation inside the chapter, overall-fraction fallback), EPUB chapter
+  spans by text length, a "Linked books" setting (Off / Estimated), and a link row on single-format item pages
+  (suggest, confirm, Read/Listen, unlink). 31 new unit tests; suite passes.
+- **Emulator:** the demo server has no ebook/audiobook pair with matching titles, so a local proxy
+  (`link_proxy.py`) relabelled "Pride and Prejudice" as "First Fifty Digits of Pi" / Scott Hemphill. Verified: the
+  suggestion dialog lists it ("Matched by author and title"), confirming saves the link, the row shows "Linked
+  ebook", and Read opened the reader at 65% (the audiobook's 65%) through the fraction fallback.
+- **Not verified:** the Listen direction (ebook -> audio start position) is unit-tested only; chapter-title matching on a
+  real pair; ASIN/ISBN matches on a real server (the demo has neither). Switching from Now Playing / reader menus
+  (J2 second half) is not built. Linked progress is written by each reader's/player's normal sync after the
+  switch, not as a separate write.
+- Precise mode (J5/J6) not started; `precise` currently behaves as Estimated and is not offered in Settings.
+
 ## To do
 
+- J2: Read/Listen switch buttons in the reader menu and Now Playing (item page done).
+- J4: confirm on the real Pixel that a Listen switch starts at the mapped time and that both progress rows update.
+- J5/J6: Precise mode spike and build.
+- J7: emulator check of Listen direction and of a real ASIN/ISBN pair.
 Maintained by the PLAN.md automated run: anything not built, not tested on the emulator, or needing the real Pixel is
 logged here with the reason. Seeded 2026-11-10:
 

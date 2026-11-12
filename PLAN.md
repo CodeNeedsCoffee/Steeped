@@ -403,10 +403,10 @@ off Android and disabled with an explanation when no on-device recogniser exists
 | # | Item | Approach | Size |
 |---|------|----------|------|
 | J0 | **Built 2026-11-11 (unit-tested; not exercised on a device).** Fix the shared `isFinished` | Readers send `isFinished` only on an explicit "Mark finished" or the audiobook's own finish, not at >= 99.5%; audio sync must not un-finish an ebook-finished item. Verify against the server first. | S |
-| J1 | Link model + auto-suggest | `ItemLinks` table (schema bump with the existing backup), candidate matching, confirm / unlink UI on the item page | M |
-| J2 | Switch buttons | "Read" / "Listen" on the item page and Now Playing / reader menus, using the link (or the same item) | S |
-| J3 | `SyncStrategy` + Estimated mode | Chapter/TOC matching and interpolation as pure functions with tests; settings row (Off / Estimated / Precise) | M |
-| J4 | Keep progress in step | After a switch, write the mapped position to the other item's progress (not just locally), with the newest-wins rule from H3; never mark finished from the mapped value | M |
+| J1 | **Built 2026-11-12** Link model + auto-suggest | Stored in `KeyValueEntries` (no new table), candidate matching, confirm / unlink UI on the item page | M |
+| J2 | **Item page built 2026-11-12; reader/Now Playing menus not yet** Switch buttons | "Read" / "Listen" on the item page and Now Playing / reader menus, using the link (or the same item) | S |
+| J3 | **Built 2026-11-12** `SyncStrategy` + Estimated mode | Chapter/TOC matching and interpolation as pure functions with tests; settings row (Off / Estimated / Precise) | M |
+| J4 | **Built 2026-11-12 (readers/player write on their own sync)** Keep progress in step | After a switch, write the mapped position to the other item's progress (not just locally), with the newest-wins rule from H3; never mark finished from the mapped value | M |
 | J5 | Precise spike on the emulator | Confirm file-based `SpeechRecognizer` works on the AVD image, whether `RECORD_AUDIO` is required, and the language pack requirement; record findings. Build the real feature only if the spike passes and the policy decision allows it | M (spike S) |
 | J6 | Precise mode | Clip extraction, recognition, fuzzy match, confidence threshold, fallback | L |
 | J7 | Tests | Pure-function tests for matching and interpolation, link table migration, `isFinished` rules, strategy fallback; emulator check of the switch flow on a linked pair | M |
