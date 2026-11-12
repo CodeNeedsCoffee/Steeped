@@ -1822,6 +1822,96 @@ abstract class AppLocalizations {
   /// **'Linked books'**
   String get sectionLinkedBooks;
 
+  /// No description provided for @sectionStreaks.
+  ///
+  /// In en, this message translates to:
+  /// **'Streaks'**
+  String get sectionStreaks;
+
+  /// No description provided for @showStreakChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Show streak on Home'**
+  String get showStreakChip;
+
+  /// No description provided for @showStreakChipHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A flame with your current streak in the Home bar'**
+  String get showStreakChipHint;
+
+  /// No description provided for @streakBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily bar'**
+  String get streakBar;
+
+  /// No description provided for @streakBarHint.
+  ///
+  /// In en, this message translates to:
+  /// **'How much listening and reading counts as an active day'**
+  String get streakBarHint;
+
+  /// No description provided for @streakBarAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Any activity'**
+  String get streakBarAny;
+
+  /// No description provided for @streakBarMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String streakBarMinutes(int minutes);
+
+  /// No description provided for @streakForgive.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgive a missed day'**
+  String get streakForgive;
+
+  /// No description provided for @streakForgiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One missed day is bridged, at most once a week'**
+  String get streakForgiveHint;
+
+  /// No description provided for @streakWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly streak'**
+  String get streakWeekly;
+
+  /// No description provided for @streakWeeklyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Count weeks with at least one active day instead of days'**
+  String get streakWeeklyHint;
+
+  /// No description provided for @streakWeeks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 week} other{{count} weeks}}'**
+  String streakWeeks(int count);
+
+  /// No description provided for @streakAtRisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen or read today to keep it going'**
+  String get streakAtRisk;
+
+  /// No description provided for @streakSavedDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 missed day forgiven} other{{count} missed days forgiven}}'**
+  String streakSavedDays(int count);
+
+  /// No description provided for @longestStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Longest streak'**
+  String get longestStreak;
+
   /// No description provided for @linkSyncMode.
   ///
   /// In en, this message translates to:
@@ -2493,12 +2583,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Days active'**
   String get daysActive;
-
-  /// No description provided for @longestStreak.
-  ///
-  /// In en, this message translates to:
-  /// **'Longest streak'**
-  String get longestStreak;
 
   /// No description provided for @streakDaysShort.
   ///

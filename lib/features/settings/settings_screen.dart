@@ -359,6 +359,67 @@ class SettingsScreen extends ConsumerWidget {
           _SectionHeader(context.l10n.sectionEreader),
           const EreaderSettingsPanel(showTheme: false),
 
+          _SectionHeader(context.l10n.sectionStreaks),
+          SwitchListTile(
+            title: Text(context.l10n.showStreakChip),
+            subtitle: Text(context.l10n.showStreakChipHint),
+            value: settings.showStreak,
+            onChanged: (v) => controller.save(settings.copyWith(showStreak: v)),
+          ),
+          ListTile(
+            title: Text(context.l10n.streakBar),
+            subtitle: Text(context.l10n.streakBarHint),
+            trailing: SizedBox(
+              width: 120,
+              child: DropdownButton<int>(
+                isExpanded: true,
+                value:
+                    const [
+                      0,
+                      5,
+                      10,
+                      15,
+                      30,
+                      60,
+                    ].contains(settings.streakGoalMinutes)
+                    ? settings.streakGoalMinutes
+                    : 0,
+                underline: const SizedBox.shrink(),
+                onChanged: (v) {
+                  if (v != null) {
+                    controller.save(settings.copyWith(streakGoalMinutes: v));
+                  }
+                },
+                items: [
+                  for (final v in const [0, 5, 10, 15, 30, 60])
+                    DropdownMenuItem(
+                      value: v,
+                      child: Text(
+                        v == 0
+                            ? context.l10n.streakBarAny
+                            : context.l10n.streakBarMinutes(v),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (!settings.streakWeekly)
+            SwitchListTile(
+              title: Text(context.l10n.streakForgive),
+              subtitle: Text(context.l10n.streakForgiveHint),
+              value: settings.streakForgive,
+              onChanged: (v) =>
+                  controller.save(settings.copyWith(streakForgive: v)),
+            ),
+          SwitchListTile(
+            title: Text(context.l10n.streakWeekly),
+            subtitle: Text(context.l10n.streakWeeklyHint),
+            value: settings.streakWeekly,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(streakWeekly: v)),
+          ),
+
           _SectionHeader(context.l10n.sectionLinkedBooks),
           ListTile(
             title: Text(context.l10n.linkSyncMode),
@@ -367,26 +428,30 @@ class SettingsScreen extends ConsumerWidget {
                   ? context.l10n.linkSyncOffHint
                   : context.l10n.linkSyncEstimatedHint,
             ),
-            trailing: DropdownButton<String>(
-              value: settings.linkSyncMode == SyncMode.off.name
-                  ? SyncMode.off.name
-                  : SyncMode.estimated.name,
-              underline: const SizedBox.shrink(),
-              onChanged: (v) {
-                if (v != null) {
-                  controller.save(settings.copyWith(linkSyncMode: v));
-                }
-              },
-              items: [
-                DropdownMenuItem(
-                  value: SyncMode.off.name,
-                  child: Text(context.l10n.linkSyncOff),
-                ),
-                DropdownMenuItem(
-                  value: SyncMode.estimated.name,
-                  child: Text(context.l10n.linkSyncEstimated),
-                ),
-              ],
+            trailing: SizedBox(
+              width: 140,
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: settings.linkSyncMode == SyncMode.off.name
+                    ? SyncMode.off.name
+                    : SyncMode.estimated.name,
+                underline: const SizedBox.shrink(),
+                onChanged: (v) {
+                  if (v != null) {
+                    controller.save(settings.copyWith(linkSyncMode: v));
+                  }
+                },
+                items: [
+                  DropdownMenuItem(
+                    value: SyncMode.off.name,
+                    child: Text(context.l10n.linkSyncOff),
+                  ),
+                  DropdownMenuItem(
+                    value: SyncMode.estimated.name,
+                    child: Text(context.l10n.linkSyncEstimated),
+                  ),
+                ],
+              ),
             ),
           ),
 

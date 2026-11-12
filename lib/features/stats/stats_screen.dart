@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../streaks/streak_providers.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -80,8 +81,17 @@ class StatsScreen extends ConsumerWidget {
                   ),
                   _StatTile(
                     label: context.l10n.currentStreak,
-                    value: context.l10n.streakDays(stats.currentStreakDays),
+                    value: ref.watch(streakProvider).valueOrNull == null
+                        ? context.l10n.streakDays(stats.currentStreakDays)
+                        : context.l10n.streakDays(
+                            ref.watch(streakProvider).value!.current,
+                          ),
                   ),
+                  if (ref.watch(streakProvider).valueOrNull case final st?)
+                    _StatTile(
+                      label: context.l10n.longestStreak,
+                      value: context.l10n.streakDays(st.longest),
+                    ),
                   _StatTile(
                     label: context.l10n.thisWeek,
                     value: formatDurationText(

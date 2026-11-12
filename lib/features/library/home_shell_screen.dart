@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import '../streaks/streak_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -269,6 +270,7 @@ class _HomeShellTabs extends ConsumerWidget {
                 ),
               ),
             ),
+            const StreakChip(),
             const ProfileMenuButton(),
             IconButton(
               icon: const Icon(Icons.search),

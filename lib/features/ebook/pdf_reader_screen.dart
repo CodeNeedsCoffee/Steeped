@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../streaks/streak_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdfx/pdfx.dart';
@@ -36,9 +37,13 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   int _page = 1;
   int _pageCount = 1;
 
+  late final ReadingTracker _reading;
+
   @override
   void initState() {
     super.initState();
+    _reading = ReadingTracker(ProviderScope.containerOf(context, listen: false))
+      ..touch();
     _load();
   }
 
@@ -100,6 +105,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
   void dispose() {
     _syncTimer?.cancel();
     _sync();
+    _reading.close();
     _controller?.dispose();
     super.dispose();
   }
@@ -142,6 +148,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
             pageSnapping: !scroll,
             onDocumentLoaded: (d) => setState(() => _pageCount = d.pagesCount),
             onPageChanged: (p) {
+              _reading.touch();
               setState(() => _page = p);
               _sync();
             },

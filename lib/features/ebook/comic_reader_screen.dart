@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../streaks/streak_providers.dart';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
@@ -73,9 +74,13 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
   final _listController = ItemScrollController();
   final _positions = ItemPositionsListener.create();
 
+  late final ReadingTracker _reading;
+
   @override
   void initState() {
     super.initState();
+    _reading = ReadingTracker(ProviderScope.containerOf(context, listen: false))
+      ..touch();
     _load();
   }
 
@@ -120,6 +125,7 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
 
   /// Scroll mode: the page occupying most of the top of the viewport.
   void _onScrolled() {
+    _reading.touch();
     final visible = _positions.itemPositions.value;
     if (visible.isEmpty) return;
     final top = visible
@@ -167,6 +173,7 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
     _syncTimer?.cancel();
     _positions.itemPositions.removeListener(_onScrolled);
     _sync();
+    _reading.close();
     _pageController?.dispose();
     super.dispose();
   }
@@ -229,6 +236,7 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
             controller: PageController(initialPage: _currentPage),
             itemCount: pages.length,
             onPageChanged: (index) {
+              _reading.touch();
               setState(() => _currentPage = index);
               _sync();
             },

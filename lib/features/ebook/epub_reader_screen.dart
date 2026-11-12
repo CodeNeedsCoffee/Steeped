@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../streaks/streak_providers.dart';
 import 'dart:typed_data';
 
 // ignore: implementation_imports
@@ -211,9 +212,13 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   bool _resumeChecked = false;
   String _chapterLabel = '';
 
+  late final ReadingTracker _reading;
+
   @override
   void initState() {
     super.initState();
+    _reading = ReadingTracker(ProviderScope.containerOf(context, listen: false))
+      ..touch();
     _load();
   }
 
@@ -325,6 +330,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   void _onMoved() {
     final v = _controller?.currentValue;
     if (v == null || !mounted) return;
+    _reading.touch();
     _checkResume(_controller!, v.position.index);
     // epub_view's own `chapter` can stay on the first spine item (it showed the
     // licence heading deep into a book), so name the chapter from the contents.
@@ -377,6 +383,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   void dispose() {
     _syncTimer?.cancel();
     _sync();
+    _reading.close();
     _controller?.currentValueListenable.removeListener(_onMoved);
     _controller?.dispose();
     super.dispose();

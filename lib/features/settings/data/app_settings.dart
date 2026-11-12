@@ -45,6 +45,10 @@ class AppSettings {
     this.sleepFadeOut = true,
     this.sleepFadeSeconds = 10,
     this.linkSyncMode = 'estimated',
+    this.showStreak = true,
+    this.streakGoalMinutes = 0,
+    this.streakForgive = true,
+    this.streakWeekly = false,
     this.sleepChime = false,
     this.sleepExtendMinutes = 5,
     this.sleepAutoWindow = false,
@@ -104,6 +108,10 @@ class AppSettings {
       sleepFadeOut: json['sleepFadeOut'] as bool? ?? true,
       sleepFadeSeconds: json['sleepFadeSeconds'] as int? ?? 10,
       linkSyncMode: json['linkSyncMode'] as String? ?? 'estimated',
+      showStreak: json['showStreak'] as bool? ?? true,
+      streakGoalMinutes: json['streakGoalMinutes'] as int? ?? 0,
+      streakForgive: json['streakForgive'] as bool? ?? true,
+      streakWeekly: json['streakWeekly'] as bool? ?? false,
       sleepChime: json['sleepChime'] as bool? ?? false,
       sleepExtendMinutes: json['sleepExtendMinutes'] as int? ?? 5,
       sleepAutoWindow: json['sleepAutoWindow'] as bool? ?? false,
@@ -204,6 +212,13 @@ class AppSettings {
   /// Linked ebook/audiobook: how a switch finds the matching spot. A
   /// `SyncMode` name: `off` or `estimated` (`precise` is added with J6).
   final String linkSyncMode;
+
+  /// Streaks: show the Home chip; the daily bar in minutes (0 = any activity);
+  /// forgive one missed day a week; count weeks instead of days.
+  final bool showStreak;
+  final int streakGoalMinutes;
+  final bool streakForgive;
+  final bool streakWeekly;
   final bool sleepChime;
   final int sleepExtendMinutes;
   final bool sleepAutoWindow;
@@ -264,6 +279,10 @@ class AppSettings {
     'sleepFadeOut': sleepFadeOut,
     'sleepFadeSeconds': sleepFadeSeconds,
     'linkSyncMode': linkSyncMode,
+    'showStreak': showStreak,
+    'streakGoalMinutes': streakGoalMinutes,
+    'streakForgive': streakForgive,
+    'streakWeekly': streakWeekly,
     'sleepChime': sleepChime,
     'sleepExtendMinutes': sleepExtendMinutes,
     'sleepAutoWindow': sleepAutoWindow,
@@ -303,6 +322,10 @@ class AppSettings {
     bool? sleepFadeOut,
     int? sleepFadeSeconds,
     String? linkSyncMode,
+    bool? showStreak,
+    int? streakGoalMinutes,
+    bool? streakForgive,
+    bool? streakWeekly,
     bool? sleepChime,
     int? sleepExtendMinutes,
     bool? sleepAutoWindow,
@@ -350,6 +373,10 @@ class AppSettings {
       sleepFadeOut: sleepFadeOut ?? this.sleepFadeOut,
       sleepFadeSeconds: sleepFadeSeconds ?? this.sleepFadeSeconds,
       linkSyncMode: linkSyncMode ?? this.linkSyncMode,
+      showStreak: showStreak ?? this.showStreak,
+      streakGoalMinutes: streakGoalMinutes ?? this.streakGoalMinutes,
+      streakForgive: streakForgive ?? this.streakForgive,
+      streakWeekly: streakWeekly ?? this.streakWeekly,
       sleepChime: sleepChime ?? this.sleepChime,
       sleepExtendMinutes: sleepExtendMinutes ?? this.sleepExtendMinutes,
       sleepAutoWindow: sleepAutoWindow ?? this.sleepAutoWindow,

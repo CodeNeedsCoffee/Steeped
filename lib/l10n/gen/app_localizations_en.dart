@@ -1079,6 +1079,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionLinkedBooks => 'Linked books';
 
   @override
+  String get sectionStreaks => 'Streaks';
+
+  @override
+  String get showStreakChip => 'Show streak on Home';
+
+  @override
+  String get showStreakChipHint =>
+      'A flame with your current streak in the Home bar';
+
+  @override
+  String get streakBar => 'Daily bar';
+
+  @override
+  String get streakBarHint =>
+      'How much listening and reading counts as an active day';
+
+  @override
+  String get streakBarAny => 'Any activity';
+
+  @override
+  String streakBarMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get streakForgive => 'Forgive a missed day';
+
+  @override
+  String get streakForgiveHint =>
+      'One missed day is bridged, at most once a week';
+
+  @override
+  String get streakWeekly => 'Weekly streak';
+
+  @override
+  String get streakWeeklyHint =>
+      'Count weeks with at least one active day instead of days';
+
+  @override
+  String streakWeeks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count weeks',
+      one: '1 week',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get streakAtRisk => 'Listen or read today to keep it going';
+
+  @override
+  String streakSavedDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count missed days forgiven',
+      one: '1 missed day forgiven',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get longestStreak => 'Longest streak';
+
+  @override
   String get linkSyncMode => 'Switch position';
 
   @override
@@ -1455,9 +1522,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get daysActive => 'Days active';
-
-  @override
-  String get longestStreak => 'Longest streak';
 
   @override
   String streakDaysShort(int count) {
