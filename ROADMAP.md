@@ -435,6 +435,7 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
   name in the list. The Live badge lost its (metered)/(cellular) suffix and the "Show network type" setting was
   removed. Account, Search, Downloads and Settings moved into one hamburger menu at the top right. This also fixed
   the squeezed library name noted under Phase G.
+- The streak chip now always shows: a dimmed flame with 0 when there is no streak (checked on the emulator by raising the daily bar to 60 min).
 - The emulator showed "Offline" only because the login still pointed at the link proxy, which was stopped.
 
 ## To do
