@@ -87,6 +87,10 @@ class LibraryCollection {
 /// One entry of a playlist: a library item, optionally a specific podcast
 /// episode of it.
 class PlaylistItem {
+  /// A queue entry the player can start: a whole book that has audio (an
+  /// ebook-only book has nothing to play), not a podcast episode.
+  bool get isPlayable => episodeId == null && (item?.hasAudio ?? true);
+
   const PlaylistItem({
     required this.libraryItemId,
     required this.episodeId,

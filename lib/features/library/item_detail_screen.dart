@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/html_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -293,7 +294,11 @@ class _ItemDetailBody extends ConsumerWidget {
               if (item.duration != null) formatDurationText(context.l10n, item.duration!),
               if (item.chapters.isNotEmpty)
                 context.l10n.chaptersCount(item.chapters.length),
-              if (item.publishedYear != null) item.publishedYear!,
+              // A scraped year of 0 means "unknown", not the year zero.
+              if (item.publishedYear != null &&
+                  item.publishedYear!.trim().isNotEmpty &&
+                  item.publishedYear!.trim() != '0')
+                item.publishedYear!,
             ].join(' · '),
             textAlign: TextAlign.center,
             style: textTheme.bodySmall,
@@ -301,7 +306,7 @@ class _ItemDetailBody extends ConsumerWidget {
         ],
         if (item.description != null) ...[
           const SizedBox(height: 20),
-          Text(item.description!, style: textTheme.bodyMedium),
+          Text(plainTextFromHtml(item.description!), style: textTheme.bodyMedium),
         ],
       ],
     );

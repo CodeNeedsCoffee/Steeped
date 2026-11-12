@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/html_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,7 +26,7 @@ Future<void> _playQueue(
   List<PlaylistItem> items,
   int start,
 ) async {
-  final playable = items.where((i) => i.episodeId == null).toList();
+  final playable = items.where((i) => i.isPlayable).toList();
   if (playable.isEmpty) return;
   final startItem = items[start];
   final idx = playable.indexWhere((i) => i.downloadId == startItem.downloadId);
@@ -75,7 +76,7 @@ class AuthorDetailScreen extends ConsumerWidget {
                               a.description!.trim().isNotEmpty) ...[
                             const SizedBox(height: 12),
                             Text(
-                              a.description!,
+                              plainTextFromHtml(a.description!),
                               maxLines: 6,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -192,7 +193,7 @@ class CollectionDetailScreen extends ConsumerWidget {
                           ),
                         ),
                         FilledButton.icon(
-                          onPressed: c.books.isEmpty
+                          onPressed: !c.books.any((b) => b.hasAudio)
                               ? null
                               : () => _playQueue(context, ref, c.name, [
                                   for (final b in c.books) _asQueueItem(b),
@@ -377,7 +378,7 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
                             ),
                           ),
                           FilledButton.icon(
-                            onPressed: items.isEmpty
+                            onPressed: !items.any((i) => i.isPlayable)
                                 ? null
                                 : () => _playQueue(
                                     context,
