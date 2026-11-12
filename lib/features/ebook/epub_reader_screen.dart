@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'epub_loader.dart';
 import '../streaks/streak_providers.dart';
 import 'dart:typed_data';
 
@@ -256,7 +257,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       if (!mounted) return;
       final cfi = start?.location;
       final controller = EpubController(
-        document: EpubDocument.openFile(file),
+        document: openEpubFile(file),
         // The official apps write epub.js CFIs; only hand ours a real CFI.
         epubCfi: (cfi != null && cfi.startsWith('epubcfi')) ? cfi : null,
       );
