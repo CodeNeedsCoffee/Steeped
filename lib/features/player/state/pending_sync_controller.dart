@@ -12,6 +12,7 @@ import '../../../core/network/dio_client.dart';
 import '../data/listening_session_repository.dart';
 import '../data/pending_sync_repository.dart';
 import '../../stats/state/stats_providers.dart';
+import '../../ebook/state/ebook_providers.dart';
 import 'playback_controller.dart';
 
 final pendingSyncRepositoryProvider = Provider<PendingSyncRepository>((ref) {
@@ -135,8 +136,38 @@ class PendingSyncController extends Notifier<void> {
     }
   }
 
+  /// H9: delivers reading positions that failed to upload. A position older
+  /// than what the server now holds (saved from another device since) is
+  /// dropped, not pushed over it.
+  Future<void> _flushEbookPositions() async {
+    final store = ref.read(pendingEbookProgressStoreProvider);
+    final progress = ref.read(progressRepositoryProvider);
+    for (final p in await store.pending()) {
+      try {
+        final server = await progress.fetchProgress(p.itemId);
+        final serverAt = server?.lastUpdate;
+        if (serverAt != null && serverAt.isAfter(p.at)) {
+          await store.remove(p.itemId, sentAt: p.at);
+          continue;
+        }
+        await progress.updateEbookProgress(
+          libraryItemId: p.itemId,
+          ebookLocation: p.location,
+          ebookProgress: p.fraction,
+          isFinished: p.isFinished,
+        );
+        await store.remove(p.itemId, sentAt: p.at);
+      } on DioException catch (e) {
+        if (e.type != DioExceptionType.badResponse) break;
+        // Rejected for good (e.g. the item was deleted).
+        await store.remove(p.itemId, sentAt: p.at);
+      }
+    }
+  }
+
   Future<void> _flush() async {
     await _flushSessions();
+    await _flushEbookPositions();
     final repo = ref.read(pendingSyncRepositoryProvider);
     final progressRepo = ref.read(progressRepositoryProvider);
     // The item currently playing is owned by [PlaybackController]'s own 15s

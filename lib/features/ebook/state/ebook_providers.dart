@@ -3,11 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/dio_client.dart';
 import '../../../core/storage/app_database.dart';
+import '../../auth/state/session_controller.dart' show activeProfileIdProvider;
 import '../data/ebook_repository.dart';
+import '../data/pending_ebook_progress_store.dart';
 import '../../../models/media_progress.dart';
 import '../../player/state/playback_controller.dart' show progressRepositoryProvider;
 import '../data/ereader_settings.dart';
 import '../data/reading_position.dart';
+
+final pendingEbookProgressStoreProvider = Provider<PendingEbookProgressStore>(
+  (ref) => PendingEbookProgressStore(
+    ref.watch(appDatabaseProvider),
+    profileId: ref.watch(activeProfileIdProvider) ?? '',
+  ),
+);
 
 final ebookRepositoryProvider = Provider<EbookRepository>((ref) {
   return EbookRepository(ref.watch(dioProvider), ref.watch(appDatabaseProvider));
@@ -89,6 +98,8 @@ Future<void> saveReadingPosition(
           updatedAt: DateTime.now(),
         ),
       );
+  final queue = ref.read(pendingEbookProgressStoreProvider);
+  final at = DateTime.now();
   try {
     await ref
         .read(progressRepositoryProvider)
@@ -98,8 +109,20 @@ Future<void> saveReadingPosition(
           ebookProgress: f,
           isFinished: isFinished,
         );
+    await queue.remove(itemId, sentAt: at);
   } catch (e) {
-    // Best-effort — matches the audio sync's silent-retry policy (5.9).
-    debugPrint('[ebook-sync] PATCH failed for $itemId: $e');
+    // Keep it for the sync controller, which retries on reconnect, on app
+    // start and every few minutes (a failed upload used to be retried only
+    // on the next page turn).
+    debugPrint('[ebook-sync] PATCH failed for $itemId, queued: $e');
+    await queue.put(
+      PendingEbookProgress(
+        itemId: itemId,
+        location: location,
+        fraction: f,
+        at: at,
+        isFinished: isFinished,
+      ),
+    );
   }
 }
