@@ -438,6 +438,19 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 - The streak chip now always shows: a dimmed flame with 0 when there is no streak (checked on the emulator by raising the daily bar to 60 min).
 - The emulator showed "Offline" only because the login still pointed at the link proxy, which was stopped.
 
+### Linking on the real server (Alchemised), 2026-11-12
+
+- **Reported:** Alchemised (audiobook in "Audio Books", ebook in "eBooks", both titled Alchemised by SenLinYu) would not
+  link; the dialog said "No matching book found". Reproduced on the emulator against the real server.
+- **Cause (probable):** the matching itself was fine for identical metadata, so the other-format filter was rejecting the
+  ebook: a search result only counts as ebook-only when `numAudioFiles` is 0, and search results on that server do not
+  carry it (it defaulted to "has audio"). Now `hasAudio` falls back to the `audioFiles`/`tracks` lists and `hasEbook` to
+  `ebookFile`. Not confirmed by reading the raw response (no credentials used), but the fixed build links it.
+- **Also changed:** titles match on the part before a subtitle, authors ignore spaces ("SenLinYu" = "Sen Lin Yu"), and the
+  link dialog has a "Search by title" box for books the rules miss.
+- **Verified on the emulator:** the suggestion "Alchemised, SenLinYu, Matched by author and title" appears and the link
+  saves ("Linked ebook"). Read/Listen were not pressed on the real server, because they write progress there.
+
 ## To do
 
 - G5: milestone toast at 7/30/100/365, at-risk banner, 7-day dot row on Stats.
