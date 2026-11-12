@@ -413,8 +413,27 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
   switch, not as a separate write.
 - Precise mode (J5/J6) not started; `precise` currently behaves as Estimated and is not offered in Settings.
 
+### Phase G: streaks (G1-G5), built and checked on the emulator 2026-11-12
+
+- **Built:** `computeStreak` (pure; listening + reading merged, goal threshold, one forgiven miss per 7 days and never two
+  in a row, weekly mode, server-timezone anchor), per-profile reading seconds in the key-value table (no schema
+  bump), a `ReadingClock` (idle gaps over 2 min earn nothing) wired into the EPUB, PDF and comic readers, a flame chip
+  in the Home bar (outlined while today is empty; tooltip shows forgiven days and the at-risk hint), a Streaks section
+  in Settings (show chip, daily bar, forgive, weekly), and Stats now uses the merged streak plus a Longest streak tile.
+  16 streak tests + 5 reading-clock tests.
+- **Bug found by the emulator and fixed:** the clock floored every sub-second gap to 0, so scrolling earned about
+  2 s. A test now fails without the fix. After it, about 85 s of reading credited 81 s.
+- **Verified:** chip shows after playback (1), Stats shows Current and Longest streak, reading seconds land in the
+  database for the active profile.
+- **Not verified / cost:** the chip squeezes the library name in the Home bar further ("Au..." on this 1080 px
+  emulator); consider moving it. Milestone toast (7/30/100/365) and the at-risk banner are not built (the at-risk state shows in
+  the chip's tooltip only). The reserved reminder settings keys are not added. G6 (server reading sessions) not spiked.
+
 ## To do
 
+- G5: milestone toast at 7/30/100/365, at-risk banner, 7-day dot row on Stats, and a better home for the chip on narrow bars.
+- G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).
+- G (reminders): reserve `streakReminder*` settings keys when notifications are decided.
 - J2: Read switch in Now Playing, and Listen in the PDF/comic readers (item page and EPUB reader done).
 - J4: confirm on the real Pixel that a Listen switch starts at the mapped time and that both progress rows update.
 - J5/J6: Precise mode spike and build.
