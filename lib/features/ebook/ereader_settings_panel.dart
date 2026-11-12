@@ -103,11 +103,7 @@ class EreaderSettingsPanel extends ConsumerWidget {
     ReadingFlow value,
     ValueChanged<ReadingFlow> onChanged,
   ) {
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      spacing: 16,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      runSpacing: 8,
+    return _SpreadWrap(
       children: [
         Text(label),
         SegmentedButton<ReadingFlow>(
@@ -134,11 +130,7 @@ class EreaderSettingsPanel extends ConsumerWidget {
     EreaderSettingsController controller,
   ) {
     return [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            spacing: 16,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            runSpacing: 8,
+          _SpreadWrap(
             children: [
               Text(context.l10n.font),
               SegmentedButton<EreaderFontFamily>(
@@ -208,11 +200,7 @@ class EreaderSettingsPanel extends ConsumerWidget {
     EreaderSettings settings,
     EreaderSettingsController controller,
   ) {
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      spacing: 16,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      runSpacing: 8,
+    return _SpreadWrap(
       children: [
         Text(context.l10n.theme),
         SegmentedButton<EreaderTheme>(
@@ -237,4 +225,26 @@ class EreaderSettingsPanel extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// A label and its control, with the control pushed to the right edge like a
+/// switch. It still wraps to a second line when the label is long or the text
+/// is large. (A bare `Wrap` shrinks to its content, so `spaceBetween` did
+/// nothing.)
+class _SpreadWrap extends StatelessWidget {
+  const _SpreadWrap({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      spacing: 16,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      runSpacing: 8,
+      children: children,
+    ),
+  );
 }
