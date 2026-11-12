@@ -32,19 +32,22 @@ List<ChapterSpan> _audioSpans(LibraryItemDetail audio) => [
 ];
 
 /// Opens the ebook [ebook] at the spot matching where the audiobook [audio]
-/// is. With sync Off, or when nothing maps, the reader opens at its own
+/// is ([audioSeconds] overrides its saved position). With sync Off, or when nothing maps, the reader opens at its own
 /// saved position. The reader writes the real position back on its next sync.
 Future<void> switchToEbook(
   BuildContext context,
   WidgetRef ref, {
   required LibraryItemDetail audio,
   required LibraryItemDetail ebook,
+  double? audioSeconds,
 }) async {
   final mode = _modeOf(
     ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
   );
   if (mode != SyncMode.off && audio.duration != null) {
-    final seconds = audio.progress?.currentTime ?? 0;
+    // [audioSeconds] is the live position when the audio is playing now; the
+    // item's own progress is only as fresh as when its page was loaded.
+    final seconds = audioSeconds ?? audio.progress?.currentTime ?? 0;
     // Only map from a spot the user has actually reached.
     if (seconds > 0) {
       final from = _audioSpans(audio).isNotEmpty

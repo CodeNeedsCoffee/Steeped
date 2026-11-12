@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../linking/linked_read_action.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -152,6 +153,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           const SyncFailedBadge(),
+          LinkedReadAction(audio: item),
           if (queue != null)
             IconButton(
               icon: const Icon(Icons.queue_music),
