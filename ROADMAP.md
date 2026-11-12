@@ -406,15 +406,16 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
   (`link_proxy.py`) relabelled "Pride and Prejudice" as "First Fifty Digits of Pi" / Scott Hemphill. Verified: the
   suggestion dialog lists it ("Matched by author and title"), confirming saves the link, the row shows "Linked
   ebook", and Read opened the reader at 65% (the audiobook's 65%) through the fraction fallback.
-- **Not verified:** the Listen direction (ebook -> audio start position) is unit-tested only; chapter-title matching on a
-  real pair; ASIN/ISBN matches on a real server (the demo has neither). Switching from Now Playing / reader menus
-  (J2 second half) is not built. Linked progress is written by each reader's/player's normal sync after the
+- **Listen direction verified:** the new headphones action in the EPUB reader, with the reader at 30%, started the
+  audiobook at 16:11 of 53:42 and opened Now Playing.
+- **Not verified:** chapter-title matching on a real pair; ASIN/ISBN matches on a real server (the demo has neither). Switching from Now Playing
+  (J2) is not built; the reader has the Listen action, PDF/comic readers do not. Linked progress is written by each reader's/player's normal sync after the
   switch, not as a separate write.
 - Precise mode (J5/J6) not started; `precise` currently behaves as Estimated and is not offered in Settings.
 
 ## To do
 
-- J2: Read/Listen switch buttons in the reader menu and Now Playing (item page done).
+- J2: Read switch in Now Playing, and Listen in the PDF/comic readers (item page and EPUB reader done).
 - J4: confirm on the real Pixel that a Listen switch starts at the mapped time and that both progress rows update.
 - J5/J6: Precise mode spike and build.
 - J7: emulator check of Listen direction and of a real ASIN/ISBN pair.
