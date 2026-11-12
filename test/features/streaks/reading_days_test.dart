@@ -23,6 +23,14 @@ void main() {
     expect(c.takePending(), 20);
   });
 
+  test('rapid touches add up instead of flooring to zero', () {
+    final c = ReadingClock();
+    for (var i = 0; i <= 200; i++) {
+      c.touch(t0.add(Duration(milliseconds: i * 100)));
+    }
+    expect(c.takePending(), 20);
+  });
+
   test('pause forgets the last touch', () {
     final c = ReadingClock();
     c.touch(t0);

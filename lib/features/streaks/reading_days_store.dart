@@ -51,22 +51,24 @@ class ReadingClock {
 
   final Duration idle;
   DateTime? _last;
-  int _pending = 0;
+  Duration _pending = Duration.zero;
 
   void touch(DateTime now) {
     final last = _last;
     if (last != null) {
       final gap = now.difference(last);
-      if (gap > Duration.zero && gap <= idle) _pending += gap.inSeconds;
+      if (gap > Duration.zero && gap <= idle) _pending += gap;
     }
     _last = now;
   }
 
-  /// Seconds earned since the last call; resets the counter.
+  /// Whole seconds earned since the last call. The fraction stays banked:
+  /// scrolling fires touches every few milliseconds, so flooring each gap
+  /// would credit nothing.
   int takePending() {
-    final p = _pending;
-    _pending = 0;
-    return p;
+    final whole = _pending.inSeconds;
+    _pending -= Duration(seconds: whole);
+    return whole;
   }
 
   /// Forget the last touch (the reader was backgrounded or closed).
