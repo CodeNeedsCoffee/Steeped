@@ -499,7 +499,7 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 - L1-L7: update the website's policies and pages (L7; the Steeped-Site repo, `src/worker/pages/privacy.ts`; publish before submitting, the policy URL goes in both consoles), the Google Play Console (Data safety, foreground service, battery-optimisation and notification/microphone declarations) and App Store Connect (App Privacy, background audio, notifications), the store text and screenshots, and the privacy policy for the new permissions and data uses. Needs the user (console access); I prepare the inventory and wording. See PLAN.md Phase L.
 - J2: Read switch in Now Playing, and Listen in the PDF/comic readers (item page and EPUB reader done).
 - J4: confirm on the real Pixel that a Listen switch starts at the mapped time and that both progress rows update.
-- J5/J6: Precise mode spike and build.
+- J5/J6: Precise mode spike and build. Environment check 2026-11-12: the emulator (API 35, Google APIs image) has `RecognitionService`s (Google app voice search, `AiAiSpeechRecognitionService`), so the spike can start there, but it needs a Kotlin clip decoder (`MediaExtractor`/`MediaCodec`), `SpeechRecognizer.createOnDeviceSpeechRecognizer` with a file-descriptor audio source, an on-device language pack, and the `RECORD_AUDIO` question answered; whether it works depends on the Pixel's speech services, so plan to finish it on the Pixel. Not started.
 - J7: emulator check of Listen direction and of a real ASIN/ISBN pair.
 Maintained by the PLAN.md automated run: anything not built, not tested on the emulator, or needing the real Pixel is
 logged here with the reason. Seeded 2026-11-10:
