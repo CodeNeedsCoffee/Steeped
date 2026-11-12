@@ -429,9 +429,17 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
   emulator); consider moving it. Milestone toast (7/30/100/365) and the at-risk banner are not built (the at-risk state shows in
   the chip's tooltip only). The reserved reminder settings keys are not added. G6 (server reading sessions) not spiked.
 
+### Home bar changes, checked on the emulator 2026-11-12
+
+- Library picker shows the server's icon (Material mapping in `library_icon.dart`): icon only when collapsed, icon +
+  name in the list. The Live badge lost its (metered)/(cellular) suffix and the "Show network type" setting was
+  removed. Account, Search, Downloads and Settings moved into one hamburger menu at the top right. This also fixed
+  the squeezed library name noted under Phase G.
+- The emulator showed "Offline" only because the login still pointed at the link proxy, which was stopped.
+
 ## To do
 
-- G5: milestone toast at 7/30/100/365, at-risk banner, 7-day dot row on Stats, and a better home for the chip on narrow bars.
+- G5: milestone toast at 7/30/100/365, at-risk banner, 7-day dot row on Stats.
 - G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).
 - G (reminders): reserve `streakReminder*` settings keys when notifications are decided.
 - J2: Read switch in Now Playing, and Listen in the PDF/comic readers (item page and EPUB reader done).
