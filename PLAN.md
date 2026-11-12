@@ -40,7 +40,7 @@ Deferred by decision: podcast episodes in playlists and new-episode markers (old
   keeps today's behaviour unless stated otherwise.
 - **Dependency policy:** only first-party Google/Dart/Flutter packages, and nothing that forces changes to the iOS
   or Google Play submissions (no new permissions, entitlements, privacy-manifest entries or Info.plist usage
-  strings). **Exception (decided 2026-11-10):** the opt-in Precise sync mode (Phase J) may use the `RECORD_AUDIO` permission, requested only when the user enables it. No new dependencies are currently planned: `intl`/`flutter_localizations`, `just_audio`,
+  strings). **Exception (decided 2026-11-10):** the opt-in Precise sync mode (Phase J) may use the `RECORD_AUDIO` permission, requested only when the user enables it. **Exception (decided 2026-11-12):** opt-in streak reminders (G7) may use local notifications (`POST_NOTIFICATIONS`, already declared for the playback notification, and the iOS notification authorization). Any permission or data-use change must be reflected in the store listings before release (Phase L). No new dependencies are currently planned: `intl`/`flutter_localizations`, `just_audio`,
   `connectivity_plus` and `drift` are already in the project. Native Android code inside the app (Kotlin, like the
   existing storage channel) is fine since it adds no package or permission.
 - Each phase ends with `flutter analyze --no-fatal-infos` clean, all tests green, and ROADMAP.md updated.
@@ -199,21 +199,24 @@ choice (any activity or a minutes goal), forgive an occasional miss, and keep it
 | G4 | **Built 2026-11-12** Forgiveness | Setting "Forgive a missed day" (default on): one missed day is bridged at most once per 7 days and never two in a row. Computed from history, so it is deterministic and explainable ("1 day saved"). Optional **Weekly** mode (one active day per week) like Kindle / StoryGraph. | M |
 | G5 | **Chip, Settings and Stats built 2026-11-12; toast, banner and dot row not yet** Surfaces | Flame + count chip in the Home app bar (tap opens Stats); a "today" ring or tick on it; a 7-day dot row and **longest streak (all time)** on Stats; a quiet in-app banner when the streak is at risk (today empty, active yesterday); a one-time toast at 7 / 30 / 100 / 365 days. | M |
 | G6 | Cross-device reading (spike first) | `POST /api/session/local` (what the official app uses to sync offline sessions) could record a reading session so reading shows up in the server's stats and on other devices. **Unverified and risky:** it also writes media progress from the session (`duration` 0 for an ebook) and would add reading time to "listening" totals and admin stats. Test against the local server (`~/Code/audiobookshelf`, a throwaway item) before deciding; ship G1-G5 without it. | M (spike S) |
+| G7 | Streak reminders (back in scope 2026-11-12) | Local scheduled notification, off by default, opt-in with a short explanation before the system prompt. See "G7: Streak reminders" below. Depends on G5's at-risk function. | M |
 
-### Later: push notifications (parked, not in scope now)
+### G7: Streak reminders (back in scope, decided 2026-11-12)
 
-Decided 2026-11-09: build G1-G5 in-app only, but leave room so reminders can be added without rework.
+Originally parked on 2026-11-09 (G1-G5 in-app only). Notifications are back in the plan: build them after G5, local only, opt-in.
 
-- **Why parked:** a reminder needs the notification permission (Android 13+ `POST_NOTIFICATIONS`, iOS authorization and a
-  possible Info.plist/privacy update). That breaks this plan's "no new permissions" rule, so it needs its own decision
-  and a Play / App Store submission check first.
-- **Design now so it slots in later:**
+- **Permissions:** Android 13+ `POST_NOTIFICATIONS` is already declared (playback notification), so the manifest does not
+  change; the runtime prompt for reminders must be explained first and only requested when the user turns reminders on.
+  iOS needs the notification authorization request (no Info.plist usage string). Exact alarms are not needed: a reminder
+  that fires within a few minutes of the chosen time is fine, so do not declare `SCHEDULE_EXACT_ALARM`. Record the
+  change in the store listings (Phase L1-L3).
+- **Design (build on what G5 already has):**
   - Keep the "at risk" test as one pure function (`streakAtRisk(days, readingDays, settings, now)`) that the in-app
     banner calls today and a notifier can call later.
   - Keep the user's usual activity time of day (derived from the local `ReadingDays` / session times) available from
     the stats code, so a reminder can be timed for a few hours before they normally read or listen.
-  - Reserve the settings keys now (stored, no UI yet): `streakReminderEnabled` (false), `streakReminderTime`
-    (null = auto from habit), `streakReminderQuietHours`.
+  - Settings keys (add with the UI): `streakReminderEnabled` (false), `streakReminderTime` (null = auto from habit),
+    `streakReminderQuietHours`.
 - **Likely approach:** local scheduled notifications only (no server, no push service, no account data leaves the
   device). The first-party option is `flutter_local_notifications` (not Google-published, so check the dependency
   policy) or a small Kotlin/Swift channel like the existing storage channel, which fits the policy better.
@@ -228,7 +231,7 @@ Decided 2026-11-09: build G1-G5 in-app only, but leave room so reminders can be 
 
 ### Decisions to make
 
-1. **Notifications.** Decided: in-app only for now; push reminders are parked in "Later: push notifications" above.
+1. **Notifications.** Decided 2026-11-12: reminders are in scope as G7 (local, opt-in, off by default); the store listings are updated for them in Phase L.
 2. **Weekly mode and goal default.** Default is daily + any activity + forgiveness on. Confirm.
 3. **G6 spike.** Run it, or keep reading streaks device-only?
 
@@ -456,9 +459,25 @@ artwork) · 10.5 / 10.7 Android Auto settings and voice -> F5 · 2.5 contrast an
 - **Needs a second language first:** 12.5 localization QA (F4 ships English only).
 - **Excluded by decision:** 5.11 volume-key navigation, MP3 index seeking, lock-player UI.
 
+## Phase L: Store listings and permissions (needs the user: console access)
+
+Added 2026-11-12. Every permission, background mode or data use this plan adds must be declared accurately in the Google
+Play Console and App Store Connect before the build that uses it ships. I can prepare the text and the checklist from
+the code; the user submits it (I have no console access). Do this once G7 and J5/J6 are decided, and again before each
+release (ties to K9).
+
+| # | Item | Approach | Size |
+|---|------|----------|------|
+| L1 | Inventory what the build actually uses | List from the merged Android manifest and `Info.plist`: Android `INTERNET`, `WAKE_LOCK`, `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `POST_NOTIFICATIONS`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, and `RECORD_AUDIO` if Precise ships; iOS background audio mode and notification authorization. Also list what data the app stores or sends: account name and token to the user's own server, listening and reading progress, listening sessions, reading time (on device only), ebook/audiobook links (on device only), logs (on device). | S |
+| L2 | Google Play Console | Update the **Data safety** form (data types, whether collected or shared, encryption in transit, deletion); the **foreground service** declaration (media playback) with its justification; the **`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`** justification (Play restricts it: give the core-function reason or drop it); the **`POST_NOTIFICATIONS`** use for reminders; the **`RECORD_AUDIO`** sensitive-permission explanation and the in-app prominent disclosure if Precise ships (on-device recognition, audio never leaves the device); the privacy policy URL; the content/target-audience answers if they change. | M |
+| L3 | App Store Connect | Update **App Privacy** (data types and whether linked to the user: the app sends data only to the server the user configures, decide and record how that is declared); background audio justification and review notes with demo server credentials; notification use for reminders; check whether any new "required reason" API is used (privacy manifest). Precise is Android-only, so no microphone usage string is added on iOS. | M |
+| L4 | Store listing text and screenshots | "What's new" and description for: linked ebook/audiobook switching, streaks and reminders (optional), library icons and the new Home menu, reader fixes. Refresh screenshots (Home header, link row, Settings). Mention optional permissions as optional. | S |
+| L5 | Privacy policy and in-app disclosure | Update the policy for: reading time and links stored on the device, reminders, microphone use for Precise (if shipped), logs. Make sure each permission prompt is preceded by an in-app explanation (reminders and Precise already require one). | S |
+| L6 | Release checklist | Add L1-L5 to the K9 release checklist: after any dependency or manifest change, diff the merged manifest against the last release and update the console answers before submitting. | S |
+
 ## Suggested order
 
-A (A1, A4, A3, A5, A2) -> B1 -> B2/B3/B4 -> C1/C2 -> B6/B5 -> D1/D2/D4/D3/D5 -> F3 -> F1/F2 -> E1 -> F5 -> F4 -> E2. Phase I (listening sessions) is already built (see its status note); only the I4 offline-queue check and the I5 timezone rule remain. Phase G (streaks) comes next: G1 -> G2/G3 -> G4 -> G5, with the G6 spike last. Phase J (linking): J0 -> J1 -> J2 -> J3 -> J4 -> J7, with J5/J6 (Precise) last. Phase V (verification) runs before all of this. Phase H: H7 is a small, quick win and can go first; H8-H10 are optional follow-ups to the reader.
+A (A1, A4, A3, A5, A2) -> B1 -> B2/B3/B4 -> C1/C2 -> B6/B5 -> D1/D2/D4/D3/D5 -> F3 -> F1/F2 -> E1 -> F5 -> F4 -> E2. Phase I (listening sessions) is already built (see its status note); only the I4 offline-queue check and the I5 timezone rule remain. Phase G (streaks) comes next: G1 -> G2/G3 -> G4 -> G5 -> G7 (reminders), with the G6 spike last. Phase L (store listings) follows G7 and J5/J6 and repeats before every release. Phase J (linking): J0 -> J1 -> J2 -> J3 -> J4 -> J7, with J5/J6 (Precise) last. Phase V (verification) runs before all of this. Phase H: H7 is a small, quick win and can go first; H8-H10 are optional follow-ups to the reader.
 Small, high-visibility items first; the two large items (E2 multi-server, F4 translations) last.
 
 ## Settings matrix (every preference gets a control)
@@ -480,6 +499,7 @@ Small, high-visibility items first; the two large items (E2 multi-server, F4 tra
 | Show streak on Home (G5) | User Interface | On |
 | Streak bar: any activity or daily goal minutes (G3) | Streaks (new section) | Any activity |
 | Forgive a missed day; weekly streak mode (G4) | Streaks | On; off |
+| Streak reminder: on/off, time, quiet hours (G7) | Streaks | Off |
 
 ## Decisions (resolved 2026-10-07)
 
