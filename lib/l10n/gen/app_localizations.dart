@@ -1900,6 +1900,84 @@ abstract class AppLocalizations {
   /// **'Longest streak'**
   String get longestStreak;
 
+  /// No description provided for @streakReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily reminder'**
+  String get streakReminder;
+
+  /// No description provided for @streakReminderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A notification in the evening if you have a streak and have not listened or read yet'**
+  String get streakReminderHint;
+
+  /// No description provided for @streakReminderTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder time'**
+  String get streakReminderTime;
+
+  /// No description provided for @streakReminderTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a test reminder'**
+  String get streakReminderTest;
+
+  /// No description provided for @streakReminderTestHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows one in a few seconds'**
+  String get streakReminderTestHint;
+
+  /// No description provided for @streakReminderQuiet.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet hours'**
+  String get streakReminderQuiet;
+
+  /// No description provided for @streakReminderQuietHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No reminders between 10 pm and 8 am'**
+  String get streakReminderQuietHint;
+
+  /// No description provided for @streakReminderAskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on reminders?'**
+  String get streakReminderAskTitle;
+
+  /// No description provided for @streakReminderAskBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Steeped will send one notification a day, only when you have a streak going and have not listened or read yet. It is created on this phone; nothing is sent to a server. You can turn it off here at any time.'**
+  String get streakReminderAskBody;
+
+  /// No description provided for @streakReminderAskTurnOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get streakReminderAskTurnOn;
+
+  /// No description provided for @streakReminderDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications are turned off for Steeped. Allow them in the system settings to get reminders.'**
+  String get streakReminderDenied;
+
+  /// No description provided for @reminderChannelName.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak reminders'**
+  String get reminderChannelName;
+
+  /// No description provided for @reminderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Steeped'**
+  String get reminderTitle;
+
   /// No description provided for @streakBanner.
   ///
   /// In en, this message translates to:

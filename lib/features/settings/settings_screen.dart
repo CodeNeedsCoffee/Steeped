@@ -1,5 +1,7 @@
 import 'dart:io' show Platform;
 
+import '../streaks/reminder_service.dart';
+import '../streaks/streak_providers.dart';
 import '../linking/sync_strategy.dart' show SyncMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -412,6 +414,64 @@ class SettingsScreen extends ConsumerWidget {
                 controller.save(settings.copyWith(streakWeekly: v)),
           ),
 
+          if (Platform.isAndroid) ...[
+            SwitchListTile(
+              title: Text(context.l10n.streakReminder),
+              subtitle: Text(context.l10n.streakReminderHint),
+              value: settings.streakReminder,
+              onChanged: (on) async {
+                if (!on) {
+                  controller.save(settings.copyWith(streakReminder: false));
+                  return;
+                }
+                final ok = await _enableReminder(context);
+                if (ok) controller.save(settings.copyWith(streakReminder: true));
+              },
+            ),
+            if (settings.streakReminder) ...[
+              ListTile(
+                title: Text(context.l10n.streakReminderTime),
+                trailing: Text(
+                  TimeOfDay(
+                    hour: settings.streakReminderMinutes ~/ 60,
+                    minute: settings.streakReminderMinutes % 60,
+                  ).format(context),
+                ),
+                onTap: () async {
+                  final t = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay(
+                      hour: settings.streakReminderMinutes ~/ 60,
+                      minute: settings.streakReminderMinutes % 60,
+                    ),
+                  );
+                  if (t != null) {
+                    controller.save(
+                      settings.copyWith(
+                        streakReminderMinutes: t.hour * 60 + t.minute,
+                      ),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                title: Text(context.l10n.streakReminderTest),
+                subtitle: Text(context.l10n.streakReminderTestHint),
+                onTap: () => sendTestReminder(
+                  ref.read(streakProvider).valueOrNull?.current ?? 1,
+                  weekly: settings.streakWeekly,
+                ),
+              ),
+              SwitchListTile(
+                title: Text(context.l10n.streakReminderQuiet),
+                subtitle: Text(context.l10n.streakReminderQuietHint),
+                value: settings.streakReminderQuiet,
+                onChanged: (v) =>
+                    controller.save(settings.copyWith(streakReminderQuiet: v)),
+              ),
+            ],
+          ],
+
           _SectionHeader(context.l10n.sectionLinkedBooks),
           ListTile(
             title: Text(context.l10n.linkSyncMode),
@@ -694,4 +754,35 @@ class _SectionHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Explains the reminder, then asks for the notification permission. False
+/// when the user declines the explanation or the system permission.
+Future<bool> _enableReminder(BuildContext context) async {
+  final agreed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(ctx.l10n.streakReminderAskTitle),
+      content: Text(ctx.l10n.streakReminderAskBody),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(MaterialLocalizations.of(ctx).cancelButtonLabel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text(ctx.l10n.streakReminderAskTurnOn),
+        ),
+      ],
+    ),
+  );
+  if (agreed != true) return false;
+  final status = await Permission.notification.request();
+  if (!status.isGranted && context.mounted) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.streakReminderDenied)));
+    return false;
+  }
+  return status.isGranted;
 }

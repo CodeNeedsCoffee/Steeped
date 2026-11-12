@@ -1,5 +1,6 @@
 
 import 'library_icon.dart';
+import '../streaks/reminder_service.dart';
 import '../streaks/streak_banner.dart';
 import '../streaks/streak_chip.dart';
 import 'package:flutter/material.dart';
@@ -244,6 +245,7 @@ class _HomeShellTabs extends ConsumerWidget {
     final topInset =
         MediaQuery.paddingOf(context).top + kToolbarHeight + kTextTabBarHeight + 16;
 
+    ref.watch(reminderSyncProvider);
     return StreakMilestoneListener(
       child: DefaultTabController(
       length: tabs.length,

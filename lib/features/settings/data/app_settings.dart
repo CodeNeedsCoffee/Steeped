@@ -48,6 +48,9 @@ class AppSettings {
     this.streakGoalMinutes = 0,
     this.streakForgive = true,
     this.streakWeekly = false,
+    this.streakReminder = false,
+    this.streakReminderMinutes = 19 * 60,
+    this.streakReminderQuiet = true,
     this.sleepChime = false,
     this.sleepExtendMinutes = 5,
     this.sleepAutoWindow = false,
@@ -110,6 +113,9 @@ class AppSettings {
       streakGoalMinutes: json['streakGoalMinutes'] as int? ?? 0,
       streakForgive: json['streakForgive'] as bool? ?? true,
       streakWeekly: json['streakWeekly'] as bool? ?? false,
+      streakReminder: json['streakReminder'] as bool? ?? false,
+      streakReminderMinutes: json['streakReminderMinutes'] as int? ?? 19 * 60,
+      streakReminderQuiet: json['streakReminderQuiet'] as bool? ?? true,
       sleepChime: json['sleepChime'] as bool? ?? false,
       sleepExtendMinutes: json['sleepExtendMinutes'] as int? ?? 5,
       sleepAutoWindow: json['sleepAutoWindow'] as bool? ?? false,
@@ -215,6 +221,12 @@ class AppSettings {
   final int streakGoalMinutes;
   final bool streakForgive;
   final bool streakWeekly;
+
+  /// Streak reminder (Android, opt-in): a local notification at
+  /// [streakReminderMinutes] after midnight, skipping quiet hours (10pm-8am).
+  final bool streakReminder;
+  final int streakReminderMinutes;
+  final bool streakReminderQuiet;
   final bool sleepChime;
   final int sleepExtendMinutes;
   final bool sleepAutoWindow;
@@ -278,6 +290,9 @@ class AppSettings {
     'streakGoalMinutes': streakGoalMinutes,
     'streakForgive': streakForgive,
     'streakWeekly': streakWeekly,
+    'streakReminder': streakReminder,
+    'streakReminderMinutes': streakReminderMinutes,
+    'streakReminderQuiet': streakReminderQuiet,
     'sleepChime': sleepChime,
     'sleepExtendMinutes': sleepExtendMinutes,
     'sleepAutoWindow': sleepAutoWindow,
@@ -320,6 +335,9 @@ class AppSettings {
     int? streakGoalMinutes,
     bool? streakForgive,
     bool? streakWeekly,
+    bool? streakReminder,
+    int? streakReminderMinutes,
+    bool? streakReminderQuiet,
     bool? sleepChime,
     int? sleepExtendMinutes,
     bool? sleepAutoWindow,
@@ -370,6 +388,10 @@ class AppSettings {
       streakGoalMinutes: streakGoalMinutes ?? this.streakGoalMinutes,
       streakForgive: streakForgive ?? this.streakForgive,
       streakWeekly: streakWeekly ?? this.streakWeekly,
+      streakReminder: streakReminder ?? this.streakReminder,
+      streakReminderMinutes:
+          streakReminderMinutes ?? this.streakReminderMinutes,
+      streakReminderQuiet: streakReminderQuiet ?? this.streakReminderQuiet,
       sleepChime: sleepChime ?? this.sleepChime,
       sleepExtendMinutes: sleepExtendMinutes ?? this.sleepExtendMinutes,
       sleepAutoWindow: sleepAutoWindow ?? this.sleepAutoWindow,

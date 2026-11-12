@@ -1140,6 +1140,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get longestStreak => 'Longest streak';
 
   @override
+  String get streakReminder => 'Daily reminder';
+
+  @override
+  String get streakReminderHint =>
+      'A notification in the evening if you have a streak and have not listened or read yet';
+
+  @override
+  String get streakReminderTime => 'Reminder time';
+
+  @override
+  String get streakReminderTest => 'Send a test reminder';
+
+  @override
+  String get streakReminderTestHint => 'Shows one in a few seconds';
+
+  @override
+  String get streakReminderQuiet => 'Quiet hours';
+
+  @override
+  String get streakReminderQuietHint => 'No reminders between 10 pm and 8 am';
+
+  @override
+  String get streakReminderAskTitle => 'Turn on reminders?';
+
+  @override
+  String get streakReminderAskBody =>
+      'Steeped will send one notification a day, only when you have a streak going and have not listened or read yet. It is created on this phone; nothing is sent to a server. You can turn it off here at any time.';
+
+  @override
+  String get streakReminderAskTurnOn => 'Turn on';
+
+  @override
+  String get streakReminderDenied =>
+      'Notifications are turned off for Steeped. Allow them in the system settings to get reminders.';
+
+  @override
+  String get reminderChannelName => 'Streak reminders';
+
+  @override
+  String get reminderTitle => 'Steeped';
+
+  @override
   String streakBanner(String unit) {
     return 'Keep your $unit streak going: listen or read today';
   }

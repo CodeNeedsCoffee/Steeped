@@ -53,6 +53,8 @@
             </intent-filter>
         </service>
 
+        <receiver android:name=".ReminderReceiver" android:exported="false" />
+
         <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver"
             android:exported="true" tools:ignore="Instantiatable">
             <intent-filter>
