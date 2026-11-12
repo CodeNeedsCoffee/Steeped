@@ -1,5 +1,7 @@
 import 'dart:async';
+import '../../core/utils/format_duration.dart';
 import 'epub_loader.dart';
+import 'reader_math.dart';
 import '../streaks/streak_providers.dart';
 import 'dart:typed_data';
 
@@ -597,8 +599,24 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       progress: controller == null ? null : _fraction,
       onScrub: controller == null ? null : _jumpToFraction,
       footerLabel: _chapterLabel,
+      progressNote: controller == null || _paragraphs.isEmpty
+          ? null
+          : context.l10n.timeLeftInBook(
+              formatDurationText(
+                context.l10n,
+                readingTimeLeft(
+                  totalWords: _totalWords,
+                  fraction: _fraction,
+                ).inSeconds.toDouble(),
+              ),
+            ),
       actions: [
         if (controller != null) ...[
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: context.l10n.searchInBook,
+            onPressed: () => _showSearch(context, controller),
+          ),
           IconButton(
             icon: Icon(_isBookmarked ? Icons.bookmark : Icons.bookmark_border),
             tooltip: context.l10n.bookmarkThisPage,
@@ -622,6 +640,37 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           onPressed: () => _showSettings(context),
         ),
       ],
+    );
+  }
+
+  int? _wordsCache;
+  int _wordsFor = -1;
+
+  /// Words in the book, estimated from the text length (cached per paragraph
+  /// count, which only changes once when the book finishes loading).
+  int get _totalWords {
+    if (_wordsFor != _paragraphs.length) {
+      var chars = 0;
+      for (final p in _paragraphs) {
+        chars += p.element.text.length;
+      }
+      _wordsCache = approximateWords(chars);
+      _wordsFor = _paragraphs.length;
+    }
+    return _wordsCache ?? 0;
+  }
+
+  void _showSearch(BuildContext context, EpubController controller) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheet) => _BookSearchSheet(
+        texts: [for (final p in _paragraphs) p.element.text],
+        onPick: (index) {
+          Navigator.pop(sheet);
+          controller.jumpTo(index: index);
+        },
+      ),
     );
   }
 
@@ -793,4 +842,69 @@ class PagedScrollBehavior extends ScrollBehavior {
   @override
   bool shouldNotify(covariant PagedScrollBehavior oldDelegate) =>
       paged != oldDelegate.paged;
+}
+
+/// The in-book search sheet: type, see matching passages, tap to jump.
+class _BookSearchSheet extends StatefulWidget {
+  const _BookSearchSheet({required this.texts, required this.onPick});
+
+  final List<String> texts;
+  final ValueChanged<int> onPick;
+
+  @override
+  State<_BookSearchSheet> createState() => _BookSearchSheetState();
+}
+
+class _BookSearchSheetState extends State<_BookSearchSheet> {
+  List<SearchHit> _hits = const [];
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.6,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: context.l10n.searchInBookHint,
+                  labelText: context.l10n.searchInBook,
+                ),
+                onChanged: (v) => setState(() {
+                  _query = v;
+                  _hits = searchTexts(widget.texts, v);
+                }),
+              ),
+            ),
+            Expanded(
+              child: _hits.isEmpty
+                  ? Center(
+                      child: Text(
+                        _query.trim().length < 2 ? '' : context.l10n.noResults,
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _hits.length,
+                      itemBuilder: (context, i) => ListTile(
+                        title: Text(
+                          _hits[i].snippet,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () => widget.onPick(_hits[i].index),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

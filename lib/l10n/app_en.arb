@@ -357,6 +357,10 @@
   "nothingToFilterOn": "Nothing to filter on.",
   "searchBooksSeriesAuthors": "Search books, series, authors…",
   "noResults": "No results.",
+  "searchInBook": "Search in book",
+  "searchInBookHint": "Type at least 2 letters",
+  "timeLeftInBook": "{duration} left",
+  "@timeLeftInBook": {"placeholders": {"duration": {"type": "String"}}},
   "searchFailed": "Search failed: {error}",
   "@searchFailed": {
     "placeholders": {

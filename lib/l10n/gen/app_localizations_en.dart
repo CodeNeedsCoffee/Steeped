@@ -454,6 +454,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noResults => 'No results.';
 
   @override
+  String get searchInBook => 'Search in book';
+
+  @override
+  String get searchInBookHint => 'Type at least 2 letters';
+
+  @override
+  String timeLeftInBook(String duration) {
+    return '$duration left';
+  }
+
+  @override
   String searchFailed(Object error) {
     return 'Search failed: $error';
   }

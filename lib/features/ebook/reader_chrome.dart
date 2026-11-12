@@ -22,6 +22,7 @@ class ReaderChrome extends StatefulWidget {
     this.progress,
     this.onScrub,
     this.footerLabel,
+    this.progressNote,
     super.key,
   });
 
@@ -42,6 +43,9 @@ class ReaderChrome extends StatefulWidget {
   final double? progress;
   final ValueChanged<double>? onScrub;
   final String? footerLabel;
+
+  /// Shown after the percentage (for example the time left).
+  final String? progressNote;
 
   @override
   State<ReaderChrome> createState() => _ReaderChromeState();
@@ -239,7 +243,9 @@ class _ReaderChromeState extends State<ReaderChrome> {
                             ),
                           ),
                           Text(
-                            '${((progress ?? 0) * 100).round()}%',
+                            widget.progressNote == null
+                                ? '${((progress ?? 0) * 100).round()}%'
+                                : '${((progress ?? 0) * 100).round()}% \u00b7 ${widget.progressNote}',
                             style: TextStyle(color: fg, fontSize: 12),
                           ),
                         ],

@@ -796,6 +796,24 @@ abstract class AppLocalizations {
   /// **'No results.'**
   String get noResults;
 
+  /// No description provided for @searchInBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Search in book'**
+  String get searchInBook;
+
+  /// No description provided for @searchInBookHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type at least 2 letters'**
+  String get searchInBookHint;
+
+  /// No description provided for @timeLeftInBook.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} left'**
+  String timeLeftInBook(String duration);
+
   /// No description provided for @searchFailed.
   ///
   /// In en, this message translates to:
