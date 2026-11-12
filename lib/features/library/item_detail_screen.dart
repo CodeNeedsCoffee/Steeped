@@ -34,6 +34,31 @@ class ItemDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(sessionControllerProvider);
     final detailAsync = ref.watch(itemDetailProvider(itemId));
+
+    // This page stays open under Now Playing, so its copy of the progress goes
+    // stale while you listen (a rewound "Finished" book kept saying Finished).
+    // Refetch when Now Playing closes, when this book starts, and just after
+    // playback stops (the position is synced on pause, hence the short delay).
+    void refreshSoon(Duration delay) {
+      Future.delayed(delay, () {
+        if (context.mounted) ref.invalidate(itemDetailProvider(itemId));
+      });
+    }
+
+    ref.listen(nowPlayingOpenProvider, (previous, open) {
+      if (previous == true && !open) refreshSoon(const Duration(seconds: 1));
+    });
+    ref.listen(currentPlaybackItemProvider.select((i) => i?.downloadId), (
+      previous,
+      id,
+    ) {
+      if (id != previous) refreshSoon(const Duration(seconds: 3));
+    });
+    ref.listen(isPlayingProvider, (previous, next) {
+      if (previous?.valueOrNull == true && next.valueOrNull == false) {
+        refreshSoon(const Duration(seconds: 2));
+      }
+    });
     final (serverUrl, token) = switch (session) {
       SessionAuthenticated(:final serverUrl, :final user) => (
         serverUrl,
@@ -57,6 +82,8 @@ class ItemDetailScreen extends ConsumerWidget {
         ],
       ),
       body: detailAsync.when(
+        // Keep showing the page while a refetch runs (no spinner flash).
+        skipLoadingOnReload: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
         data: (item) => serverUrl == null
