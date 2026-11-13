@@ -9,6 +9,7 @@ import '../player/state/playback_controller.dart';
 import '../settings/state/settings_providers.dart';
 import 'ebook_spans.dart';
 import 'link_providers.dart';
+import 'precise_busy.dart';
 import 'precise_service.dart';
 import 'sync_strategy.dart';
 
@@ -169,8 +170,19 @@ Future<void> switchToAudio(
     // that are on screen. Any miss keeps the estimate.
     final words = from?.visibleText;
     if (mode == SyncMode.precise && startAt != null && words != null) {
-      final refined = await refineAudioStart(container, audio, startAt, words);
-      if (refined != null) startAt = refined;
+      final busy = container.read(preciseBusyProvider.notifier);
+      busy.state = true;
+      try {
+        final refined = await refineAudioStart(
+          container,
+          audio,
+          startAt,
+          words,
+        );
+        if (refined != null) startAt = refined;
+      } finally {
+        busy.state = false;
+      }
     }
   } catch (_) {
     // Mapping is a convenience: fall back to the audiobook's own position.

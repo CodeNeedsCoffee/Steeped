@@ -1,3 +1,4 @@
+import '../linking/precise_busy.dart';
 import '../linking/read_along.dart';
 import '../linking/read_along_window.dart';
 import 'package:flutter/material.dart';
@@ -140,7 +141,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         ? ref.watch(bookmarksProvider(item.id)).valueOrNull ?? const []
         : const <Bookmark>[];
 
-    return Scaffold(
+    return PreciseBusyOverlay(child: Scaffold(
       appBar: AppBar(
         // A down-chevron rather than a back arrow: this screen slides up
         // from the mini-player (see the '/now-playing' route's
@@ -452,7 +453,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
           ],
         ],
       ),
-    );
+    ));
   }
 
   String _formatTime(double seconds) {

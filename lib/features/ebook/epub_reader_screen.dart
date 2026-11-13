@@ -19,6 +19,7 @@ import 'data/reading_position.dart';
 import '../linking/link_providers.dart';
 import '../linking/ebook_spans.dart';
 import '../linking/link_switch.dart';
+import '../linking/precise_busy.dart';
 import '../linking/precise_service.dart';
 import '../linking/read_along.dart';
 import '../linking/reader_dock.dart';
@@ -548,23 +549,20 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     final container = ProviderScope.containerOf(context, listen: false);
     final estimate = (_startFraction * _paragraphs.length).floor();
     final texts = [for (final q in _paragraphs) q.element.text];
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(l10n.preciseFinding),
-        duration: const Duration(seconds: 30),
-      ),
-    );
-    refineParagraph(container, audio, p.seconds, texts, estimate).then((r) {
-      messenger?.hideCurrentSnackBar();
-      if (!mounted) return;
-      if (r == null) {
-        messenger?.showSnackBar(
-          SnackBar(content: Text(l10n.preciseApproximate)),
-        );
-        return;
-      }
-      _revealIn(r.paragraph, within: r.within);
-    });
+    final busy = container.read(preciseBusyProvider.notifier);
+    busy.state = true;
+    refineParagraph(container, audio, p.seconds, texts, estimate)
+        .whenComplete(() => busy.state = false)
+        .then((r) {
+          if (!mounted) return;
+          if (r == null) {
+            messenger?.showSnackBar(
+              SnackBar(content: Text(l10n.preciseApproximate)),
+            );
+            return;
+          }
+          _revealIn(r.paragraph, within: r.within);
+        });
   }
 
   /// The words at the top of the screen (for Precise to find in the audio).
@@ -1056,8 +1054,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
         ),
       ],
     );
-    if (!sidePanel) return chrome;
-    return Row(
+    if (!sidePanel) return PreciseBusyOverlay(child: chrome);
+    return PreciseBusyOverlay(
+      child: Row(
       children: [
         Expanded(child: chrome),
         SizedBox(
@@ -1069,7 +1068,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           ),
         ),
       ],
-    );
+    ));
   }
 
   int? _wordsCache;
