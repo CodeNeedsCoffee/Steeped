@@ -1097,7 +1097,6 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
               audio: playingAudio,
               following: _follow,
               onToggleFollow: _toggleFollow,
-              color: settings.textColor,
             )
           : null,
       // Leaves room under the bars the first time; tapping the middle hides

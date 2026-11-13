@@ -275,6 +275,9 @@ class PlaybackController extends Notifier<void> {
   AppSettings get _settings =>
       ref.read(appSettingsProvider).valueOrNull ?? const AppSettings();
 
+  /// The length the running (or last) sleep timer was started with.
+  Duration get lastSleepDuration => _lastSleepDuration;
+
   void startSleepTimer(Duration duration) {
     _stopSleepEngine(restoreVolume: true);
     _lastSleepDuration = duration;

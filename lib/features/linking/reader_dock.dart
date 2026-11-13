@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/format_duration.dart';
 import '../../l10n/l10n.dart';
 import '../../models/library_item_detail.dart';
@@ -21,16 +22,12 @@ class ReaderPlayerDock extends ConsumerWidget {
     required this.audio,
     required this.following,
     required this.onToggleFollow,
-    required this.color,
     super.key,
   });
 
   final LibraryItemDetail audio;
   final bool following;
   final VoidCallback onToggleFollow;
-
-  /// Text and icon colour, from the reader theme.
-  final Color color;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,63 +45,118 @@ class ReaderPlayerDock extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider).valueOrNull;
     final back = settings?.jumpBackSeconds ?? 30;
     final fwd = settings?.jumpForwardSeconds ?? 30;
-    return IconTheme(
-      data: IconThemeData(color: color),
-      child: SizedBox(
-        height: 52,
-        child: Row(
-          children: [
-            IconButton(
-              icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-              tooltip: playing ? l10n.pause : l10n.play,
-              onPressed: () =>
-                  playing ? controller.pause() : controller.resume(),
-            ),
-            IconButton(
-              icon: const Icon(Icons.replay),
-              tooltip: l10n.rewindSeconds(back),
-              onPressed: controller.jumpBackward,
-            ),
-            IconButton(
-              icon: const Icon(Icons.fast_forward),
-              tooltip: l10n.forwardSeconds(fwd),
-              onPressed: controller.jumpForward,
-            ),
-            Expanded(
-              // The bar sits on the row's centre line, in line with the
-              // buttons; the time left hangs below it without moving it.
-              child: Stack(
-                alignment: Alignment.center,
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final radii = theme.extension<AppRadii>() ?? const AppRadii();
+    // Same accent-tinted card as the mini player, so it reads as the app's
+    // player sitting on the page and not as more page.
+    final fill = Color.alphaBlend(
+      scheme.primary.withValues(alpha: 0.22),
+      scheme.surfaceContainerHigh,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: fill,
+        elevation: 6,
+        shadowColor: scheme.primary.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(radii.lg),
+        clipBehavior: Clip.antiAlias,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(radii.lg),
+            border: Border.all(color: scheme.primary.withValues(alpha: 0.35)),
+          ),
+          child: IconTheme(
+            data: IconThemeData(color: scheme.onSurface),
+            child: SizedBox(
+              height: 56,
+              child: Row(
                 children: [
-                  LinearProgressIndicator(value: ratio, minHeight: 3),
-                  if (progress != null)
-                    Positioned(
-                      left: 0,
-                      top: 26 + 6,
-                      child: Text(
-                        l10n.timeLeftShort(
-                          formatDurationText(l10n, progress.left),
-                        ),
-                        style: TextStyle(color: color, fontSize: 11),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.replay),
+                    iconSize: 28,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: l10n.rewindSeconds(back),
+                    onPressed: controller.jumpBackward,
+                  ),
+                  IconButton(
+                    icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                    iconSize: 36,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: playing ? l10n.pause : l10n.play,
+                    onPressed: () =>
+                        playing ? controller.pause() : controller.resume(),
+                  ),
+                  IconButton(
+                    icon: Transform.flip(
+                      flipX: true,
+                      child: const Icon(Icons.replay),
+                    ),
+                    iconSize: 28,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: l10n.forwardSeconds(fwd),
+                    onPressed: controller.jumpForward,
+                  ),
+                  const SizedBox(width: 8),
+                  // The bar sits on the row's centre line, in line with the
+                  // buttons; the time left hangs below it without moving it.
+                  Expanded(
+                    child: SizedBox(
+                      height: 56,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          LinearProgressIndicator(
+                            value: ratio,
+                            minHeight: 4,
+                            borderRadius: BorderRadius.circular(2),
+                            color: scheme.primary,
+                            backgroundColor: scheme.onSurface.withValues(
+                              alpha: 0.15,
+                            ),
+                          ),
+                          if (progress != null)
+                            Positioned(
+                              left: 0,
+                              top: 28 + 6,
+                              child: Text(
+                                l10n.timeLeftShort(
+                                  formatDurationText(l10n, progress.left),
+                                ),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: scheme.onSurface.withValues(
+                                    alpha: 0.75,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      following ? Icons.my_location : Icons.location_searching,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: following ? l10n.followingAudio : l10n.followAudio,
+                    isSelected: following,
+                    color: following ? scheme.primary : null,
+                    onPressed: onToggleFollow,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.keyboard_arrow_up),
+                    visualDensity: VisualDensity.compact,
+                    tooltip: l10n.expandPlayer,
+                    onPressed: () => _expand(context, ref),
+                  ),
+                  const SizedBox(width: 4),
                 ],
               ),
             ),
-            IconButton(
-              icon: Icon(
-                following ? Icons.my_location : Icons.location_searching,
-              ),
-              tooltip: following ? l10n.followingAudio : l10n.followAudio,
-              isSelected: following,
-              onPressed: onToggleFollow,
-            ),
-            IconButton(
-              icon: const Icon(Icons.keyboard_arrow_up),
-              tooltip: l10n.expandPlayer,
-              onPressed: () => _expand(context, ref),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -129,15 +181,19 @@ class PlayerExtras extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final controller = ref.read(playbackControllerProvider.notifier);
     final seconds = ref.watch(playbackPositionProvider).valueOrNull ?? 0;
     final speed = ref.watch(playbackSpeedProvider).valueOrNull ?? 1.0;
-    final spans = audioSpansOf(audio);
-    final progress = chapterProgressAt(spans, seconds);
-    final sleeping = ref.watch(sleepTimerRemainingProvider) != null;
-    final idx = progress == null
-        ? -1
-        : spans.indexWhere((c) => c.start == progress.start);
+    final progress = chapterProgressAt(audioSpansOf(audio), seconds);
+    final remaining = ref.watch(sleepTimerRemainingProvider);
+    final endOfChapter = ref.watch(sleepTimerEndOfChapterProvider);
+    final setMinutes = remaining == null || endOfChapter
+        ? null
+        : controller.lastSleepDuration.inMinutes;
+    final left = remaining?.inSeconds ?? 0;
+    final clock = '${left ~/ 60}:${(left % 60).toString().padLeft(2, '0')}';
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -148,33 +204,14 @@ class PlayerExtras extends ConsumerWidget {
             if (progress != null && progress.title.isNotEmpty)
               Text(
                 progress.title,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: theme.textTheme.titleMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.skip_previous),
-                  onPressed: idx < 0
-                      ? null
-                      : () => controller.seekToGlobalPosition(
-                          seconds - spans[idx].start < 5 && idx > 0
-                              ? spans[idx - 1].start
-                              : spans[idx].start,
-                        ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_next),
-                  onPressed: idx < 0 || idx >= spans.length - 1
-                      ? null
-                      : () => controller.seekToGlobalPosition(
-                          spans[idx + 1].start,
-                        ),
-                ),
-                const Spacer(),
-                Text('${speed.toStringAsFixed(2)}x'),
-              ],
+            const SizedBox(height: 8),
+            Text(
+              '${speed.toStringAsFixed(2)}x',
+              style: theme.textTheme.titleLarge,
             ),
             Slider(
               value: speed.clamp(0.5, 3.0),
@@ -183,20 +220,50 @@ class PlayerExtras extends ConsumerWidget {
               divisions: 25,
               onChanged: controller.setSpeed,
             ),
+            const SizedBox(height: 8),
+            if (remaining != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.bedtime_outlined,
+                      size: 20,
+                      color: scheme.onPrimaryContainer,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        endOfChapter
+                            ? l10n.chapterEndsIn(clock)
+                            : l10n.sleepIn(clock),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: scheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: controller.cancelSleepTimer,
+                      child: Text(l10n.cancel),
+                    ),
+                  ],
+                ),
+              ),
             Wrap(
               spacing: 8,
               children: [
                 for (final m in const [15, 30, 45, 60])
                   ChoiceChip(
                     label: Text(l10n.minutes(m)),
-                    selected: false,
+                    selected: setMinutes == m,
+                    showCheckmark: true,
                     onSelected: (_) =>
                         controller.startSleepTimer(Duration(minutes: m)),
-                  ),
-                if (sleeping)
-                  ActionChip(
-                    label: Text(l10n.cancel),
-                    onPressed: controller.cancelSleepTimer,
                   ),
               ],
             ),
@@ -300,7 +367,9 @@ class ReaderPlayerPanel extends ConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.replay),
                     tooltip: l10n.rewindSeconds(
-                      ref.watch(appSettingsProvider).valueOrNull
+                      ref
+                              .watch(appSettingsProvider)
+                              .valueOrNull
                               ?.jumpBackSeconds ??
                           30,
                     ),
@@ -316,7 +385,9 @@ class ReaderPlayerPanel extends ConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.fast_forward),
                     tooltip: l10n.forwardSeconds(
-                      ref.watch(appSettingsProvider).valueOrNull
+                      ref
+                              .watch(appSettingsProvider)
+                              .valueOrNull
                               ?.jumpForwardSeconds ??
                           30,
                     ),
