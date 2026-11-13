@@ -80,6 +80,9 @@ class PreciseRecognizer(private val context: Context) {
         val recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
         val pipe = ParcelFileDescriptor.createPipe()
         val t0 = System.currentTimeMillis()
+        var firstChunkAt = -1L
+        var firstPartialAt = -1L
+        var readyAt = -1L
         val segments = mutableListOf<String>()
         var current = ""
         var finished = false
@@ -102,6 +105,10 @@ class PreciseRecognizer(private val context: Context) {
             } catch (_: Exception) {
             }
             if (active === session) active = null
+            android.util.Log.i(
+                "PreciseSpike",
+                "timeline: ready=${readyAt}ms firstChunk=${firstChunkAt}ms firstPartial=${firstPartialAt}ms end=${System.currentTimeMillis() - t0}ms audio=${session.bytes / 32}ms",
+            )
             done(
                 mapOf(
                     "text" to segments.joinToString(" "),
@@ -123,7 +130,9 @@ class PreciseRecognizer(private val context: Context) {
         }
         fun firstWord(t: String) = t.trim().substringBefore(' ').lowercase()
         recognizer.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(p: Bundle?) {}
+            override fun onReadyForSpeech(p: Bundle?) {
+                readyAt = System.currentTimeMillis() - t0
+            }
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
@@ -133,6 +142,7 @@ class PreciseRecognizer(private val context: Context) {
                 val t = p?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     ?.firstOrNull() ?: return
                 if (finished) return
+                if (firstPartialAt < 0) firstPartialAt = System.currentTimeMillis() - t0
                 if (t.isBlank()) {
                     commit()
                 } else {
@@ -172,6 +182,7 @@ class PreciseRecognizer(private val context: Context) {
             val out = ParcelFileDescriptor.AutoCloseOutputStream(pipe[1])
             try {
                 decodeInto(url, startMs, durMs, session) { buf, n ->
+                    if (firstChunkAt < 0) firstChunkAt = System.currentTimeMillis() - t0
                     out.write(buf, 0, n)
                     session.bytes += n
                 }

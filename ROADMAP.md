@@ -564,6 +564,17 @@ The user then reported four reader problems, all on Alchemised:
 - **Data touched:** the test un-finished the book (progress 40%); I marked it finished again from Now Playing. Ebook position left near chapter 8; audio position left at 5:49:19 (it was at the end before).
 - **Open:** why chapter-weight estimates drift this far for this book (chapter titles are "Chapter N", so title matching does nothing) - the overall-fraction fallback was closer (39.6% vs 33.9%); worth using as the first guess when titles are generic.
 
+### Precise v2: faster and sharper (steps 1-4 of the research plan), 2026-11-13, on the Pixel
+
+- **1. Better first guess:** ebook places are now counted in words, not paragraphs or HTML size (`ParagraphMap`: chapters from the contents list, word fraction both ways). The reader, Follow, Play-from-here and the Now Playing read-along all use it. On Alchemised the first guess is within about 40 paragraphs (0.3%) with no listening.
+- **2. Calibration anchors:** every confirmed match (Precise either direction, Play from here) is saved as (word fraction, audio time) per book in the key-value table (`sync_anchors.dart`, max 40). Later guesses interpolate between anchors, or lean on a lone one within 10% of the book. Clockwork Angel: second switch's first guess was within 2 s.
+- **3. Streaming listen with early stop:** the audio is decoded straight into the recogniser through a pipe and the words heard so far are sent to Dart, which judges them at about 5, 10, 18 and 26 s and cancels at the first confident match. Warm listens on the Pixel: 0.9-3 s (was about 7 s); a cold first listen after the app starts can still take about 10 s (network and recogniser start-up).
+- **4. Matching upgrades:** rare words weigh more (book-wide frequency), a run of words in order is required (4 for a 5 s clip, 3 for 10 s, 2 for the full clip), and a margin over the runner-up (repeated passages are not trusted early). `BookIndex` is built once per switch.
+- **Results:** Clockwork Angel audio -> ebook: 1 listen, 1.7 s, 5.2 s of audio; ebook -> audio: 0.9 s. Alchemised (no anchors) audio -> ebook: 3.2 s; ebook -> audio from a spot 5% away: 2 listens, about 3 s total, score 0.91.
+- **Settings:** "Ebook to audiobook" and "Audiobook to ebook" are separate dropdowns (Off / Estimated / Precise each), so Precise one way and chapter sync the other works. A settings file from before the split carries its single value into both.
+- **Left as it was:** Alchemised audio put back at 30:34:19; Clockwork Angel marked finished again (its page shows 40% until refreshed).
+- **Tests:** 389 pass.
+
 ## To do
 
 - G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).
