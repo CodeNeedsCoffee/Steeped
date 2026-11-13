@@ -476,6 +476,52 @@ release (ties to K9).
 | L7 | Website | Update the published policies and pages so they match the listings: privacy policy (the same changes as L5), terms if any, and the support/FAQ and feature pages for linking, streaks, reminders and Precise (what each permission is for and how to turn it off). The privacy policy URL given to Google Play and App Store Connect must be this page, so publish it **before** submitting L2/L3. The site is the separate **Steeped-Site** repo (`~/Code/Steeped-Site`, Cloudflare Worker; the privacy policy is `src/worker/pages/privacy.ts`, served at `/privacy`). I draft the wording and the edit there; the same rule applies as for this repo (no push without being asked). | S-M |
 | L6 | Release checklist | Add L1-L5 and L7 to the K9 release checklist: after any dependency or manifest change, diff the merged manifest against the last release and update the console answers before submitting. | S |
 
+## Phase M: Read and listen at the same time (planned 2026-11-13)
+
+Audio already keeps playing while you read (it runs in the background service), so what is missing is control and sync inside the reader. Three levels, each useful on its own:
+
+1. **Dock** - control the audio without leaving the page.
+2. **Follow** - the page tracks the audio (read-along).
+3. **Tap to hear** - tap a paragraph, the audio jumps there.
+
+Only linked books get 2 and 3 (Phase J gives the chapter map). An unlinked ebook still gets the dock if something is playing.
+
+### Layout (phone, portrait)
+
+- **Collapsed dock** (default while audio is loaded): one 52 px row docked to the bottom *inside* the reader chrome, above the progress bar: play/pause, -15 s, +30 s, a thin progress bar with chapter time left, and an expand handle. It counts as covered area, so page turns and the "text under the bars" maths keep working.
+- **Expanded dock** (tap or swipe up): a bottom sheet over the lower 40% with chapter title, speed, sleep timer, chapter skip and the Follow toggle. Swipe down to collapse.
+- **Follow chip** top centre of the page: "Following audio" (on) / "Follow" (off) / "Re-sync" (shown after the reader scrolled away from the audio). One tap each.
+- **Spot marker**: a thin accent band on the left margin at the paragraph the audio is reading (estimated; see accuracy below). In Follow the page scrolls so the band sits at about 30% down.
+- **Landscape / tablet**: reader on the left (about 60%), a fixed player column on the right (cover, chapter, controls). No dock needed.
+- **Now Playing -> Read along** (the reverse direction): below the cover, a 3-5 line text window around the current position that scrolls with the audio; tap it to open the reader at that spot. Replaces nothing; it is an option under the existing Read button.
+
+Rejected: a floating video-style window (covers text, awkward gestures), and splitting a portrait phone screen in half (too little text per screen).
+
+### How the sync works
+
+- Audio position -> chapter span (already built: `ChapterSpan`, `AudioPoint`) -> paragraph by word-count interpolation within the chapter (`reader_math` words per paragraph) -> `_revealIn(index)` (the jump helper added 2026-11-13).
+- The reader reads the live `playbackPositionProvider`; throttle to about one update per second and only move when the audio paragraph changes.
+- Any manual scroll or page turn switches Follow off and shows "Re-sync" (never fight the finger). Page turns while following still work; they just detach.
+- Tap to hear: long-press a paragraph -> "Play from here" (reuses the selection toolbar item); a short tap stays page-turn/bar toggle. The audio seeks to the paragraph's estimated time.
+- Single source of truth: while Follow is on, the audio position drives the saved ebook position (write both from the player's progress sync); the reader's own periodic save is skipped so the two don't ping-pong. With Follow off they save independently as today.
+
+### Accuracy
+
+Interpolation drifts within a chapter (narration speed, front matter, abridged audio). Expect a paragraph or two of error, and visibly more where an edition differs. Mitigations: show the spot marker as a soft band, not a line; correct on "Play from here" (store the audio/paragraph pair as an anchor and interpolate between anchors); the Precise mode already planned in J5/J6 (on-device speech recognition matched against the text) is the proper fix and plugs in as another `SyncStrategy`.
+
+### Steps
+
+- M1 Dock: collapsed/expanded, play/pause, skips, speed, sleep timer; counted as covered area; hidden when nothing is playing.
+- M2 Follow: position -> paragraph, marker band, scroll, Follow/Re-sync chip, detach on manual scroll.
+- M3 Play from here (long-press) plus anchors that refine the estimate.
+- M4 Now Playing read-along window (reverse direction).
+- M5 Landscape/tablet split.
+- M6 Precise alignment (needs J5/J6).
+- M7 Streaks and stats: reading and listening at the same time must count wall-clock minutes once per day (union of the two sessions), not twice; the "keep screen on" setting stays the reader's own.
+- M8 Settings: Follow on by default for linked books (on/off), dock on/off, marker on/off. Strings, tests (pure position->paragraph mapping, anchors, dedupe of minutes), emulator check with the Pi pair.
+
+Open questions for the user: should Follow start automatically when you press Listen from the reader (recommended: yes), and should the dock appear for unlinked books playing something unrelated (recommended: no, only for the linked book).
+
 ## Suggested order
 
 A (A1, A4, A3, A5, A2) -> B1 -> B2/B3/B4 -> C1/C2 -> B6/B5 -> D1/D2/D4/D3/D5 -> F3 -> F1/F2 -> E1 -> F5 -> F4 -> E2. Phase I (listening sessions) is already built (see its status note); only the I4 offline-queue check and the I5 timezone rule remain. Phase G (streaks) comes next: G1 -> G2/G3 -> G4 -> G5 -> G7 (reminders), with the G6 spike last. Phase L (store listings) follows G7 and J5/J6 and repeats before every release. Phase J (linking): J0 -> J1 -> J2 -> J3 -> J4 -> J7, with J5/J6 (Precise) last. Phase V (verification) runs before all of this. Phase H: H7 is a small, quick win and can go first; H8-H10 are optional follow-ups to the reader.

@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' show parseFragment;
 
@@ -59,6 +60,47 @@ int? paragraphIndexAtY(double y, String snippet) {
         parseFragment(state.widget.html).text!.contains(snippet)) {
       return index;
     }
+  }
+  return null;
+}
+
+/// Global top and height of paragraph [index] while it is built on screen.
+({double top, double height})? paragraphBounds(int index) {
+  for (final state in _live) {
+    if (state.widget.index != index) continue;
+    final box = state.context.findRenderObject();
+    if (box is! RenderBox || !box.attached) continue;
+    return (top: box.localToGlobal(Offset.zero).dy, height: box.size.height);
+  }
+  return null;
+}
+
+/// Global y of the line where [snippet] starts inside paragraph [index], or
+/// null when it can't be found (the paragraph isn't built, or isn't plain
+/// rich text). Lets a jump to a highlight land on its line, not on the top of
+/// a paragraph that may run on for a page.
+double? snippetY(int index, String snippet) {
+  for (final state in _live) {
+    if (state.widget.index != index) continue;
+    final root = state.context.findRenderObject();
+    if (root is! RenderBox || !root.attached) continue;
+    RenderParagraph? found;
+    void visit(RenderObject o) {
+      if (found != null) return;
+      if (o is RenderParagraph) {
+        found = o;
+        return;
+      }
+      o.visitChildren(visit);
+    }
+
+    root.visitChildren(visit);
+    final rp = found;
+    if (rp == null) return null;
+    final at = rp.text.toPlainText().indexOf(snippet);
+    if (at < 0) return null;
+    final dy = rp.getOffsetForCaret(TextPosition(offset: at), Rect.zero).dy;
+    return rp.localToGlobal(Offset(0, dy)).dy;
   }
   return null;
 }

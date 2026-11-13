@@ -460,6 +460,82 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     );
   }
 
+  /// Jumps to paragraph [index], then corrects by what actually got laid out:
+  /// the line of [snippet] (a highlight) or [within] of the paragraph's height
+  /// (a bookmark) is moved to just under the top bar, whether the jump landed
+  /// short of it or past it.
+  void _revealIn(int index, {String? snippet, double within = 0}) {
+    final c = _controller;
+    if (c == null) return;
+    c.jumpTo(index: index);
+    var tries = 0;
+    void fix(Duration _) {
+      if (!mounted) return;
+      final pos = _scrollPosition();
+      final box = _bodyKey.currentContext?.findRenderObject();
+      final b = paragraphBounds(index);
+      if (pos == null || box is! RenderBox || !box.attached || b == null) {
+        if (++tries < 6) WidgetsBinding.instance.addPostFrameCallback(fix);
+        return;
+      }
+      final y = (snippet == null ? null : snippetY(index, snippet)) ??
+          b.top + within * b.height;
+      final want = box.localToGlobal(Offset.zero).dy + box.size.height * 0.15;
+      if ((y - want).abs() > 8) pos.jumpTo(pos.pixels + y - want);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback(fix);
+  }
+
+  /// A bookmark's position is a fraction of the book in paragraphs; the whole
+  /// part is the paragraph and the rest is how far down it.
+  void _gotoBookmark(EpubController c, EbookBookmark b) {
+    final n = _paragraphs.length;
+    if (n == 0) {
+      c.gotoEpubCfi(b.location);
+      return;
+    }
+    final at = (b.fraction.clamp(0.0, 0.9999) * n);
+    _revealIn(at.floor(), within: at - at.floor());
+  }
+
+  Future<void> _renameBookmark(
+    BuildContext context,
+    EbookBookmark b,
+    VoidCallback refreshSheet,
+  ) async {
+    final text = TextEditingController(text: b.label);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(context.l10n.rename),
+        content: TextField(
+          controller: text,
+          autofocus: true,
+          decoration: InputDecoration(labelText: context.l10n.note),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(d),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(d, text.text.trim()),
+            child: Text(context.l10n.save),
+          ),
+        ],
+      ),
+    );
+    if (name == null) return;
+    setState(() => _bookmarks = [
+      for (final x in _bookmarks) x == b ? b.withLabel(name) : x,
+    ]);
+    refreshSheet();
+    await ref
+        .read(ebookRepositoryProvider)
+        .saveBookmarks(widget.itemId, _bookmarks);
+  }
+
   bool get _isBookmarked {
     final cfi = _currentCfi();
     return cfi != null && _bookmarks.any((b) => b.location == cfi);
@@ -481,7 +557,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           ..._bookmarks,
           EbookBookmark(
             location: cfi,
-            fraction: _fraction,
+            fraction: _currentFraction(),
             label: _chapterLabel,
             createdAt: DateTime.now(),
           ),
@@ -524,8 +600,12 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
         }
       }
     }
-    if (added.isEmpty) return;
-    setState(() => _highlights = [..._highlights, ...added]);
+    final merged = mergeHighlights(_highlights, added);
+    if (added.isEmpty || merged.length == _highlights.length &&
+        merged.every(_highlights.contains)) {
+      return;
+    }
+    setState(() => _highlights = merged);
     await ref
         .read(ebookRepositoryProvider)
         .saveHighlights(widget.itemId, _highlights);
@@ -793,7 +873,19 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                                     subtitle: Text(
                                       '${(b.fraction * 100).round()}%',
                                     ),
-                                    trailing: IconButton(
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined),
+                                          tooltip: context.l10n.rename,
+                                          onPressed: () => _renameBookmark(
+                                            context,
+                                            b,
+                                            () => setSheet(() {}),
+                                          ),
+                                        ),
+                                        IconButton(
                                       icon: const Icon(Icons.delete_outline),
                                       onPressed: () async {
                                         setState(
@@ -811,8 +903,10 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                                             );
                                       },
                                     ),
+                                      ],
+                                    ),
                                     onTap: () {
-                                      controller.gotoEpubCfi(b.location);
+                                      _gotoBookmark(controller, b);
                                       Navigator.pop(context);
                                     },
                                   ),
@@ -851,7 +945,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                                       },
                                     ),
                                     onTap: () {
-                                      controller.jumpTo(index: h.paragraph);
+                                      _revealIn(h.paragraph, snippet: h.text);
                                       Navigator.pop(context);
                                     },
                                   ),

@@ -55,6 +55,13 @@ class EbookBookmark {
   final String label;
   final DateTime createdAt;
 
+  EbookBookmark withLabel(String label) => EbookBookmark(
+    location: location,
+    fraction: fraction,
+    label: label,
+    createdAt: createdAt,
+  );
+
   Map<String, dynamic> toJson() => {
     'location': location,
     'fraction': fraction,
@@ -91,4 +98,23 @@ class EbookHighlight {
     'text': text,
     'createdAt': createdAt.millisecondsSinceEpoch,
   };
+}
+
+/// [existing] plus [added], without repeating a highlight. A new highlight
+/// that sits inside one already in the same paragraph is dropped; one that
+/// swallows existing ones replaces them (so extending a highlight works).
+List<EbookHighlight> mergeHighlights(
+  List<EbookHighlight> existing,
+  List<EbookHighlight> added,
+) {
+  final out = [...existing];
+  for (final h in added) {
+    final same = out.where((x) => x.paragraph == h.paragraph);
+    if (same.any((x) => x.text.contains(h.text))) continue;
+    out.removeWhere(
+      (x) => x.paragraph == h.paragraph && h.text.contains(x.text),
+    );
+    out.add(h);
+  }
+  return out;
 }

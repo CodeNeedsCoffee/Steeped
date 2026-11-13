@@ -40,6 +40,19 @@ class BookmarkRepository {
     );
   }
 
+  /// The server keys a bookmark by `time`, so a rename sends the same time
+  /// with the new title.
+  Future<void> renameBookmark({
+    required String libraryItemId,
+    required double time,
+    required String title,
+  }) async {
+    await _dio.patch<void>(
+      '/api/me/item/$libraryItemId/bookmark',
+      data: {'time': time.round(), 'title': title},
+    );
+  }
+
   Future<void> deleteBookmark({
     required String libraryItemId,
     required double time,

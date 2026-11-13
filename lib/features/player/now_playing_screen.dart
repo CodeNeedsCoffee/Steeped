@@ -632,11 +632,22 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             controller.seekToGlobalPosition(bookmark.time);
                             Navigator.pop(context);
                           },
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            tooltip: context.l10n.deleteBookmarkTooltip,
-                            onPressed: () =>
-                                _deleteBookmark(context, item, bookmark),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined),
+                                tooltip: context.l10n.rename,
+                                onPressed: () =>
+                                    _renameBookmark(context, item, bookmark),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                tooltip: context.l10n.deleteBookmarkTooltip,
+                                onPressed: () =>
+                                    _deleteBookmark(context, item, bookmark),
+                              ),
+                            ],
                           ),
                         );
                       }).toList(),
@@ -702,6 +713,52 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(context.l10n.failedToAddBookmark)));
+    }
+  }
+
+  Future<void> _renameBookmark(
+    BuildContext context,
+    LibraryItemDetail item,
+    Bookmark bookmark,
+  ) async {
+    final textController = TextEditingController(text: bookmark.title);
+    final title = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.rename),
+        content: TextField(
+          controller: textController,
+          autofocus: true,
+          decoration: InputDecoration(labelText: context.l10n.note),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(context.l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(textController.text.trim()),
+            child: Text(context.l10n.save),
+          ),
+        ],
+      ),
+    );
+    if (title == null || title.isEmpty || title == bookmark.title) return;
+    try {
+      await ref
+          .read(bookmarkRepositoryProvider)
+          .renameBookmark(
+            libraryItemId: item.id,
+            time: bookmark.time,
+            title: title,
+          );
+      ref.invalidate(bookmarksProvider(item.id));
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.failedToAddBookmark)),
+      );
     }
   }
 
