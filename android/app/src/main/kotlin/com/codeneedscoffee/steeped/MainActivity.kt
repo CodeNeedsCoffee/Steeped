@@ -75,7 +75,10 @@ class MainActivity : AudioServiceActivity() {
                         (call.argument<Number>("startMs") ?: 0).toLong(),
                         (call.argument<Number>("durMs") ?: 30000).toLong(),
                         call.argument<String>("lang") ?: "en-US",
-                    ) { r -> result.success(r) }
+                    ) { r ->
+                        Log.i("PreciseSpike", "recognize result=$r")
+                        result.success(r)
+                    }
                     else -> result.notImplemented()
                 }
             }

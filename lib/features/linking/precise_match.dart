@@ -10,8 +10,13 @@ List<String> speechWords(String text) => text
     .where((w) => w.isNotEmpty)
     .toList();
 
+// The recogniser mishears endings and names ("Paladin" for "Paladia", "corporation"
+// for "cooperating"), so words of five letters or more match on their first
+// four letters.
+String _key(String w) => w.length >= 5 ? w.substring(0, 4) : w;
+
 // Short words ("a", "the") match everywhere, so they count for less.
-double _weight(String w) => w.length >= 4 ? 1.0 : 0.3;
+double _weight(String key) => key.length >= 4 ? 1.0 : 0.3;
 
 /// Where in [hay] the words [needle] best appear: the index of the first word
 /// of the best-matching stretch, and its score from 0 to 1 (the share of the
@@ -24,37 +29,33 @@ double _weight(String w) => w.length >= 4 ? 1.0 : 0.3;
   int prefer = 0,
 }) {
   if (hay.isEmpty || needle.isEmpty) return null;
-  final want = <String, double>{};
+  final keys = [for (final w in hay) _key(w)];
+  // Each distinct needle word counts once: the recogniser often repeats a
+  // phrase while it revises it, which the book does not.
+  final want = <String>{for (final w in needle) _key(w)};
   var total = 0.0;
-  for (final w in needle) {
-    want[w] = (want[w] ?? 0) + _weight(w);
-    total += _weight(w);
+  for (final k in want) {
+    total += _weight(k);
   }
   final len = (needle.length * 1.5).ceil().clamp(1, hay.length);
   final have = <String, int>{};
-  final need = <String, int>{};
-  for (final w in needle) {
-    need[w] = (need[w] ?? 0) + 1;
-  }
   var matched = 0.0;
-  void add(String w) {
-    final n = need[w];
-    if (n == null) return;
-    final h = have[w] ?? 0;
-    if (h < n) matched += _weight(w);
-    have[w] = h + 1;
+  void add(String k) {
+    if (!want.contains(k)) return;
+    final h = have[k] ?? 0;
+    if (h == 0) matched += _weight(k);
+    have[k] = h + 1;
   }
 
-  void remove(String w) {
-    final n = need[w];
-    if (n == null) return;
-    final h = have[w]! - 1;
-    have[w] = h;
-    if (h < n) matched -= _weight(w);
+  void remove(String k) {
+    if (!want.contains(k)) return;
+    final h = have[k]! - 1;
+    have[k] = h;
+    if (h == 0) matched -= _weight(k);
   }
 
   for (var i = 0; i < len; i++) {
-    add(hay[i]);
+    add(keys[i]);
   }
   var bestIndex = 0;
   var bestScore = -1.0;
@@ -65,15 +66,17 @@ double _weight(String w) => w.length >= 4 ? 1.0 : 0.3;
       bestIndex = i;
     }
     if (i + len >= hay.length) break;
-    remove(hay[i]);
-    add(hay[i + len]);
+    remove(keys[i]);
+    add(keys[i + len]);
   }
   // Start at the first word in the stretch that is one of the needle's own
   // first words, so the index points at where the passage begins.
-  final head = needle.take(3).where((w) => w.length >= 4).toSet();
+  final head = {
+    for (final w in needle.take(6).where((w) => w.length >= 4)) _key(w),
+  };
   var start = bestIndex;
   for (var i = bestIndex; i < bestIndex + len && i < hay.length; i++) {
-    if (head.contains(hay[i])) {
+    if (head.contains(keys[i])) {
       start = i;
       break;
     }
@@ -141,33 +144,42 @@ Future<({int paragraph, double within, double score})?> findParagraph({
   if (text == null) return null;
   final heard = speechWords(text);
   if (heard.length < 6) return null;
-  final needle = heard.take(18).toList();
-  final from = (estimateIndex - radius).clamp(0, paragraphs.length);
-  final to = (estimateIndex + radius).clamp(0, paragraphs.length);
-  final hay = <String>[];
-  final owner = <int>[];
-  final firstWord = <int>[];
-  for (var p = from; p < to; p++) {
-    firstWord.add(hay.length);
-    for (final w in speechWords(paragraphs[p])) {
-      hay.add(w);
-      owner.add(p);
+  final needle = heard.take(70).toList();
+  // The estimate can be hundreds of paragraphs out (a chapter or two), so
+  // widen the search until something matches.
+  for (final r in [radius, 2000, paragraphs.length]) {
+    final from = (estimateIndex - r).clamp(0, paragraphs.length);
+    final to = (estimateIndex + r).clamp(0, paragraphs.length);
+    final hay = <String>[];
+    final owner = <int>[];
+    final firstWord = <int>[];
+    for (var p = from; p < to; p++) {
+      firstWord.add(hay.length);
+      for (final w in speechWords(paragraphs[p])) {
+        hay.add(w);
+        owner.add(p);
+      }
     }
+    final inRange =
+        estimateIndex >= from && estimateIndex - from < firstWord.length;
+    final loc = locateWords(
+      hay,
+      needle,
+      prefer: inRange ? firstWord[estimateIndex - from] : 0,
+    );
+    if (loc == null || loc.score < accept) continue;
+    final paragraph = owner[loc.index];
+    final count = speechWords(paragraphs[paragraph]).length;
+    return (
+      paragraph: paragraph,
+      within: count == 0
+          ? 0.0
+          : ((loc.index - firstWord[paragraph - from]) / count).clamp(
+              0.0,
+              0.95,
+            ),
+      score: loc.score,
+    );
   }
-  final prefer =
-      estimateIndex - from < firstWord.length && estimateIndex >= from
-      ? firstWord[estimateIndex - from]
-      : 0;
-  final loc = locateWords(hay, needle, prefer: prefer);
-  if (loc == null || loc.score < accept) return null;
-  final paragraph = owner[loc.index];
-  final startOfParagraph = firstWord[paragraph - from];
-  final count = speechWords(paragraphs[paragraph]).length;
-  return (
-    paragraph: paragraph,
-    within: count == 0
-        ? 0.0
-        : ((loc.index - startOfParagraph) / count).clamp(0.0, 0.95),
-    score: loc.score,
-  );
+  return null;
 }

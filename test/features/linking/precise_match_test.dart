@@ -113,4 +113,36 @@ void main() {
     );
     expect(r, isNull);
   });
+
+  test('finds a paragraph from a real, badly heard clip (Alchemised)', () async {
+    // What the phone's recogniser produced for 25 s of the audiobook: names and
+    // endings wrong, a phrase repeated, the clip starting mid-sentence.
+    const heard =
+        "Even have got his corporation with Pal Palad palade Paladin is a "
+        "critical source of lithium and it's Even have got his cooperation "
+        "with Back to secure their interests on once that confident borrows "
+        "weak they'll move quickly Back to secure their interests Ar Arrang "
+        "Arranged";
+    final paragraphs = [
+      for (var i = 0; i < 900; i++)
+        'she walked down the long grey corridor and counted doors $i',
+    ];
+    paragraphs[620] =
+        '\u201cIt\u2019s all about striking at the right moment,\u201d Kaine was saying. '
+        '\u201cThe surrounding countries will intervene soon. There are rumours of '
+        'an alliance that even Hevgoss is cooperating with. Paladia\u2019s a critical '
+        'source of lumithium, and it\u2019s an industrial power that isn\u2019t easily '
+        'replaced. The other countries may not have cared when it was a civil '
+        'conflict, but now they\u2019ll act to secure their interests. Once '
+        'they\u2019re confident Morrough\u2019s weak, they\u2019ll move quickly.\u201d';
+    // The estimate is 300 paragraphs out, past the first search radius.
+    final r = await findParagraph(
+      transcribe: (s, d) async => heard,
+      seconds: 0,
+      paragraphs: paragraphs,
+      estimateIndex: 320,
+    );
+    expect(r!.paragraph, 620);
+    expect(r.within, inInclusiveRange(0.2, 0.7));
+  });
 }
