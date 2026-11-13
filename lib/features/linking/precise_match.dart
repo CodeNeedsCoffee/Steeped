@@ -251,6 +251,8 @@ Future<({double seconds, double score})?> findAudioSecondsGuided({
     totalSeconds: totalSeconds,
     step: 45,
     maxProbes: confirmProbes,
+    // A decent match is enough here: the listen above already got close.
+    good: 0.6,
     onProbe: (n, of) => onStep?.call(1 + n, total),
   );
   return confirmed ?? (seconds: guess, score: here.score * 0.5);

@@ -547,6 +547,15 @@ The user then reported four reader problems, all on Alchemised:
 - **M5:** at 720 dp wide or more (landscape phone, tablet) the strip becomes a 320 dp player column beside the page: cover, title, chapter, progress, play/skips, Follow switch, chapter skip, speed, sleep timer.
 - **Tests:** 360 pass (new: read_along, switch_menu, merge_highlights, reading_overlap). **Not done / needs a device:** the real layout of the strip, Follow scrolling feel, "a page too far" confirmation, Play from here accuracy, the M5 layout on a real landscape screen, M6 Precise.
 
+### Precise sync (J5/J6) built and verified on the Pixel, 2026-11-13
+
+- **Spike:** the on-device recogniser transcribes decoded clips from a file (no microphone), about 20x faster than playback; needs the `RECORD_AUDIO` permission (now in the manifest) and the speech pack. Findings in PLAN.md (J5).
+- **Audio -> ebook** (Read from the Alchemised page, Precise on): the reader opened on the exact paragraph the narrator was reading ("Paladia's a critical source of lumithium..."), checked on screen; the percentage estimate was about 300 paragraphs out, so the search widens.
+- **Ebook -> audio** (Listen in the reader): guided search, 4 listens in about 21 s, landed on the audio position the book was at (30:34 + ~6 s). A plain scan took 52 s and missed because the estimate was 6 minutes out.
+- **UI:** a centred frosted-glass "Finding your place..." card with a step counter ("check 3 of 4") on both the reader and Now Playing.
+- **Touched real data:** the Alchemised audio position was moved by the tests; I put it back to 30:34 by hand. Its ebook position moved too (now near chapter 66).
+- **Tests:** 373 pass (matcher incl. a real misheard transcript, guided search, fallbacks).
+
 ## To do
 
 - G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).
