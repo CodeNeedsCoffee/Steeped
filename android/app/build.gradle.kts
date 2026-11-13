@@ -83,6 +83,13 @@ android {
             applicationIdSuffix = ".debug"
             manifestPlaceholders["appLabel"] = "Steeped Dev"
         }
+        // Profile builds (`flutter build apk --profile`, near-release speed for
+        // checking performance) get their own id too, for the same reason.
+        matching { it.name == "profile" }.configureEach {
+            applicationIdSuffix = ".profile"
+            manifestPlaceholders["appLabel"] = "Steeped Profile"
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             val releaseSigning = signingConfigs.getByName("release")
             signingConfig =
