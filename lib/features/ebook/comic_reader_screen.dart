@@ -104,7 +104,7 @@ class _ComicReaderScreenState extends ConsumerState<ComicReaderScreen> {
       final bytes = await File(file.path).readAsBytes();
       final pages = await compute(_decodeCbzPages, bytes);
       final start = await resolveStartPosition(
-        ref,
+        ProviderScope.containerOf(context, listen: false),
         widget.itemId,
         fromDetail: item.progress,
       );

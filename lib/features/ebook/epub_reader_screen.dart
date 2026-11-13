@@ -17,7 +17,10 @@ import '../library/state/library_providers.dart';
 import 'data/ereader_settings.dart';
 import 'data/reading_position.dart';
 import '../linking/link_providers.dart';
+import '../linking/ebook_spans.dart';
+import '../linking/link_switch.dart';
 import '../linking/linked_listen_action.dart';
+import '../linking/sync_strategy.dart' show ChapterSpan;
 import 'ereader_settings_panel.dart';
 import 'epub_cfi_fix.dart';
 import 'reader_chrome.dart';
@@ -237,8 +240,27 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           if (mounted) setState(() => _downloadProgress = p);
         },
       );
+      // Parse the book once: the contents, the chapter spans for a switch from
+      // the audiobook and the reader itself all use this.
+      final bookFuture = openEpubFile(file);
+      final audioPoint = ref.read(pendingEbookSwitchProvider)[widget.itemId];
+      if (audioPoint != null) {
+        ref
+            .read(pendingEbookSwitchProvider.notifier)
+            .update((m) => {...m}..remove(widget.itemId));
+        try {
+          final f = audioPoint.fractionIn(chapterSpansOfBook(await bookFuture));
+          if (f != null) {
+            ref
+                .read(pendingEbookJumpProvider.notifier)
+                .update((m) => {...m, widget.itemId: f});
+          }
+        } catch (_) {
+          // Mapping is a convenience; the reader opens at its own position.
+        }
+      }
       var start = await resolveStartPosition(
-        ref,
+        ProviderScope.containerOf(context, listen: false),
         widget.itemId,
         fromDetail: item.progress,
       );
@@ -259,7 +281,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       if (!mounted) return;
       final cfi = start?.location;
       final controller = EpubController(
-        document: openEpubFile(file),
+        document: bookFuture,
         // The official apps write epub.js CFIs; only hand ours a real CFI.
         epubCfi: (cfi != null && cfi.startsWith('epubcfi')) ? cfi : null,
       );
@@ -655,7 +677,19 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
             onPressed: () => _showNotes(context, controller),
           ),
         ],
-        LinkedListenAction(itemId: widget.itemId, saveFirst: _sync),
+        LinkedListenAction(
+          itemId: widget.itemId,
+          saveFirst: _sync,
+          pointNow: () {
+            final book = _book;
+            return EbookPoint(
+              fraction: _fraction,
+              spans: book == null
+                  ? const [ChapterSpan('', 0, 1)]
+                  : chapterSpansOfBook(book),
+            );
+          },
+        ),
         IconButton(
           icon: const Icon(Icons.text_fields),
           tooltip: context.l10n.readingSettingsTooltip,

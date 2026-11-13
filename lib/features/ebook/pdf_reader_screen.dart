@@ -62,7 +62,7 @@ class _PdfReaderScreenState extends ConsumerState<PdfReaderScreen> {
         },
       );
       final start = await resolveStartPosition(
-        ref,
+        ProviderScope.containerOf(context, listen: false),
         widget.itemId,
         fromDetail: item.progress,
       );

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 // ignore: implementation_imports
-import 'package:epub_view/epub_view.dart' show EpubChapter;
+import 'package:epub_view/epub_view.dart' show EpubBook, EpubChapter;
 
 import '../ebook/epub_loader.dart';
 
@@ -30,10 +30,15 @@ void _flatten(List<EpubChapter> chapters, List<(String, int)> out) {
   }
 }
 
-/// Spans for the EPUB at [file], in table-of-contents order.
-Future<List<ChapterSpan>> epubChapterSpans(File file) async {
-  final book = await openEpubFile(file);
+/// Spans for an EPUB that is already parsed (the reader has one open), in
+/// table-of-contents order.
+List<ChapterSpan> chapterSpansOfBook(EpubBook book) {
   final flat = <(String, int)>[];
   _flatten(book.Chapters ?? const [], flat);
   return spansFromWeights(flat);
 }
+
+/// Spans for the EPUB at [file]. Parses the whole book, so prefer
+/// [chapterSpansOfBook] when it is already open.
+Future<List<ChapterSpan>> epubChapterSpans(File file) async =>
+    chapterSpansOfBook(await openEpubFile(file));

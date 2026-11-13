@@ -23,22 +23,21 @@ class LinkedReadAction extends ConsumerWidget {
     if (link == null || link.audioItemId != audio.id) {
       return const SizedBox.shrink();
     }
+    // Watched so the ebook is loaded before the button is pressed.
+    final ebook = ref.watch(itemDetailProvider(link.ebookItemId)).valueOrNull;
     return IconButton(
       icon: const Icon(Icons.menu_book_outlined),
       tooltip: context.l10n.readLinked,
-      onPressed: () async {
-        final seconds = ref.read(playbackPositionProvider).valueOrNull;
-        final ebook = await ref.read(itemDetailProvider(link.ebookItemId).future);
-        if (!context.mounted) return;
-        await switchToEbook(
-          context,
-          ref,
-          audio: audio,
-          ebook: ebook,
-          audioSeconds: seconds,
-          replaceCurrent: true,
-        );
-      },
+      onPressed: ebook == null
+          ? null
+          : () => switchToEbook(
+              context,
+              ref,
+              audio: audio,
+              ebook: ebook,
+              audioSeconds: ref.read(playbackPositionProvider).valueOrNull,
+              replaceCurrent: true,
+            ),
     );
   }
 }

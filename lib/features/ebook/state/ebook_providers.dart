@@ -46,15 +46,15 @@ final ereaderSettingsProvider =
 /// device. A failed or offline server lookup falls back to the local copy and
 /// then to whatever the item-detail response carried.
 Future<ReadingPosition?> resolveStartPosition(
-  WidgetRef ref,
+  ProviderContainer container,
   String itemId, {
   MediaProgress? fromDetail,
 }) async {
-  final repo = ref.read(ebookRepositoryProvider);
+  final repo = container.read(ebookRepositoryProvider);
   final local = await repo.loadPosition(itemId);
   MediaProgress? server = fromDetail;
   try {
-    server = await ref.read(progressRepositoryProvider).fetchProgress(itemId);
+    server = await container.read(progressRepositoryProvider).fetchProgress(itemId);
   } catch (_) {
     // Offline: keep the detail copy.
   }

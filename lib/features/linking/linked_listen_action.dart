@@ -13,11 +13,16 @@ class LinkedListenAction extends ConsumerWidget {
   const LinkedListenAction({
     required this.itemId,
     required this.saveFirst,
+    this.pointNow,
     super.key,
   });
 
   final String itemId;
   final VoidCallback saveFirst;
+
+  /// The reader's current position, so the switch needs no network or EPUB
+  /// parse. Null falls back to looking it up.
+  final EbookPoint Function()? pointNow;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,23 +30,27 @@ class LinkedListenAction extends ConsumerWidget {
     if (link == null || link.ebookItemId != itemId) {
       return const SizedBox.shrink();
     }
+    // Watched so both are loaded before the button is pressed (they are
+    // auto-disposing, so reading them on tap could mean a network wait).
+    final audio = ref.watch(itemDetailProvider(link.audioItemId)).valueOrNull;
+    final ebook = ref.watch(itemDetailProvider(itemId)).valueOrNull;
     return IconButton(
       icon: const Icon(Icons.headphones),
       tooltip: context.l10n.listenLinked,
-      onPressed: () async {
-        saveFirst();
-        final audio = await ref.read(itemDetailProvider(link.audioItemId).future);
-        final ebook = await ref.read(itemDetailProvider(itemId).future);
-        if (!context.mounted) return;
-        // Replace the reader so Back returns to the book page, not the reader.
-        await switchToAudio(
-          context,
-          ref,
-          audio: audio,
-          ebook: ebook,
-          replaceCurrent: true,
-        );
-      },
+      onPressed: audio == null || ebook == null
+          ? null
+          : () {
+              saveFirst();
+              // Replace the reader so Back returns to the book page.
+              switchToAudio(
+                context,
+                ref,
+                audio: audio,
+                ebook: ebook,
+                from: pointNow?.call(),
+                replaceCurrent: true,
+              );
+            },
     );
   }
 }
