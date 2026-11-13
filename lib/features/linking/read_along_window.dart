@@ -1,6 +1,7 @@
 import 'package:epub_view/epub_view.dart' show EpubBook;
 // ignore: implementation_imports
-import 'package:epub_view/src/data/epub_parser.dart' show parseChapters, parseParagraphs;
+import 'package:epub_view/src/data/epub_parser.dart'
+    show parseChapters, parseParagraphs;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,20 +27,20 @@ class BookText {
   final List<ChapterSpan> spans;
 }
 
-final bookTextProvider = FutureProvider.autoDispose
-    .family<BookText?, String>((ref, ebookId) async {
-      final ebook = await ref.watch(itemDetailProvider(ebookId).future);
-      if (ebook.ebookFile?.isEpub != true) return null;
-      final file = await ref
-          .read(ebookRepositoryProvider)
-          .ensureLocalFile(ebook);
-      final EpubBook book = await openEpubFile(file);
-      final chapters = parseChapters(book);
-      final paragraphs = parseParagraphs(chapters, book.Content);
-      return BookText([
-        for (final p in paragraphs.flatParagraphs) p.element.text.trim(),
-      ], chapterSpansOfBook(book));
-    });
+final bookTextProvider = FutureProvider.autoDispose.family<BookText?, String>((
+  ref,
+  ebookId,
+) async {
+  final ebook = await ref.watch(itemDetailProvider(ebookId).future);
+  if (ebook.ebookFile?.isEpub != true) return null;
+  final file = await ref.read(ebookRepositoryProvider).ensureLocalFile(ebook);
+  final EpubBook book = await openEpubFile(file);
+  final chapters = parseChapters(book);
+  final paragraphs = parseParagraphs(chapters, book.Content);
+  return BookText([
+    for (final p in paragraphs.flatParagraphs) p.element.text.trim(),
+  ], chapterSpansOfBook(book));
+});
 
 /// The few lines of the book around where the audiobook is, scrolling with it
 /// (Now Playing's "Read along"). Tapping opens the reader at that spot.

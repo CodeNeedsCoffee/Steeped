@@ -185,3 +185,73 @@ Future<({int paragraph, double within, double score})?> findParagraph({
   }
   return null;
 }
+
+/// Narration speed used to turn a distance in words into seconds (about 155
+/// words a minute at normal speed).
+const narrationWordsPerSecond = 2.6;
+
+/// The estimate-then-listen search (ebook -> audio), for when the percentage
+/// guess [estimate] may be minutes out. One short listen at the guess finds
+/// which paragraph the narrator is really on; the words between that paragraph
+/// and the reader's place ([position]: paragraph index plus how far into it)
+/// become a time offset, giving a close second guess; and a listen there
+/// confirms and refines it using the words on screen ([target]).
+///
+/// Falls back to the plain window scan when the first listen finds nothing,
+/// and to the second guess itself when the confirming listen does not match.
+Future<({double seconds, double score})?> findAudioSecondsGuided({
+  required Transcribe transcribe,
+  required double estimate,
+  required List<String> paragraphs,
+  required double position,
+  required List<String> target,
+  required double totalSeconds,
+  void Function(int step, int of)? onStep,
+}) async {
+  const confirmProbes = 3;
+  const total = 1 + confirmProbes;
+  onStep?.call(1, total);
+  final here = await findParagraph(
+    transcribe: transcribe,
+    seconds: estimate,
+    paragraphs: paragraphs,
+    estimateIndex: position.floor(),
+  );
+  if (here == null) {
+    return findAudioSeconds(
+      transcribe: transcribe,
+      estimate: estimate,
+      target: target,
+      totalSeconds: totalSeconds,
+      maxProbes: confirmProbes,
+      onProbe: (n, of) => onStep?.call(1 + n, total),
+    );
+  }
+  // Words from where the narrator is to where the reader is (negative when the
+  // reader is behind the narrator).
+  int words(int p) => speechWords(paragraphs[p]).length;
+  final from = here.paragraph + here.within;
+  final to = position;
+  final lo = from < to ? from : to;
+  final hi = from < to ? to : from;
+  var between = 0.0;
+  for (var p = lo.floor(); p <= hi.floor() && p < paragraphs.length; p++) {
+    final w = words(p).toDouble();
+    final start = p < lo ? lo - p : 0.0;
+    final end = p + 1 > hi ? hi - p : 1.0;
+    between += w * (end - start).clamp(0.0, 1.0);
+  }
+  final guess =
+      (estimate + (to >= from ? 1 : -1) * between / narrationWordsPerSecond)
+          .clamp(0.0, totalSeconds);
+  final confirmed = await findAudioSeconds(
+    transcribe: transcribe,
+    estimate: guess,
+    target: target,
+    totalSeconds: totalSeconds,
+    step: 45,
+    maxProbes: confirmProbes,
+    onProbe: (n, of) => onStep?.call(1 + n, total),
+  );
+  return confirmed ?? (seconds: guess, score: here.score * 0.5);
+}

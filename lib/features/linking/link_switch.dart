@@ -58,7 +58,14 @@ class EbookPoint {
     required this.fraction,
     required this.spans,
     this.visibleText,
+    this.paragraphTexts,
+    this.paragraphPosition,
   });
+
+  /// Every paragraph's text and the reader's place in them (paragraph index
+  /// plus how far in), so Precise can tell how far the narrator is from you.
+  final List<String>? paragraphTexts;
+  final double? paragraphPosition;
 
   /// The words at the top of the screen, for Precise to find in the audio.
   final String? visibleText;
@@ -178,6 +185,12 @@ Future<void> switchToAudio(
           audio,
           startAt,
           words,
+          guide: from?.paragraphTexts != null && from?.paragraphPosition != null
+              ? (
+                  paragraphs: from!.paragraphTexts!,
+                  position: from.paragraphPosition!,
+                )
+              : null,
           onProbe: (n, of) =>
               container.read(preciseStepProvider.notifier).state = (
                 step: n,

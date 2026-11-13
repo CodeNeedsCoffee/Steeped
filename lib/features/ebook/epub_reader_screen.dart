@@ -565,6 +565,18 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
         });
   }
 
+  /// The reader's place as paragraph index plus how far into it, or null.
+  double? _positionNow() {
+    final v = _controller?.currentValue;
+    if (v == null || _paragraphs.isEmpty) return null;
+    final pos = v.position;
+    final within =
+        (-pos.itemLeadingEdge /
+                (pos.itemTrailingEdge - pos.itemLeadingEdge).clamp(0.001, 1e9))
+            .clamp(0.0, 0.95);
+    return pos.index + within;
+  }
+
   /// The words at the top of the screen (for Precise to find in the audio).
   String _visibleText() {
     final v = _controller?.currentValue;
@@ -669,6 +681,10 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
         audio,
         seconds,
         _paragraphs[index].element.text,
+        guide: (
+          paragraphs: [for (final q in _paragraphs) q.element.text],
+          position: index.toDouble(),
+        ),
       );
       if (refined != null) start = refined;
     }
@@ -1041,6 +1057,8 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
             return EbookPoint(
               fraction: _fraction,
               visibleText: _visibleText(),
+              paragraphTexts: [for (final q in _paragraphs) q.element.text],
+              paragraphPosition: _positionNow(),
               spans: book == null
                   ? const [ChapterSpan('', 0, 1)]
                   : chapterSpansOfBook(book),

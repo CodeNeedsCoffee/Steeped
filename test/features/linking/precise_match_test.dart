@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:steeped/features/linking/precise_match.dart';
 
 void main() {
+  guidedTests();
   const passage =
       'But the stork with her long bill tried in vain to partake of the '
       'savory broth. Her evident distress caused the sly fox much amusement.';
@@ -145,4 +146,76 @@ void main() {
     expect(r!.paragraph, 620);
     expect(r.within, inInclusiveRange(0.2, 0.7));
   });
+}
+
+// A made-up book whose every word is unique (so a transcript says exactly
+// where it came from) narrated at a steady rate.
+String _word(int i) {
+  var n = i;
+  final c = StringBuffer();
+  for (var k = 0; k < 4; k++) {
+    c.writeCharCode(97 + n % 26);
+    n ~/= 26;
+  }
+  return '${c}ing';
+}
+
+void guidedTests() {
+  const wordsPerParagraph = 40;
+  const wps = 2.4; // the narrator is a little slower than the 2.6 assumed
+  final paragraphs = [
+    for (var p = 0; p < 3000; p++)
+      [
+        for (var w = 0; w < wordsPerParagraph; w++)
+          _word(p * wordsPerParagraph + w),
+      ].join(' '),
+  ];
+  String heard(double start, double dur) => [
+    for (var w = (start * wps).floor(); w < ((start + dur) * wps).floor(); w++)
+      _word(w),
+  ].join(' ');
+
+  test(
+    'guided search finds the audio time from a guess 10 minutes out',
+    () async {
+      const truth = 20000.0; // seconds
+      final position = truth * wps / wordsPerParagraph; // paragraph index
+      final calls = <double>[];
+      final r = await findAudioSecondsGuided(
+        transcribe: (s, d) async {
+          calls.add(s);
+          return heard(s, d);
+        },
+        estimate: truth + 600,
+        paragraphs: paragraphs,
+        position: position,
+        target: speechWords(heard(truth, 20)),
+        totalSeconds: 40000,
+      );
+      expect(r, isNotNull);
+      expect(r!.seconds, closeTo(truth, 15));
+      // One listen to see where the narrator is, then up to three to confirm.
+      expect(calls.length, lessThanOrEqualTo(4));
+    },
+  );
+
+  test(
+    'guided search falls back to scanning when the first listen finds nothing',
+    () async {
+      const truth = 5000.0;
+      var n = 0;
+      final r = await findAudioSecondsGuided(
+        transcribe: (s, d) async {
+          // The first listen is unintelligible; later ones are fine.
+          return n++ == 0 ? 'um uh er' : heard(s, d);
+        },
+        estimate: truth + 30,
+        paragraphs: paragraphs,
+        position: truth * wps / wordsPerParagraph,
+        target: speechWords(heard(truth, 20)),
+        totalSeconds: 40000,
+      );
+      expect(r!.seconds, closeTo(truth, 20));
+    },
+  );
 }

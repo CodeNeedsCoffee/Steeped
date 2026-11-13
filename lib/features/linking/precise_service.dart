@@ -91,16 +91,29 @@ Future<double?> refineAudioStart(
   double estimate,
   String visibleText, {
   void Function(int probe, int total)? onProbe,
+  ({List<String> paragraphs, double position})? guide,
 }) async {
   final transcribe = await preciseTranscriber(container, audio);
   if (transcribe == null) return null;
-  final r = await findAudioSeconds(
-    transcribe: transcribe,
-    estimate: estimate,
-    target: speechWords(visibleText).take(40).toList(),
-    totalSeconds: audio.duration ?? double.maxFinite,
-    onProbe: onProbe,
-  );
+  final target = speechWords(visibleText).take(40).toList();
+  final total = audio.duration ?? double.maxFinite;
+  final r = guide != null
+      ? await findAudioSecondsGuided(
+          transcribe: transcribe,
+          estimate: estimate,
+          paragraphs: guide.paragraphs,
+          position: guide.position,
+          target: target,
+          totalSeconds: total,
+          onStep: onProbe,
+        )
+      : await findAudioSeconds(
+          transcribe: transcribe,
+          estimate: estimate,
+          target: speechWords(visibleText).take(40).toList(),
+          totalSeconds: audio.duration ?? double.maxFinite,
+          onProbe: onProbe,
+        );
   debugPrint(
     '[precise] audio estimate=${estimate.round()}s -> ${r?.seconds.round()}s score=${r?.score.toStringAsFixed(2)}',
   );
