@@ -3,6 +3,7 @@ import 'package:steeped/features/linking/precise_match.dart';
 
 void main() {
   guidedTests();
+  matcherUpgradeTests();
   const passage =
       'But the stork with her long bill tried in vain to partake of the '
       'savory broth. Her evident distress caused the sly fox much amusement.';
@@ -249,4 +250,119 @@ void guidedTests() {
       expect(r!.seconds, closeTo(truth, 20));
     },
   );
+}
+
+void matcherUpgradeTests() {
+  test('a unique passage has a clear margin, a repeated one has none', () {
+    final unique = speechWords(
+      'ruby jade blue gold iron opal ${'dust ' * 60} amber slate coral pearl onyx topaz',
+    );
+    final repeated = [
+      ...speechWords('ruby jade blue gold iron opal'),
+      ...speechWords('dust ' * 60),
+      ...speechWords('ruby jade blue gold iron opal'),
+    ];
+    final needle = speechWords('ruby jade blue gold iron opal');
+    expect(locateWords(unique, needle)!.margin, greaterThan(0.5));
+    expect(locateWords(repeated, needle)!.margin, lessThan(0.1));
+  });
+
+  test('a run counts words in order, not scattered matches', () {
+    final needle = speechWords('ruby jade blue gold iron opal');
+    final inOrder = speechWords('x ruby jade blue gold iron opal y');
+    final scattered = speechWords('ruby x jade y blue z gold w iron v opal');
+    expect(locateWords(inOrder, needle)!.run, 6);
+    expect(locateWords(scattered, needle)!.run, 1);
+  });
+
+  test('rare words weigh more than common ones across a book', () {
+    final paragraphs = [
+      for (var i = 0; i < 200; i++) 'the wind and the rain came down the hill',
+      'zephyr quillon walked home',
+    ];
+    final book = BookIndex(paragraphs);
+    expect(book.weight('quil'), greaterThan(book.weight('wind')));
+    expect(book.wordsBefore(1), 9);
+    expect(book.wordsIn(200), 4);
+  });
+
+  test(
+    'a clip is judged as it arrives and the listen stops once sure',
+    () async {
+      final paragraphs = [
+        for (var i = 0; i < 400; i++)
+          [for (var w = 0; w < 30; w++) _word(i * 30 + w)].join(' '),
+      ];
+      const target = 250; // the narrator is at paragraph 250
+      final spoken = paragraphs
+          .sublist(target, target + 6)
+          .join(' ')
+          .split(' ');
+      var asked = 0;
+      double? stoppedAt;
+      Future<String?> listen(
+        double start,
+        double max,
+        bool Function(String, double) enough,
+      ) async {
+        asked++;
+        // 2.4 words a second, delivered one second at a time.
+        for (var sec = 1; sec <= max; sec++) {
+          final text = spoken.take((sec * 2.4).floor()).join(' ');
+          if (enough(text, sec.toDouble())) {
+            stoppedAt = sec.toDouble();
+            return text;
+          }
+        }
+        return spoken.take((max * 2.4).floor()).join(' ');
+      }
+
+      final r = await findParagraph(
+        listen: listen,
+        seconds: 100,
+        paragraphs: paragraphs,
+        estimateIndex: 100, // the guess is far out
+      );
+      expect(r!.paragraph, 250);
+      expect(asked, 1);
+      // Far fewer than the full 25 s.
+      expect(stoppedAt, lessThanOrEqualTo(10));
+      expect(r.heardSeconds, lessThanOrEqualTo(10));
+    },
+  );
+
+  test('an ambiguous short clip keeps listening to the full length', () async {
+    // The same sentence appears at two places, so a short clip has no margin.
+    const sentence = 'amber slate coral pearl onyx topaz quartz basalt garnet';
+    final paragraphs = [
+      for (var i = 0; i < 100; i++)
+        'filler words number ${_word(i)} here again',
+    ];
+    paragraphs[10] = '$sentence then more of the quiet night went on and on';
+    paragraphs[80] = '$sentence but afterwards the morning broke over the sea';
+    double? stoppedAt;
+    final r = await findParagraph(
+      listen: (start, max, enough) async {
+        const words =
+            'amber slate coral pearl onyx topaz quartz basalt garnet then more of the quiet night went on and on';
+        final all = words.split(' ');
+        for (var sec = 1; sec <= max; sec++) {
+          final text = all
+              .take((sec * 1.0).floor().clamp(0, all.length))
+              .join(' ');
+          if (enough(text, sec.toDouble())) {
+            stoppedAt = sec.toDouble();
+            return text;
+          }
+        }
+        return all.join(' ');
+      },
+      seconds: 0,
+      paragraphs: paragraphs,
+      estimateIndex: 10,
+    );
+    expect(r!.paragraph, 10);
+    // It must not have stopped on the ambiguous first nine words.
+    expect(stoppedAt == null || stoppedAt! > 9, isTrue);
+  });
 }
