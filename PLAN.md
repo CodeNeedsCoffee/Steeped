@@ -540,6 +540,45 @@ Interpolation drifts within a chapter (narration speed, front matter, abridged a
 - Switching must still change screens immediately (the quick-switch spinner rule); "Listen while reading" starts the audio behind the page.
 
 
+## Phase N: Precise on iOS (DRAFT 2026-11-13, awaiting the user's approval of section N2)
+
+Cannot be built or run on the Linux machine: needs a Mac with Xcode 26 and an iPhone on iOS 26 or later. Reference for the integration: `~/Code/AudioBooth` (MPL 2.0: ideas yes, copying Swift code no).
+
+### N1. What AudioBooth shows about integrating Apple's recogniser
+
+- **API:** iOS 26+ only, `SpeechAnalyzer` + `SpeechTranscriber` (module `Speech`), gated with `#available(iOS 26, *)` and `SpeechTranscriber.isAvailable`. Their app target is iOS 18 with the feature weak-linked; ours stays at 15 and `available` simply answers false below 26.
+- **Language model:** `SpeechTranscriber.supportedLocale(equivalentTo:)`, then `AssetInventory.status(forModules:)`; if not installed, `assetInstallationRequest(supporting:)` + `downloadAndInstall()` with a progress poll, then `AssetInventory.reserve(locale:)` (evicting another reserved locale if full). First use therefore needs a "Preparing speech model" step with progress.
+- **Transcriber:** `SpeechTranscriber(locale:, transcriptionOptions: [], reportingOptions: [], attributeOptions: [.audioTimeRange])`; each result run carries an `audioTimeRange`, so **every word has its start time**.
+- **Feeding audio:** `AVAssetReader` over the local file, buffers converted to `SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith:)`, yielded into an `AsyncStream<AnalyzerInput>` (`AnalyzerInput(buffer:, bufferStartTime:)`), `analyzer.start(inputSequence:)`, results read from `transcriber.results`, end with `finalizeAndFinishThroughEndOfInput()`; cancel with `cancelAndFinishNow()`. `SpeechAnalyzer.Options(priority: .userInitiated, modelRetention: .lingering)` for short interactive samples.
+- **Source:** downloaded audiobooks only (`track.localPath`); there is no streaming path.
+- **Permission:** `NSSpeechRecognitionUsageDescription` in Info.plist (no microphone string).
+- **Sampling:** 15-30 s clips, at least 12-20 words, alignment score 0.5, collected until a deadline or a 25-90 s read ceiling.
+
+### N2. Proposed logic changes (each needs the user's yes)
+
+First version, same logic as Android, only what iOS requires:
+- **A1. Same channel contract**, Swift plugin `PreciseRecognizer.swift` answering `available` / `recognize` (streaming `partial {id, text, audioMs}`) / `cancel`; Dart unchanged except the points below.
+- **A2. Availability and permission per platform:** on iOS `available` = iOS 26+ and a supported locale; the permission step asks for speech recognition instead of the microphone; a `prepare` call installs and reserves the language model with progress (new "Preparing speech model" dialog, shown once).
+- **A3. Audio source on iOS = downloaded files only** (like AudioBooth) in version 1; Settings says "Download the audiobook to use Precise" when it is not. Streaming from the server on iOS comes later.
+- **A4. Partial results:** `reportingOptions: [.volatileResults]` so early stop works; `audioMs` comes from the real word end times (more accurate than Android's estimate). To be confirmed on a device.
+
+Optional improvements, each separately (both platforms unless said):
+- **B1. Use real word times where the platform gives them** (iOS): the audio time is the matched word's own start, not a proportional guess, so the confirming listens can be dropped. (Android could approximate this from when words first appear: "word clock".)
+- **B2. Ordered alignment instead of bag-of-words:** candidates from an index of rare words, then a local dynamic-programming alignment with penalties for skipped and wrong words and a bonus near the expected place (AudioBooth's `TranscriptAligner`). Gives the exact first word, a cleaner confidence, and faster searches.
+- **B3. Chapter-title mapping like AudioBooth's:** Roman numerals, spelled-out numbers past 20, a unique "contains" match, a confidence (high/medium/low) that sets the search radius (45/120/240 s), and several candidate guesses tried in turn instead of the plain window scan as the fallback.
+- **B4. "The narrator is N pages ahead/behind - jump?" banner** in the reader (AudioBooth's Position Sync), shown only when you are more than about 600 words away.
+- **B5. Live read-along from streaming results** to correct Follow's drift (AudioBooth transcribes up to 5 minutes ahead of the playhead).
+
+Recommendation: build A1-A4 first (least risk when testing on a device), then B1 and B2 once iOS works, B3 next, B4 and B5 last.
+
+### N3. Things I cannot confirm from here (check on the Mac)
+
+- The exact initialiser and option names for volatile results with `SpeechAnalyzer` on a custom input sequence; whether partials arrive before the 15 s finalisation AudioBooth uses.
+- Whether recognition needs the speech-permission prompt at all with `SpeechTranscriber`.
+- Speed of the iOS recogniser relative to playback (Android: about 20x).
+- That Steeped's CI image has Xcode 26 (needed to compile the iOS 26 symbols).
+- `engineBridge.applicationRegistrar.messenger()` as the way to create the channel in `didInitializeImplicitFlutterEngine` (documented by Flutter, not tried here).
+
 ## Suggested order
 
 A (A1, A4, A3, A5, A2) -> B1 -> B2/B3/B4 -> C1/C2 -> B6/B5 -> D1/D2/D4/D3/D5 -> F3 -> F1/F2 -> E1 -> F5 -> F4 -> E2. Phase I (listening sessions) is already built (see its status note); only the I4 offline-queue check and the I5 timezone rule remain. Phase G (streaks) comes next: G1 -> G2/G3 -> G4 -> G5 -> G7 (reminders), with the G6 spike last. Phase L (store listings) follows G7 and J5/J6 and repeats before every release. Phase J (linking): J0 -> J1 -> J2 -> J3 -> J4 -> J7, with J5/J6 (Precise) last. Phase V (verification) runs before all of this. Phase H: H7 is a small, quick win and can go first; H8-H10 are optional follow-ups to the reader.
