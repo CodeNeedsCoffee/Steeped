@@ -576,6 +576,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancelTimer => 'Cancel timer';
 
   @override
+  String get cancelDownload => 'Cancel download';
+
+  @override
   String get queueFinished => 'Queue finished.';
 
   @override

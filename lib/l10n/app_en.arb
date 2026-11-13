@@ -442,6 +442,7 @@
   },
   "endOfChapter": "End of chapter",
   "cancelTimer": "Cancel timer",
+  "cancelDownload": "Cancel download",
   "queueFinished": "Queue finished.",
   "queueNamed": "Queue: {name}",
   "@queueNamed": {

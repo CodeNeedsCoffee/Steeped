@@ -1006,6 +1006,12 @@ abstract class AppLocalizations {
   /// **'Cancel timer'**
   String get cancelTimer;
 
+  /// No description provided for @cancelDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel download'**
+  String get cancelDownload;
+
   /// No description provided for @queueFinished.
   ///
   /// In en, this message translates to:

@@ -495,21 +495,32 @@ class _DownloadButton extends ConsumerWidget {
     }
 
     final progress = ref.watch(downloadProgressProvider)[item.id];
-    return SizedBox(
-      width: 130,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          LinearProgressIndicator(value: progress),
-          const SizedBox(height: 4),
-          Text(
-            progress == null
-                ? context.l10n.downloadingEllipsis
-                : '${(progress * 100).round()}%',
-            style: Theme.of(context).textTheme.labelSmall,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 130,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              LinearProgressIndicator(value: progress),
+              const SizedBox(height: 4),
+              Text(
+                progress == null
+                    ? context.l10n.downloadingEllipsis
+                    : '${(progress * 100).round()}%',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: context.l10n.cancelDownload,
+          onPressed: () =>
+              ref.read(downloadControllerProvider.notifier).cancel(item.id),
+        ),
+      ],
     );
   }
 }

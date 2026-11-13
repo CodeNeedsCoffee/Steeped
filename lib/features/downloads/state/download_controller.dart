@@ -269,6 +269,15 @@ class DownloadController extends Notifier<void> {
     return ref.read(downloadRepositoryProvider).deleteDownload(itemId);
   }
 
+  /// Stops a download that is still running: its queued tracks are cancelled
+  /// and the partial files and rows removed (the same clean-up as a delete),
+  /// and its progress figure is dropped.
+  Future<void> cancel(String itemId) async {
+    await delete(itemId);
+    final map = {...ref.read(downloadProgressProvider)}..remove(itemId);
+    ref.read(downloadProgressProvider.notifier).state = map;
+  }
+
   /// PLAN.md Phase 6.10: bulk-delete every downloaded item.
   Future<void> deleteAll() {
     return ref.read(downloadRepositoryProvider).deleteAllDownloads();
