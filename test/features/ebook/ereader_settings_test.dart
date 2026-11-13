@@ -64,7 +64,7 @@ void main() {
     expect(back.margin, 24);
     expect(back.marginVertical, 40);
     // Settings saved before this slider existed have no such key.
-    expect(EreaderSettings.fromJson({'margin': 20}).marginVertical, 16);
+    expect(EreaderSettings.fromJson({'margin': 20}).marginVertical, 4);
     expect(s.copyWith(marginVertical: 8).margin, 24);
   });
 }

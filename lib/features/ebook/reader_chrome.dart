@@ -106,7 +106,7 @@ class _ReaderChromeState extends State<ReaderChrome> {
 
   /// Space above the text while the bars are hidden. The system status bar is
   /// hidden too then, so reserving its full height left a blank band; only the
-  /// camera cut-out (if any) needs clearing, plus a small margin.
+  /// camera cut-out (if any) needs clearing.
   double _hiddenTopInset(BuildContext context) {
     var cutout = 0.0;
     for (final f in MediaQuery.of(context).displayFeatures) {
@@ -114,7 +114,9 @@ class _ReaderChromeState extends State<ReaderChrome> {
         if (f.bounds.bottom > cutout) cutout = f.bounds.bottom;
       }
     }
-    return cutout + 12;
+    // The camera hole itself is the only thing to keep clear, so no extra
+    // margin on top of it; the reader's top/bottom margin setting adds the rest.
+    return cutout;
   }
 
   void _toggleBars() {
