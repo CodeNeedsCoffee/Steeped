@@ -200,6 +200,37 @@ void guidedTests() {
   );
 
   test(
+    'guided search copes with a slow narrator and a guess 50 minutes out',
+    () async {
+      // The narrator reads 2.0 words/s but the search assumes 2.6.
+      const slow = 2.0;
+      String slowHeard(double start, double dur) => [
+        for (
+          var w = (start * slow).floor();
+          w < ((start + dur) * slow).floor();
+          w++
+        )
+          _word(w),
+      ].join(' ');
+      const truth = 30000.0;
+      final calls = <double>[];
+      final r = await findAudioSecondsGuided(
+        transcribe: (s, d) async {
+          calls.add(s);
+          return slowHeard(s, d);
+        },
+        estimate: truth - 3000,
+        paragraphs: paragraphs,
+        position: truth * slow / wordsPerParagraph,
+        target: speechWords(slowHeard(truth, 20)),
+        totalSeconds: 50000,
+      );
+      expect(r!.seconds, closeTo(truth, 25));
+      expect(calls.length, lessThanOrEqualTo(4));
+    },
+  );
+
+  test(
     'guided search falls back to scanning when the first listen finds nothing',
     () async {
       const truth = 5000.0;
