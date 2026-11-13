@@ -520,9 +520,19 @@ Interpolation drifts within a chapter (narration speed, front matter, abridged a
 - M5 Landscape/tablet split.
 - M6 Precise alignment (needs J5/J6).
 - M7 Streaks and stats: reading and listening at the same time must count wall-clock minutes once per day (union of the two sessions), not twice; the "keep screen on" setting stays the reader's own.
+- M0 Switch-button drop-down (above) and the "When switching" setting.
 - M8 Settings: Follow on by default for linked books (on/off), dock on/off, marker on/off. Strings, tests (pure position->paragraph mapping, anchors, dedupe of minutes), emulator check with the Pi pair.
 
-Open questions for the user: should Follow start automatically when you press Listen from the reader (recommended: yes), and should the dock appear for unlinked books playing something unrelated (recommended: no, only for the linked book).
+**Decided 2026-11-13:** the dock appears only for the linked audiobook of the book being read (never for something unrelated that happens to be playing).
+
+**Switch button asks first.** The quick-switch button (Listen in the reader, Read in Now Playing) opens a small drop-down menu instead of switching straight away:
+
+- In the reader (Listen button): "Switch to audiobook" (today's behaviour: close the reader, open Now Playing at the matching spot) or "Listen while reading" (stay on the page, start the audio at the matching spot, show the dock with Follow on).
+- In Now Playing (Read button): "Switch to ebook" (today's behaviour) or "Read along" (stay on Now Playing, show the read-along text window; its tap opens the reader with the dock).
+- If the linked audio is already playing, the reader's menu shows "Show player" (open the dock) in place of "Listen while reading".
+- Remember the last choice in settings ("When switching: ask / always switch / always both") so a regular user can make it one tap; the menu stays reachable by long-press.
+- Switching must still change screens immediately (the quick-switch spinner rule); "Listen while reading" starts the audio behind the page.
+
 
 ## Suggested order
 
