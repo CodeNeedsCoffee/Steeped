@@ -556,6 +556,14 @@ The user then reported four reader problems, all on Alchemised:
 - **Touched real data:** the Alchemised audio position was moved by the tests; I put it back to 30:34 by hand. Its ebook position moved too (now near chapter 66).
 - **Tests:** 373 pass (matcher incl. a real misheard transcript, guided search, fallbacks).
 
+### Precise on a second book: Clockwork Angel (Cassandra Clare), 2026-11-13, on the Pixel
+
+- **Finished book at the end:** reader opened on the acknowledgements at 100%; Precise found nothing there (silence) and kept the estimate - correct fallback.
+- **The percentage estimate can be very far out:** at 40% of the ebook the chapter-weight estimate was 17,817 s while the true place was about 20,900 s (50 minutes out). A fixed window scan around it could never find it.
+- **Fix:** ebook -> audio is now iterative: listen (25 s) at the guess, find the narrator's paragraph anywhere in the book, convert the word distance to seconds (speed measured from the last two listens), jump, repeat until within about 20 s. Round trip on the Pixel: reader at paragraph 1362 -> audio 20,915 s, score 0.96, 3 listens, about 15 s; the opposite direction from the audio time landed on paragraph 1363.
+- **Data touched:** the test un-finished the book (progress 40%); I marked it finished again from Now Playing. Ebook position left near chapter 8; audio position left at 5:49:19 (it was at the end before).
+- **Open:** why chapter-weight estimates drift this far for this book (chapter titles are "Chapter N", so title matching does nothing) - the overall-fraction fallback was closer (39.6% vs 33.9%); worth using as the first guess when titles are generic.
+
 ## To do
 
 - G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).
