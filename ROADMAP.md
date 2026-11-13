@@ -492,6 +492,33 @@ Overlay) and no PDF or comic items, so PDF and CBZ checks are blocked there.
 - **Also:** "Play all" on collections and playlists skips ebook-only books (button disabled when nothing is playable);
   descriptions render as plain text (no raw `<br />`); a published year of 0 is hidden.
 
+### Real-phone testing on the Pixel 8 Pro (2026-11-12), reader problems found and fixed
+
+Tested with a separate debug build (`com.codeneedscoffee.steeped.debug`, "Steeped Dev"; a profile build has its own id
+too), so the installed app was never replaced. Linking, Read at the matching spot and the new Home header all worked.
+The user then reported four reader problems, all on Alchemised:
+
+- **Laggy, highlight not working, odd paging: one root cause.** The book wraps each chapter in `<section>`, and
+  `epub_view` makes one item per direct child of `<body>` (looking only inside `<div>`), so each chapter became one
+  huge item: 90 items for the whole book instead of about 13,000 paragraphs. That item was built in one go (build
+  frames of 300-850 ms), could not be selected from, and made page steps coarse. `unwrapContainerTags` removes
+  section/article/main/aside wrappers; after it the reader shows normal paragraphs with the book's own indents,
+  and the slow frames are only the one-off ones at load. A real-file check and two unit tests cover it.
+- **Highlight:** long press now starts a selection with handles and the toolbar (verified on the phone). "Highlight" was
+  last in the toolbar and hidden behind the overflow arrow behind the phone's many system items (ChatGPT, Vivaldi, Reddit,
+  Translate...); it is now first. A real finger selection and the saved highlight were not exercised (adb cannot select a
+  word); needs a manual check.
+- **Cut-off bottom line and top gap:** a page step was 92% of the whole screen, ignoring the bars that cover the top and
+  bottom, and the last visible line was cut mid-glyph. Page turns now step by the visible height minus 1.5 lines, the last
+  line fades out, and the blank band above the text when the bars are hidden is only as tall as the camera cut-out.
+  Not yet judged by the user on the phone.
+- **Back after switching ebook -> audio -> ebook:** switches now replace the screen instead of stacking, so Back goes to the
+  book page. Not yet exercised on the phone.
+- **Measuring:** debug/profile builds log slow frames (build vs raster) as `[frame]` lines: the lag was all UI-thread build
+  time, never the GPU; the phone's CPU was mostly idle. Page turns after the fix were 0-1 slow frames.
+- A first fix for the crash "Cannot get size during build" (measuring the bottom bar while building) was caught
+  on the phone and fixed; a test now covers the page-step geometry.
+
 ## To do
 
 - G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).
