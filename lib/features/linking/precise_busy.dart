@@ -8,6 +8,9 @@ import '../../l10n/l10n.dart';
 /// True while Precise is listening to the audio to find the reader's place.
 final preciseBusyProvider = StateProvider<bool>((ref) => false);
 
+/// Which check Precise is on ("3 of 9"), so the wait shows it is working.
+final preciseStepProvider = StateProvider<({int step, int of})?>((ref) => null);
+
 /// Puts a "Finding your place..." card with a spinner in the middle of
 /// [child] (and blocks taps) while [preciseBusyProvider] is set.
 class PreciseBusyOverlay extends ConsumerWidget {
@@ -18,6 +21,7 @@ class PreciseBusyOverlay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final busy = ref.watch(preciseBusyProvider);
+    final step = ref.watch(preciseStepProvider);
     return Stack(
       children: [
         child,
@@ -65,6 +69,33 @@ class PreciseBusyOverlay extends ConsumerWidget {
                                   fontWeight: FontWeight.w600,
                                   decoration: TextDecoration.none,
                                 ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            step == null
+                                ? context.l10n.preciseListening
+                                : context.l10n.preciseListeningStep(
+                                    step.step,
+                                    step.of,
+                                  ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.8),
+                                  decoration: TextDecoration.none,
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            context.l10n.preciseTakesAMoment,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.6),
+                                  decoration: TextDecoration.none,
+                                ),
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),

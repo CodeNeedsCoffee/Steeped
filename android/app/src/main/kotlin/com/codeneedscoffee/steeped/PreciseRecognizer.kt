@@ -57,26 +57,53 @@ class PreciseRecognizer(private val context: Context) {
         }
     }
 
+    // Opening a server file takes seconds, and Precise probes the same file
+    // several times, so the opened extractor is kept for a minute of idle.
+    private var cachedUrl: String? = null
+    private var cachedEx: MediaExtractor? = null
+    private var cachedFormat: MediaFormat? = null
+    private val dropCache = Runnable {
+        cachedEx?.release()
+        cachedEx = null
+        cachedUrl = null
+    }
+
     /** Audio at [url] from [startMs] for [durMs] as 16 kHz mono 16-bit PCM. */
+    @Synchronized
     private fun decode(url: String, startMs: Long, durMs: Long): ByteArray {
-        val ex = MediaExtractor()
-        ex.setDataSource(url)
-        var track = -1
-        var format: MediaFormat? = null
-        for (i in 0 until ex.trackCount) {
-            val f = ex.getTrackFormat(i)
-            if (f.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
-                track = i
-                format = f
-                break
+        val tA = System.currentTimeMillis()
+        main.removeCallbacks(dropCache)
+        if (cachedUrl != url) {
+            dropCache.run()
+            val opened = MediaExtractor()
+            opened.setDataSource(url)
+            var found = -1
+            var f: MediaFormat? = null
+            for (i in 0 until opened.trackCount) {
+                val tf = opened.getTrackFormat(i)
+                if (tf.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+                    found = i
+                    f = tf
+                    break
+                }
             }
+            if (found < 0 || f == null) {
+                opened.release()
+                throw IllegalStateException("no audio track")
+            }
+            opened.selectTrack(found)
+            cachedEx = opened
+            cachedFormat = f
+            cachedUrl = url
         }
-        if (track < 0 || format == null) throw IllegalStateException("no audio track")
-        ex.selectTrack(track)
+        val ex = cachedEx!!
+        val format = cachedFormat!!
+        val tB = System.currentTimeMillis()
         ex.seekTo(startMs * 1000, MediaExtractor.SEEK_TO_CLOSEST_SYNC)
         val codec = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME)!!)
         codec.configure(format, null, null, 0)
         codec.start()
+        val tC = System.currentTimeMillis()
         val out = ByteArrayOutputStream()
         val info = MediaCodec.BufferInfo()
         var rate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
@@ -141,7 +168,8 @@ class PreciseRecognizer(private val context: Context) {
         }
         codec.stop()
         codec.release()
-        ex.release()
+        main.postDelayed(dropCache, 60_000)
+        android.util.Log.i("PreciseSpike", "decode timings: open=${tB - tA}ms seek+codec=${tC - tB}ms decode=${System.currentTimeMillis() - tC}ms")
         return out.toByteArray()
     }
 

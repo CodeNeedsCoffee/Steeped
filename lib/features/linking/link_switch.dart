@@ -178,10 +178,16 @@ Future<void> switchToAudio(
           audio,
           startAt,
           words,
+          onProbe: (n, of) =>
+              container.read(preciseStepProvider.notifier).state = (
+                step: n,
+                of: of,
+              ),
         );
         if (refined != null) startAt = refined;
       } finally {
         busy.state = false;
+        container.read(preciseStepProvider.notifier).state = null;
       }
     }
   } catch (_) {

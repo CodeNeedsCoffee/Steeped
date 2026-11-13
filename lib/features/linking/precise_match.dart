@@ -97,9 +97,10 @@ Future<({double seconds, double score})?> findAudioSeconds({
   required double estimate,
   required List<String> target,
   required double totalSeconds,
-  double window = 40,
-  double step = 30,
-  int maxProbes = 7,
+  double window = 60,
+  double step = 50,
+  int maxProbes = 9,
+  void Function(int probe, int total)? onProbe,
   double accept = 0.55,
   double good = 0.8,
 }) async {
@@ -112,6 +113,7 @@ Future<({double seconds, double score})?> findAudioSeconds({
       0.0,
       (totalSeconds - window).clamp(0.0, double.infinity),
     );
+    onProbe?.call(probe + 1, maxProbes);
     final text = await transcribe(start, window);
     if (text == null) return best;
     final words = speechWords(text);

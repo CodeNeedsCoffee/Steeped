@@ -89,8 +89,9 @@ Future<double?> refineAudioStart(
   ProviderContainer container,
   LibraryItemDetail audio,
   double estimate,
-  String visibleText,
-) async {
+  String visibleText, {
+  void Function(int probe, int total)? onProbe,
+}) async {
   final transcribe = await preciseTranscriber(container, audio);
   if (transcribe == null) return null;
   final r = await findAudioSeconds(
@@ -98,8 +99,11 @@ Future<double?> refineAudioStart(
     estimate: estimate,
     target: speechWords(visibleText).take(40).toList(),
     totalSeconds: audio.duration ?? double.maxFinite,
+    onProbe: onProbe,
   );
-  debugPrint('[precise] audio estimate=${estimate.round()}s -> ${r?.seconds.round()}s score=${r?.score.toStringAsFixed(2)}');
+  debugPrint(
+    '[precise] audio estimate=${estimate.round()}s -> ${r?.seconds.round()}s score=${r?.score.toStringAsFixed(2)}',
+  );
   return r?.seconds;
 }
 
@@ -120,6 +124,8 @@ Future<({int paragraph, double within})?> refineParagraph(
     paragraphs: paragraphs,
     estimateIndex: estimateIndex,
   );
-  debugPrint('[precise] paragraph estimate=$estimateIndex -> ${r?.paragraph} score=${r?.score.toStringAsFixed(2)}');
+  debugPrint(
+    '[precise] paragraph estimate=$estimateIndex -> ${r?.paragraph} score=${r?.score.toStringAsFixed(2)}',
+  );
   return r == null ? null : (paragraph: r.paragraph, within: r.within);
 }

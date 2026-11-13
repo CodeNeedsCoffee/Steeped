@@ -1272,6 +1272,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get preciseFinding => 'Finding your place…';
 
   @override
+  String get preciseListening => 'Listening to the audiobook…';
+
+  @override
+  String preciseListeningStep(int step, int of) {
+    return 'Listening to the audiobook… check $step of $of';
+  }
+
+  @override
+  String get preciseTakesAMoment => 'This can take up to a minute';
+
+  @override
   String get preciseApproximate =>
       'Approximate spot - couldn\'t match the words';
 

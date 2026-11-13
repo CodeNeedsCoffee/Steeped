@@ -72,7 +72,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     if (item == null) {
       // Briefly true right after tapping Play, while playItem() is still
       // fetching item detail — genuinely nothing loaded yet if it persists.
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const PreciseBusyOverlay(
+        child: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
     }
 
     final session = ref.watch(sessionControllerProvider);

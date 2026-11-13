@@ -2140,6 +2140,24 @@ abstract class AppLocalizations {
   /// **'Finding your place…'**
   String get preciseFinding;
 
+  /// No description provided for @preciseListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening to the audiobook…'**
+  String get preciseListening;
+
+  /// No description provided for @preciseListeningStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening to the audiobook… check {step} of {of}'**
+  String preciseListeningStep(int step, int of);
+
+  /// No description provided for @preciseTakesAMoment.
+  ///
+  /// In en, this message translates to:
+  /// **'This can take up to a minute'**
+  String get preciseTakesAMoment;
+
   /// No description provided for @preciseApproximate.
   ///
   /// In en, this message translates to:
