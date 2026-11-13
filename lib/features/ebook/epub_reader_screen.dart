@@ -420,12 +420,19 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     return found;
   }
 
-  void _turn(int direction) {
+  /// Turns a page: scrolls by what is visible between the bars (the body runs
+  /// under them), less a line and a half so the last lines of a page repeat at
+  /// the top of the next. Stepping by 92% of the whole screen skipped the
+  /// lines the bars were covering.
+  void _turn(int direction, EdgeInsets covered) {
     final pos = _scrollPosition();
     if (pos == null) return;
-    // 92% of a viewport so the last line of a page repeats on the next.
+    final s = ref.read(ereaderSettingsProvider).valueOrNull;
+    final line = 18 * (s?.fontScale ?? 1.0) * (s?.lineSpacing ?? 1.25);
+    final visible = pos.viewportDimension - covered.top - covered.bottom;
+    final step = (visible - line * 1.5).clamp(line, double.infinity);
     pos.animateTo(
-      pos.pixels + direction * pos.viewportDimension * 0.92,
+      pos.pixels + direction * step,
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
     );
@@ -604,8 +611,8 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       body: body,
       // Leaves room under the bars the first time; tapping the middle hides
       // them and the text keeps its place.
-      onPrev: paged ? () => _turn(-1) : null,
-      onNext: paged ? () => _turn(1) : null,
+      onPage: paged ? _turn : null,
+      fadeBottomEdge: true,
       blockBodyGestures: false,
       progress: controller == null ? null : _fraction,
       onScrub: controller == null ? null : _jumpToFraction,

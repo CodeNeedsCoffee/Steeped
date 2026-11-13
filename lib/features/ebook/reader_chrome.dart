@@ -1,4 +1,6 @@
 import 'package:flutter/gestures.dart' show kTouchSlop;
+import 'dart:ui' show DisplayFeatureType;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -18,6 +20,8 @@ class ReaderChrome extends StatefulWidget {
     this.title,
     this.onPrev,
     this.onNext,
+    this.onPage,
+    this.fadeBottomEdge = false,
     this.blockBodyGestures = false,
     this.progress,
     this.onScrub,
@@ -34,6 +38,15 @@ class ReaderChrome extends StatefulWidget {
   /// Edge-tap and horizontal-swipe handlers; null disables turning that way.
   final VoidCallback? onPrev;
   final VoidCallback? onNext;
+
+  /// Like [onPrev]/[onNext] but also told how much of the body the bars cover
+  /// right now, so a page turn can step by what is actually visible. When set
+  /// it is used instead of them.
+  final void Function(int direction, EdgeInsets covered)? onPage;
+
+  /// Fade the last line above the bottom edge instead of cutting it hard
+  /// (text readers that scroll in screen-height steps).
+  final bool fadeBottomEdge;
 
   /// Swallow the body's own drags/taps so only [onPrev]/[onNext] move it
   /// (used for EPUB "paged" mode, where the underlying list scrolls freely).
@@ -86,6 +99,19 @@ class _ReaderChromeState extends State<ReaderChrome> {
     super.dispose();
   }
 
+  /// Space above the text while the bars are hidden. The system status bar is
+  /// hidden too then, so reserving its full height left a blank band; only the
+  /// camera cut-out (if any) needs clearing, plus a small margin.
+  double _hiddenTopInset(BuildContext context) {
+    var cutout = 0.0;
+    for (final f in MediaQuery.of(context).displayFeatures) {
+      if (f.type == DisplayFeatureType.cutout && f.bounds.top < 120) {
+        if (f.bounds.bottom > cutout) cutout = f.bounds.bottom;
+      }
+    }
+    return cutout + 12;
+  }
+
   void _toggleBars() {
     setState(() => _showBars = !_showBars);
     SystemChrome.setEnabledSystemUIMode(
@@ -96,8 +122,28 @@ class _ReaderChromeState extends State<ReaderChrome> {
   // Taps are read from raw pointer events rather than a gesture recogniser:
   // the EPUB body keeps a SelectionArea (for highlights) that wins the gesture
   // arena, so an onTapUp on this widget never fired there.
+  final _bottomBarKey = GlobalKey();
   Offset? _downAt;
   Duration? _downTime;
+
+  /// How much of the body the top and bottom bars cover at the moment.
+  EdgeInsets _covered() {
+    if (!_showBars) return EdgeInsets.zero;
+    final bottom = _bottomBarKey.currentContext?.size?.height ?? 0;
+    return EdgeInsets.only(
+      top: MediaQuery.paddingOf(context).top + kToolbarHeight,
+      bottom: widget.progress == null ? 0 : bottom,
+    );
+  }
+
+  void _page(int direction) {
+    final onPage = widget.onPage;
+    if (onPage != null) {
+      onPage(direction, _covered());
+    } else {
+      (direction < 0 ? widget.onPrev : widget.onNext)?.call();
+    }
+  }
 
   void _onPointerDown(PointerDownEvent e) {
     _downAt = e.localPosition;
@@ -117,9 +163,9 @@ class _ReaderChromeState extends State<ReaderChrome> {
 
   void _onTap(double x) {
     if (widget.settings.tapToTurn && x < 0.25) {
-      widget.onPrev?.call();
+      _page(-1);
     } else if (widget.settings.tapToTurn && x > 0.75) {
-      widget.onNext?.call();
+      _page(1);
     } else {
       _toggleBars();
     }
@@ -149,13 +195,13 @@ class _ReaderChromeState extends State<ReaderChrome> {
                   onHorizontalDragEnd: widget.blockBodyGestures
                       ? (d) {
                           final v = d.primaryVelocity ?? 0;
-                          if (v < -150) widget.onNext?.call();
-                          if (v > 150) widget.onPrev?.call();
+                          if (v < -150) _page(1);
+                          if (v > 150) _page(-1);
                         }
                       : null,
                   child: Padding(
                     padding: EdgeInsets.only(
-                      top: _showBars ? 0 : MediaQuery.paddingOf(context).top,
+                      top: _showBars ? 0 : _hiddenTopInset(context),
                     ),
                     child: body,
                   ),
@@ -163,6 +209,27 @@ class _ReaderChromeState extends State<ReaderChrome> {
               ),
             ),
           ),
+          if (widget.fadeBottomEdge)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: _covered().bottom,
+              height: 18 * s.fontScale * s.lineSpacing * 1.2,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        s.backgroundColor.withValues(alpha: 0),
+                        s.backgroundColor,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (s.brightness < 1)
             Positioned.fill(
               child: IgnorePointer(
@@ -208,6 +275,7 @@ class _ReaderChromeState extends State<ReaderChrome> {
             left: 0,
             right: 0,
             child: _Bar(
+              key: _bottomBarKey,
               visible: _showBars && progress != null,
               color: s.backgroundColor,
               child: SafeArea(
@@ -263,7 +331,12 @@ class _ReaderChromeState extends State<ReaderChrome> {
 }
 
 class _Bar extends StatelessWidget {
-  const _Bar({required this.visible, required this.color, required this.child});
+  const _Bar({
+    super.key,
+    required this.visible,
+    required this.color,
+    required this.child,
+  });
 
   final bool visible;
   final Color color;
