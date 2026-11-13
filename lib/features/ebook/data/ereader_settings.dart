@@ -23,6 +23,7 @@ class EreaderSettings {
     this.comicFlow = ReadingFlow.scroll,
     this.justify = false,
     this.margin = 16,
+    this.marginVertical = 16,
     this.brightness = 1.0,
     this.keepScreenOn = true,
     this.tapToTurn = true,
@@ -46,17 +47,16 @@ class EreaderSettings {
       comicFlow: _flow(json['comicFlow'], ReadingFlow.scroll),
       justify: json['justify'] as bool? ?? false,
       margin: (json['margin'] as num?)?.toDouble() ?? 16,
+      marginVertical: (json['marginVertical'] as num?)?.toDouble() ?? 16,
       brightness: (json['brightness'] as num?)?.toDouble() ?? 1.0,
       keepScreenOn: json['keepScreenOn'] as bool? ?? true,
       tapToTurn: json['tapToTurn'] as bool? ?? true,
     );
   }
 
-  static ReadingFlow _flow(Object? raw, ReadingFlow fallback) =>
-      ReadingFlow.values.firstWhere(
-        (f) => f.name == raw,
-        orElse: () => fallback,
-      );
+  static ReadingFlow _flow(Object? raw, ReadingFlow fallback) => ReadingFlow
+      .values
+      .firstWhere((f) => f.name == raw, orElse: () => fallback);
 
   final EreaderFontFamily fontFamily;
   final double fontScale;
@@ -70,6 +70,9 @@ class EreaderSettings {
 
   /// Horizontal text margin in logical pixels.
   final double margin;
+
+  /// Space above and below the text, in logical pixels.
+  final double marginVertical;
 
   /// 0.2..1.0; below 1 dims the reader with an overlay (no system permission).
   final double brightness;
@@ -89,6 +92,7 @@ class EreaderSettings {
     'comicFlow': comicFlow.name,
     'justify': justify,
     'margin': margin,
+    'marginVertical': marginVertical,
     'brightness': brightness,
     'keepScreenOn': keepScreenOn,
     'tapToTurn': tapToTurn,
@@ -105,6 +109,7 @@ class EreaderSettings {
     ReadingFlow? comicFlow,
     bool? justify,
     double? margin,
+    double? marginVertical,
     double? brightness,
     bool? keepScreenOn,
     bool? tapToTurn,
@@ -120,6 +125,7 @@ class EreaderSettings {
       comicFlow: comicFlow ?? this.comicFlow,
       justify: justify ?? this.justify,
       margin: margin ?? this.margin,
+      marginVertical: marginVertical ?? this.marginVertical,
       brightness: brightness ?? this.brightness,
       keepScreenOn: keepScreenOn ?? this.keepScreenOn,
       tapToTurn: tapToTurn ?? this.tapToTurn,

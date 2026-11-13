@@ -616,6 +616,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       // them and the text keeps its place.
       onPage: paged ? _turn : null,
       fadeBottomEdge: true,
+      bodyInsets: EdgeInsets.symmetric(vertical: settings.marginVertical),
       blockBodyGestures: false,
       progress: controller == null ? null : _fraction,
       onScrub: controller == null ? null : _jumpToFraction,

@@ -57,4 +57,14 @@ void main() {
     expect(p.lastUpdate, DateTime.fromMillisecondsSinceEpoch(1700000000000));
     expect(MediaProgress.fromJson({}).lastUpdate, isNull);
   });
+
+  test('top and bottom margin is saved, restored and defaults for old data', () {
+    final s = const EreaderSettings(margin: 24, marginVertical: 40);
+    final back = EreaderSettings.fromJson(s.toJson());
+    expect(back.margin, 24);
+    expect(back.marginVertical, 40);
+    // Settings saved before this slider existed have no such key.
+    expect(EreaderSettings.fromJson({'margin': 20}).marginVertical, 16);
+    expect(s.copyWith(marginVertical: 8).margin, 24);
+  });
 }

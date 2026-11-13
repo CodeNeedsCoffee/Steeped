@@ -184,13 +184,22 @@ class EreaderSettingsPanel extends ConsumerWidget {
             settings.justify,
             (v) => controller.save(settings.copyWith(justify: v)),
           ),
-          Text(context.l10n.margins),
+          Text(context.l10n.marginsSides),
           Slider(
             value: settings.margin,
             min: 4,
             max: 48,
             divisions: 11,
             onChanged: (v) => controller.save(settings.copyWith(margin: v)),
+          ),
+          Text(context.l10n.marginsTopBottom),
+          Slider(
+            value: settings.marginVertical,
+            min: 0,
+            max: 64,
+            divisions: 16,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(marginVertical: v)),
           ),
     ];
   }

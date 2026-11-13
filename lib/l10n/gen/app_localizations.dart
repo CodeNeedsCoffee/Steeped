@@ -3100,6 +3100,18 @@ abstract class AppLocalizations {
   /// **'Margins'**
   String get margins;
 
+  /// No description provided for @marginsSides.
+  ///
+  /// In en, this message translates to:
+  /// **'Left and right margins'**
+  String get marginsSides;
+
+  /// No description provided for @marginsTopBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Top and bottom margins'**
+  String get marginsTopBottom;
+
   /// No description provided for @readingPercent.
   ///
   /// In en, this message translates to:

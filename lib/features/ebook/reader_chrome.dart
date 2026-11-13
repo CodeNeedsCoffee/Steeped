@@ -22,6 +22,7 @@ class ReaderChrome extends StatefulWidget {
     this.onNext,
     this.onPage,
     this.fadeBottomEdge = false,
+    this.bodyInsets = EdgeInsets.zero,
     this.blockBodyGestures = false,
     this.progress,
     this.onScrub,
@@ -47,6 +48,10 @@ class ReaderChrome extends StatefulWidget {
   /// Fade the last line above the bottom edge instead of cutting it hard
   /// (text readers that scroll in screen-height steps).
   final bool fadeBottomEdge;
+
+  /// Space kept clear above and below the body (the reader's top and bottom
+  /// margin setting), so text stops short of the screen edge.
+  final EdgeInsets bodyInsets;
 
   /// Swallow the body's own drags/taps so only [onPrev]/[onNext] move it
   /// (used for EPUB "paged" mode, where the underlying list scrolls freely).
@@ -130,9 +135,16 @@ class _ReaderChromeState extends State<ReaderChrome> {
   EdgeInsets _covered() {
     if (!_showBars) return EdgeInsets.zero;
     final bottom = _bottomBarKey.currentContext?.size?.height ?? 0;
+    double clear(double covered, double padded) =>
+        covered > padded ? covered - padded : 0;
     return EdgeInsets.only(
-      top: MediaQuery.paddingOf(context).top + kToolbarHeight,
-      bottom: widget.progress == null ? 0 : bottom,
+      top: clear(
+        MediaQuery.paddingOf(context).top + kToolbarHeight,
+        widget.bodyInsets.top,
+      ),
+      bottom: widget.progress == null
+          ? 0
+          : clear(bottom, widget.bodyInsets.bottom),
     );
   }
 
@@ -202,9 +214,18 @@ class _ReaderChromeState extends State<ReaderChrome> {
                       : null,
                   child: Padding(
                     padding: EdgeInsets.only(
-                      top: _showBars ? 0 : _hiddenTopInset(context),
+                      top:
+                          (_showBars ? 0 : _hiddenTopInset(context)) +
+                          widget.bodyInsets.top,
+                      // The system gesture bar sits at the bottom edge too.
+                      bottom:
+                          widget.bodyInsets.bottom +
+                          (_showBars
+                              ? 0
+                              : MediaQuery.paddingOf(context).bottom),
                     ),
-                    child: body,
+                    // Anything wider than the screen is cut, not drawn off it.
+                    child: ClipRect(child: body),
                   ),
                 ),
               ),

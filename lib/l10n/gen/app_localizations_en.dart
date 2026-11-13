@@ -1829,6 +1829,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get margins => 'Margins';
 
   @override
+  String get marginsSides => 'Left and right margins';
+
+  @override
+  String get marginsTopBottom => 'Top and bottom margins';
+
+  @override
   String readingPercent(int percent) {
     return 'Continue reading ($percent%)';
   }

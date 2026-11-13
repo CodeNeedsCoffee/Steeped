@@ -1163,6 +1163,8 @@
   "brightness": "Brightness",
   "justifyText": "Justify text",
   "margins": "Margins",
+  "marginsSides": "Left and right margins",
+  "marginsTopBottom": "Top and bottom margins",
   "readingPercent": "Continue reading ({percent}%)",
   "@readingPercent": {
     "placeholders": {
