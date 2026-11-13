@@ -194,8 +194,8 @@ void guidedTests() {
       );
       expect(r, isNotNull);
       expect(r!.seconds, closeTo(truth, 15));
-      // One listen to see where the narrator is, then up to three to confirm.
-      expect(calls.length, lessThanOrEqualTo(4));
+      // Each listen halves the error at least; this one converges in a few.
+      expect(calls.length, lessThanOrEqualTo(3));
     },
   );
 

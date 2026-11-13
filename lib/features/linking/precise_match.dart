@@ -191,14 +191,17 @@ Future<({int paragraph, double within, double score})?> findParagraph({
 const narrationWordsPerSecond = 2.6;
 
 /// The estimate-then-listen search (ebook -> audio), for when the percentage
-/// guess [estimate] may be minutes out. One short listen at the guess finds
-/// which paragraph the narrator is really on; the words between that paragraph
-/// and the reader's place ([position]: paragraph index plus how far into it)
-/// become a time offset, giving a close second guess; and a listen there
-/// confirms and refines it using the words on screen ([target]).
+/// guess [estimate] may be many minutes out. It converges like a bisection:
+/// listen for 25 s at the current guess and find which paragraph the narrator
+/// is really on (anywhere in the book); the words between that paragraph and
+/// the reader's place ([position]: paragraph index plus how far into it)
+/// become a time offset at the narration speed; jump by it and listen again,
+/// stopping when the two are within about 20 seconds of each other. From the
+/// second round on the speed is measured from the last two listens, so a
+/// narrator who is faster or slower than average is corrected for.
 ///
-/// Falls back to the plain window scan when the first listen finds nothing,
-/// and to the second guess itself when the confirming listen does not match.
+/// Falls back to the plain window scan when the first listen finds nothing.
+/// Null when it never converges to a listen that matched.
 Future<({double seconds, double score})?> findAudioSecondsGuided({
   required Transcribe transcribe,
   required double estimate,
@@ -206,54 +209,60 @@ Future<({double seconds, double score})?> findAudioSecondsGuided({
   required double position,
   required List<String> target,
   required double totalSeconds,
+  int maxRounds = 4,
   void Function(int step, int of)? onStep,
 }) async {
-  const confirmProbes = 3;
-  const total = 1 + confirmProbes;
-  onStep?.call(1, total);
-  final here = await findParagraph(
-    transcribe: transcribe,
-    seconds: estimate,
-    paragraphs: paragraphs,
-    estimateIndex: position.floor(),
-  );
-  if (here == null) {
-    return findAudioSeconds(
+  // Words before each paragraph, so a place is one number.
+  final before = List<double>.filled(paragraphs.length + 1, 0);
+  for (var p = 0; p < paragraphs.length; p++) {
+    before[p + 1] = before[p] + speechWords(paragraphs[p]).length;
+  }
+  double wordsAt(double place) {
+    final p = place.floor().clamp(0, paragraphs.length - 1);
+    return before[p] +
+        (before[p + 1] - before[p]) * (place - p).clamp(0.0, 1.0);
+  }
+
+  final goal = wordsAt(position);
+  var t = estimate.clamp(0.0, totalSeconds);
+  double? prevT;
+  double? prevWords;
+  var rate = narrationWordsPerSecond;
+  ({double seconds, double score})? best;
+  for (var round = 1; round <= maxRounds; round++) {
+    onStep?.call(round, maxRounds);
+    final here = await findParagraph(
       transcribe: transcribe,
-      estimate: estimate,
-      target: target,
-      totalSeconds: totalSeconds,
-      maxProbes: confirmProbes,
-      onProbe: (n, of) => onStep?.call(1 + n, total),
+      seconds: t,
+      paragraphs: paragraphs,
+      estimateIndex: position.floor(),
     );
+    if (here == null) {
+      if (round == 1) {
+        return findAudioSeconds(
+          transcribe: transcribe,
+          estimate: estimate,
+          target: target,
+          totalSeconds: totalSeconds,
+          maxProbes: maxRounds - 1,
+          onProbe: (n, of) => onStep?.call(round + n, maxRounds),
+        );
+      }
+      break;
+    }
+    final heard = wordsAt(here.paragraph + here.within);
+    final gap = goal - heard; // words still to go (negative: overshot)
+    if (prevT != null && prevWords != null && (t - prevT).abs() > 30) {
+      final measured = (heard - prevWords) / (t - prevT);
+      if (measured > 0) rate = measured.clamp(1.8, 3.4);
+    }
+    prevT = t;
+    prevWords = heard;
+    final next = (t + gap / rate).clamp(0.0, totalSeconds);
+    best = (seconds: next, score: here.score);
+    // Close enough: the narrator was within ~20 s of the reader's place.
+    if (gap.abs() / rate < 20) break;
+    t = next;
   }
-  // Words from where the narrator is to where the reader is (negative when the
-  // reader is behind the narrator).
-  int words(int p) => speechWords(paragraphs[p]).length;
-  final from = here.paragraph + here.within;
-  final to = position;
-  final lo = from < to ? from : to;
-  final hi = from < to ? to : from;
-  var between = 0.0;
-  for (var p = lo.floor(); p <= hi.floor() && p < paragraphs.length; p++) {
-    final w = words(p).toDouble();
-    final start = p < lo ? lo - p : 0.0;
-    final end = p + 1 > hi ? hi - p : 1.0;
-    between += w * (end - start).clamp(0.0, 1.0);
-  }
-  final guess =
-      (estimate + (to >= from ? 1 : -1) * between / narrationWordsPerSecond)
-          .clamp(0.0, totalSeconds);
-  final confirmed = await findAudioSeconds(
-    transcribe: transcribe,
-    estimate: guess,
-    target: target,
-    totalSeconds: totalSeconds,
-    step: 45,
-    maxProbes: confirmProbes,
-    // A decent match is enough here: the listen above already got close.
-    good: 0.6,
-    onProbe: (n, of) => onStep?.call(1 + n, total),
-  );
-  return confirmed ?? (seconds: guess, score: here.score * 0.5);
+  return best;
 }

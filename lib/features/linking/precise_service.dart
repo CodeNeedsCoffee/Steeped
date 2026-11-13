@@ -115,7 +115,7 @@ Future<double?> refineAudioStart(
           onProbe: onProbe,
         );
   debugPrint(
-    '[precise] audio estimate=${estimate.round()}s -> ${r?.seconds.round()}s score=${r?.score.toStringAsFixed(2)}',
+    '[precise] audio estimate=${estimate.round()}s -> ${r?.seconds.round()}s score=${r?.score.toStringAsFixed(2)} readerAt=${guide?.position.toStringAsFixed(2)}',
   );
   return r?.seconds;
 }
