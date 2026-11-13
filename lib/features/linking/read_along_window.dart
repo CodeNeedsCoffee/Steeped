@@ -73,7 +73,7 @@ class ReadAlongWindow extends ConsumerWidget {
     final text = ref.watch(bookTextProvider(link.ebookItemId));
     final seconds = ref.watch(playbackPositionProvider).valueOrNull ?? 0;
     final mode = syncModeFromName(
-      ref.watch(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
+      ref.watch(appSettingsProvider).valueOrNull?.linkSyncToEbook ?? 'estimated',
     );
     final theme = Theme.of(context);
     Widget content;

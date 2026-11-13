@@ -1203,7 +1203,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get linkSyncMode => 'Switch position';
+  String get linkSyncToAudio => 'Ebook to audiobook';
+
+  @override
+  String get linkSyncToEbook => 'Audiobook to ebook';
 
   @override
   String get switchToAudiobook => 'Switch to audiobook';

@@ -99,7 +99,7 @@ Future<void> switchToEbook(
   bool replaceCurrent = false,
 }) async {
   final mode = syncModeFromName(
-    ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
+    ref.read(appSettingsProvider).valueOrNull?.linkSyncToEbook ?? 'estimated',
   );
   final seconds = audioSeconds ?? audio.progress?.currentTime ?? 0;
   final point = AudioPoint(
@@ -142,7 +142,7 @@ Future<void> switchToAudio(
   bool alongside = false,
 }) async {
   final mode = syncModeFromName(
-    ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
+    ref.read(appSettingsProvider).valueOrNull?.linkSyncToAudio ?? 'estimated',
   );
   final router = GoRouter.of(context);
   // The widget that started this is replaced by Now Playing, which makes its

@@ -71,6 +71,29 @@ void main() {
     expect(at(-50), isFalse);
   });
 
+  test(
+    'each direction has its own sync mode and the old single one carries over',
+    () {
+      const d = AppSettings();
+      expect(
+        (d.linkSyncToAudio, d.linkSyncToEbook),
+        ('estimated', 'estimated'),
+      );
+      final split = AppSettings.fromJson(
+        d
+            .copyWith(linkSyncToAudio: 'estimated', linkSyncToEbook: 'precise')
+            .toJson(),
+      );
+      expect(
+        (split.linkSyncToAudio, split.linkSyncToEbook),
+        ('estimated', 'precise'),
+      );
+      // A settings file from before the split: one value for both.
+      final old = AppSettings.fromJson({'linkSyncMode': 'off'});
+      expect((old.linkSyncToAudio, old.linkSyncToEbook), ('off', 'off'));
+    },
+  );
+
   test('the side panel needs a landscape phone or a tablet', () {
     expect(wideEnoughForPanel(411), isFalse);
     expect(wideEnoughForPanel(840), isTrue);

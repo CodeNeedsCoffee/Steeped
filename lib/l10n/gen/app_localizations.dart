@@ -2008,11 +2008,17 @@ abstract class AppLocalizations {
   /// **'{unit} in a row. Nicely done!'**
   String streakMilestone(String unit);
 
-  /// No description provided for @linkSyncMode.
+  /// No description provided for @linkSyncToAudio.
   ///
   /// In en, this message translates to:
-  /// **'Switch position'**
-  String get linkSyncMode;
+  /// **'Ebook to audiobook'**
+  String get linkSyncToAudio;
+
+  /// No description provided for @linkSyncToEbook.
+  ///
+  /// In en, this message translates to:
+  /// **'Audiobook to ebook'**
+  String get linkSyncToEbook;
 
   /// No description provided for @switchToAudiobook.
   ///

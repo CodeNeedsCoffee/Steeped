@@ -43,7 +43,8 @@ class AppSettings {
     this.autoRewindScale = false,
     this.sleepFadeOut = true,
     this.sleepFadeSeconds = 10,
-    this.linkSyncMode = 'estimated',
+    this.linkSyncToAudio = 'estimated',
+    this.linkSyncToEbook = 'estimated',
     this.linkSwitchMode = 'ask',
     this.linkFollow = true,
     this.linkDock = true,
@@ -111,7 +112,15 @@ class AppSettings {
       autoRewindScale: json['autoRewindScale'] as bool? ?? false,
       sleepFadeOut: json['sleepFadeOut'] as bool? ?? true,
       sleepFadeSeconds: json['sleepFadeSeconds'] as int? ?? 10,
-      linkSyncMode: json['linkSyncMode'] as String? ?? 'estimated',
+      // One setting used to cover both directions.
+      linkSyncToAudio:
+          json['linkSyncToAudio'] as String? ??
+          json['linkSyncMode'] as String? ??
+          'estimated',
+      linkSyncToEbook:
+          json['linkSyncToEbook'] as String? ??
+          json['linkSyncMode'] as String? ??
+          'estimated',
       linkSwitchMode: json['linkSwitchMode'] as String? ?? 'ask',
       linkFollow: json['linkFollow'] as bool? ?? true,
       linkDock: json['linkDock'] as bool? ?? true,
@@ -219,7 +228,11 @@ class AppSettings {
 
   /// Linked ebook/audiobook: how a switch finds the matching spot. A
   /// `SyncMode` name: `off` or `estimated` (`precise` is added with J6).
-  final String linkSyncMode;
+  /// How a switch from the ebook finds its place in the audiobook, and from
+  /// the audiobook its place in the ebook: off, estimated or precise, each
+  /// way on its own.
+  final String linkSyncToAudio;
+  final String linkSyncToEbook;
 
   /// What the Listen/Read buttons do: ask, switch, or both (listen while
   /// reading / read along).
@@ -301,7 +314,8 @@ class AppSettings {
     'autoRewindScale': autoRewindScale,
     'sleepFadeOut': sleepFadeOut,
     'sleepFadeSeconds': sleepFadeSeconds,
-    'linkSyncMode': linkSyncMode,
+    'linkSyncToAudio': linkSyncToAudio,
+    'linkSyncToEbook': linkSyncToEbook,
     'linkSwitchMode': linkSwitchMode,
     'linkFollow': linkFollow,
     'linkDock': linkDock,
@@ -349,7 +363,8 @@ class AppSettings {
     bool? autoRewindScale,
     bool? sleepFadeOut,
     int? sleepFadeSeconds,
-    String? linkSyncMode,
+    String? linkSyncToAudio,
+    String? linkSyncToEbook,
     String? linkSwitchMode,
     bool? linkFollow,
     bool? linkDock,
@@ -405,7 +420,8 @@ class AppSettings {
       autoRewindScale: autoRewindScale ?? this.autoRewindScale,
       sleepFadeOut: sleepFadeOut ?? this.sleepFadeOut,
       sleepFadeSeconds: sleepFadeSeconds ?? this.sleepFadeSeconds,
-      linkSyncMode: linkSyncMode ?? this.linkSyncMode,
+      linkSyncToAudio: linkSyncToAudio ?? this.linkSyncToAudio,
+      linkSyncToEbook: linkSyncToEbook ?? this.linkSyncToEbook,
       linkSwitchMode: linkSwitchMode ?? this.linkSwitchMode,
       linkFollow: linkFollow ?? this.linkFollow,
       linkDock: linkDock ?? this.linkDock,

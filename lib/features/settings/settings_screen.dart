@@ -516,61 +516,17 @@ class SettingsScreen extends ConsumerWidget {
             onChanged: (v) =>
                 controller.save(settings.copyWith(linkFollow: v)),
           ),
-          ListTile(
-            title: Text(context.l10n.linkSyncMode),
-            subtitle: Text(switch (settings.linkSyncMode) {
-              'off' => context.l10n.linkSyncOffHint,
-              'precise' => context.l10n.linkSyncPreciseHint,
-              _ => context.l10n.linkSyncEstimatedHint,
-            }),
-            trailing: SizedBox(
-              width: 140,
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: settings.linkSyncMode == SyncMode.off.name
-                    ? SyncMode.off.name
-                    : settings.linkSyncMode == SyncMode.precise.name
-                    ? SyncMode.precise.name
-                    : SyncMode.estimated.name,
-                underline: const SizedBox.shrink(),
-                onChanged: (v) async {
-                  if (v == null) return;
-                  final messenger = ScaffoldMessenger.of(context);
-                  final l10n = context.l10n;
-                  if (v == SyncMode.precise.name) {
-                    // Recognition needs the microphone permission and an
-                    // on-device recogniser; check both before turning it on.
-                    if (!await preciseAvailable()) {
-                      messenger.showSnackBar(
-                        SnackBar(content: Text(l10n.preciseUnavailable)),
-                      );
-                      return;
-                    }
-                    if (!await preciseHasPermission(ask: true)) {
-                      messenger.showSnackBar(
-                        SnackBar(content: Text(l10n.preciseNeedsPermission)),
-                      );
-                      return;
-                    }
-                  }
-                  controller.save(settings.copyWith(linkSyncMode: v));
-                },
-                items: [
-                  DropdownMenuItem(
-                    value: SyncMode.off.name,
-                    child: Text(context.l10n.linkSyncOff),
-                  ),
-                  DropdownMenuItem(
-                    value: SyncMode.estimated.name,
-                    child: Text(context.l10n.linkSyncEstimated),
-                  ),
-                  DropdownMenuItem(
-                    value: SyncMode.precise.name,
-                    child: Text(context.l10n.linkSyncPrecise),
-                  ),
-                ],
-              ),
-            ),
+          _SyncModeTile(
+            title: context.l10n.linkSyncToAudio,
+            value: settings.linkSyncToAudio,
+            onSave: (v) =>
+                controller.save(settings.copyWith(linkSyncToAudio: v)),
+          ),
+          _SyncModeTile(
+            title: context.l10n.linkSyncToEbook,
+            value: settings.linkSyncToEbook,
+            onSave: (v) =>
+                controller.save(settings.copyWith(linkSyncToEbook: v)),
           ),
 
           if (Platform.isAndroid) ...[
@@ -851,4 +807,78 @@ Future<bool> _enableReminder(BuildContext context) async {
     return false;
   }
   return status.isGranted;
+}
+
+/// A dropdown for how a switch finds its place (off, estimated or precise),
+/// used once for each direction. Turning on Precise checks that this phone can
+/// do it and asks for the microphone permission the recogniser needs.
+class _SyncModeTile extends StatelessWidget {
+  const _SyncModeTile({
+    required this.title,
+    required this.value,
+    required this.onSave,
+  });
+
+  final String title;
+  final String value;
+  final ValueChanged<String> onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final mode = value == SyncMode.off.name
+        ? SyncMode.off.name
+        : value == SyncMode.precise.name
+        ? SyncMode.precise.name
+        : SyncMode.estimated.name;
+    return ListTile(
+      title: Text(title),
+      subtitle: Text(switch (mode) {
+        'off' => l10n.linkSyncOffHint,
+        'precise' => l10n.linkSyncPreciseHint,
+        _ => l10n.linkSyncEstimatedHint,
+      }),
+      trailing: SizedBox(
+        width: 140,
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: mode,
+          underline: const SizedBox.shrink(),
+          onChanged: (v) async {
+            if (v == null) return;
+            final messenger = ScaffoldMessenger.of(context);
+            if (v == SyncMode.precise.name) {
+              if (!await preciseAvailable()) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text(l10n.preciseUnavailable)),
+                );
+                return;
+              }
+              if (!await preciseHasPermission(ask: true)) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text(l10n.preciseNeedsPermission)),
+                );
+                return;
+              }
+            }
+            onSave(v);
+          },
+          items: [
+            DropdownMenuItem(
+              value: SyncMode.off.name,
+              child: Text(l10n.linkSyncOff),
+            ),
+            DropdownMenuItem(
+              value: SyncMode.estimated.name,
+              child: Text(l10n.linkSyncEstimated),
+            ),
+            DropdownMenuItem(
+              value: SyncMode.precise.name,
+              child: Text(l10n.linkSyncPrecise),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -697,7 +697,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       return;
     }
     final mode = syncModeFromName(
-      ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
+      ref.read(appSettingsProvider).valueOrNull?.linkSyncToEbook ?? 'estimated',
     );
     final f = AudioPoint(
       seconds: seconds,
@@ -736,7 +736,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     if (audio == null || v == null || _paragraphs.isEmpty) return;
     final index = paragraphIndexAtY(anchorY, _selectedText) ?? v.position.index;
     final mode = syncModeFromName(
-      ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
+      ref.read(appSettingsProvider).valueOrNull?.linkSyncToAudio ?? 'estimated',
     );
     final map = _paragraphMap;
     final seconds = audioSecondsForFraction(

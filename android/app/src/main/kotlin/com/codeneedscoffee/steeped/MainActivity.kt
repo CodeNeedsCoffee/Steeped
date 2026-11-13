@@ -18,6 +18,7 @@ class MainActivity : AudioServiceActivity() {
     private val reminderChannelName = "steeped/reminders"
     private val preciseChannelName = "steeped/precise"
     private val precise by lazy { PreciseRecognizer(this) }
+    private var preciseChannel: MethodChannel? = null
 
     // Debug builds only: adb can start a recognition test with
     //   am start -n .../.MainActivity --es precise_url URL --el precise_start MS
@@ -29,10 +30,8 @@ class MainActivity : AudioServiceActivity() {
         val start = intent.getLongExtra("precise_start", 0)
         val dur = intent.getLongExtra("precise_dur", 30000)
         val lang = intent.getStringExtra("precise_lang") ?: "en-US"
-        precise.useFile = intent.getStringExtra("precise_file") == "1"
-        precise.segmented = intent.getStringExtra("precise_seg") != "0"
-        Log.i("PreciseSpike", "available=${precise.available()} file=${precise.useFile} seg=${precise.segmented}")
-        precise.recognize(url, start, dur, lang) { r -> Log.i("PreciseSpike", "result=$r") }
+        Log.i("PreciseSpike", "available=${precise.available()}")
+        precise.start(0, url, start, dur, lang, {}) { r -> Log.i("PreciseSpike", "result=$r") }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -66,18 +65,24 @@ class MainActivity : AudioServiceActivity() {
                     else -> result.notImplemented()
                 }
             }
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, preciseChannelName)
-            .setMethodCallHandler { call, result ->
+        preciseChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, preciseChannelName)
+        preciseChannel!!.setMethodCallHandler { call, result ->
                 when (call.method) {
                     "available" -> result.success(precise.available())
-                    "recognize" -> precise.recognize(
+                    "recognize" -> precise.start(
+                        (call.argument<Number>("id") ?: 0).toInt(),
                         call.argument<String>("url") ?: "",
                         (call.argument<Number>("startMs") ?: 0).toLong(),
                         (call.argument<Number>("durMs") ?: 30000).toLong(),
                         call.argument<String>("lang") ?: "en-US",
+                        { m -> preciseChannel?.invokeMethod("partial", m) },
                     ) { r ->
                         Log.i("PreciseSpike", "recognize result=$r")
                         result.success(r)
+                    }
+                    "cancel" -> {
+                        precise.cancel((call.argument<Number>("id") ?: 0).toInt())
+                        result.success(null)
                     }
                     else -> result.notImplemented()
                 }
