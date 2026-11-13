@@ -253,6 +253,15 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   // Listening while reading: follow the audio, and the paragraph it is at.
   bool _follow = false;
   int _marked = -1;
+
+  /// Places confirmed by listening; the marker follows these before it falls
+  /// back to the chapter estimate.
+  List<SyncAnchor> _anchors = const [];
+
+  Future<void> _loadAnchors() async {
+    final a = await ref.read(syncAnchorStoreProvider).load(widget.itemId);
+    if (mounted) _anchors = a;
+  }
   List<ChapterSpan>? _ebookSpans;
   // A switch from the audiobook, mapped properly (by words) once the text is
   // laid out; Precise then refines it by listening.
@@ -568,6 +577,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   Future<void> _onTextReady() async {
     final p = _audioFrom;
     final map = _paragraphMap;
+    _loadAnchors();
     if (p == null || map == null || !mounted) return;
     _audioFrom = null;
     var f = p.fractionIn(map.spans);
@@ -624,7 +634,8 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                     map.wordFraction(r.paragraph + r.within),
                     p.seconds,
                   ),
-                );
+                )
+                .then((_) => _loadAnchors());
           }
         });
   }
@@ -706,7 +717,13 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     ).fractionIn(_spans);
     if (f == null) return;
     final map = _paragraphMap;
-    final pos = map != null
+    final total = audio.duration;
+    final confirmed = mode == SyncMode.off || map == null || total == null
+        ? null
+        : wordFor(_anchors, seconds, total);
+    final pos = confirmed != null
+        ? map!.paragraphPos(confirmed)
+        : map != null
         ? map.paragraphPos(f)
         : (f * _paragraphs.length).clamp(0.0, _paragraphs.length - 0.0001);
     final index = pos.floor();
@@ -768,7 +785,8 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
               .add(
                 widget.itemId,
                 SyncAnchor(map.wordFraction(index.toDouble()), refined),
-              );
+              )
+              .then((_) => _loadAnchors());
         }
       }
     }

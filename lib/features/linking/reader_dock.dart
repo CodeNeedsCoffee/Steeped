@@ -71,14 +71,16 @@ class ReaderPlayerDock extends ConsumerWidget {
               onPressed: controller.jumpForward,
             ),
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // The bar sits on the row's centre line, in line with the
+              // buttons; the time left hangs below it without moving it.
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
                   LinearProgressIndicator(value: ratio, minHeight: 3),
                   if (progress != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                    Positioned(
+                      left: 0,
+                      top: 26 + 6,
                       child: Text(
                         l10n.timeLeftShort(
                           formatDurationText(l10n, progress.left),
