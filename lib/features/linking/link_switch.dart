@@ -9,6 +9,7 @@ import '../player/state/playback_controller.dart';
 import '../settings/state/settings_providers.dart';
 import 'ebook_spans.dart';
 import 'link_providers.dart';
+import 'precise_service.dart';
 import 'sync_strategy.dart';
 
 SyncMode syncModeFromName(String name) => SyncMode.values.firstWhere(
@@ -30,7 +31,11 @@ class AudioPoint {
     required this.seconds,
     required this.spans,
     required this.mode,
+    this.audio,
   });
+
+  /// The audiobook itself, so Precise can listen to it around [seconds].
+  final LibraryItemDetail? audio;
 
   final double seconds;
   final List<ChapterSpan> spans;
@@ -48,7 +53,14 @@ class AudioPoint {
 /// Where the reader is, handed over by an open reader so the switch needs no
 /// network or parsing.
 class EbookPoint {
-  const EbookPoint({required this.fraction, required this.spans});
+  const EbookPoint({
+    required this.fraction,
+    required this.spans,
+    this.visibleText,
+  });
+
+  /// The words at the top of the screen, for Precise to find in the audio.
+  final String? visibleText;
 
   final double fraction;
   final List<ChapterSpan> spans;
@@ -80,6 +92,7 @@ Future<void> switchToEbook(
     seconds: seconds,
     spans: audioSpansOf(audio),
     mode: mode,
+    audio: audio,
   );
   if (ebook.ebookFile?.isEpub == true) {
     if (point.fractionIn(const [ChapterSpan('', 0, 1)]) != null) {
@@ -151,6 +164,13 @@ Future<void> switchToAudio(
           mode,
         ).map(fraction, spans, audioSpansOf(audio))?.position;
       }
+    }
+    // Precise: listen to the audio around the estimate and find the words
+    // that are on screen. Any miss keeps the estimate.
+    final words = from?.visibleText;
+    if (mode == SyncMode.precise && startAt != null && words != null) {
+      final refined = await refineAudioStart(container, audio, startAt, words);
+      if (refined != null) startAt = refined;
     }
   } catch (_) {
     // Mapping is a convenience: fall back to the audiobook's own position.

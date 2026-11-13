@@ -2122,6 +2122,42 @@ abstract class AppLocalizations {
   /// **'Estimated'**
   String get linkSyncEstimated;
 
+  /// No description provided for @linkSyncPrecise.
+  ///
+  /// In en, this message translates to:
+  /// **'Precise'**
+  String get linkSyncPrecise;
+
+  /// No description provided for @linkSyncPreciseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Listens to the audio on this phone to find the exact words (uses the microphone permission; nothing leaves the device)'**
+  String get linkSyncPreciseHint;
+
+  /// No description provided for @preciseFinding.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding your place…'**
+  String get preciseFinding;
+
+  /// No description provided for @preciseApproximate.
+  ///
+  /// In en, this message translates to:
+  /// **'Approximate spot - couldn\'t match the words'**
+  String get preciseApproximate;
+
+  /// No description provided for @preciseNeedsPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Precise needs the microphone permission to run speech recognition (the microphone is not used)'**
+  String get preciseNeedsPermission;
+
+  /// No description provided for @preciseUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone has no on-device speech recognition for Precise'**
+  String get preciseUnavailable;
+
   /// No description provided for @linkSyncOffHint.
   ///
   /// In en, this message translates to:

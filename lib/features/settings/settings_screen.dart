@@ -1,3 +1,4 @@
+import '../linking/precise_service.dart';
 import 'dart:io' show Platform;
 
 import '../streaks/reminder_service.dart';
@@ -517,23 +518,42 @@ class SettingsScreen extends ConsumerWidget {
           ),
           ListTile(
             title: Text(context.l10n.linkSyncMode),
-            subtitle: Text(
-              settings.linkSyncMode == SyncMode.off.name
-                  ? context.l10n.linkSyncOffHint
-                  : context.l10n.linkSyncEstimatedHint,
-            ),
+            subtitle: Text(switch (settings.linkSyncMode) {
+              'off' => context.l10n.linkSyncOffHint,
+              'precise' => context.l10n.linkSyncPreciseHint,
+              _ => context.l10n.linkSyncEstimatedHint,
+            }),
             trailing: SizedBox(
               width: 140,
               child: DropdownButton<String>(
                 isExpanded: true,
                 value: settings.linkSyncMode == SyncMode.off.name
                     ? SyncMode.off.name
+                    : settings.linkSyncMode == SyncMode.precise.name
+                    ? SyncMode.precise.name
                     : SyncMode.estimated.name,
                 underline: const SizedBox.shrink(),
-                onChanged: (v) {
-                  if (v != null) {
-                    controller.save(settings.copyWith(linkSyncMode: v));
+                onChanged: (v) async {
+                  if (v == null) return;
+                  final messenger = ScaffoldMessenger.of(context);
+                  final l10n = context.l10n;
+                  if (v == SyncMode.precise.name) {
+                    // Recognition needs the microphone permission and an
+                    // on-device recogniser; check both before turning it on.
+                    if (!await preciseAvailable()) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(l10n.preciseUnavailable)),
+                      );
+                      return;
+                    }
+                    if (!await preciseHasPermission(ask: true)) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(l10n.preciseNeedsPermission)),
+                      );
+                      return;
+                    }
                   }
+                  controller.save(settings.copyWith(linkSyncMode: v));
                 },
                 items: [
                   DropdownMenuItem(
@@ -543,6 +563,10 @@ class SettingsScreen extends ConsumerWidget {
                   DropdownMenuItem(
                     value: SyncMode.estimated.name,
                     child: Text(context.l10n.linkSyncEstimated),
+                  ),
+                  DropdownMenuItem(
+                    value: SyncMode.precise.name,
+                    child: Text(context.l10n.linkSyncPrecise),
                   ),
                 ],
               ),

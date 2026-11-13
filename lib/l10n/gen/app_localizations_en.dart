@@ -1262,6 +1262,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkSyncEstimated => 'Estimated';
 
   @override
+  String get linkSyncPrecise => 'Precise';
+
+  @override
+  String get linkSyncPreciseHint =>
+      'Listens to the audio on this phone to find the exact words (uses the microphone permission; nothing leaves the device)';
+
+  @override
+  String get preciseFinding => 'Finding your place…';
+
+  @override
+  String get preciseApproximate =>
+      'Approximate spot - couldn\'t match the words';
+
+  @override
+  String get preciseNeedsPermission =>
+      'Precise needs the microphone permission to run speech recognition (the microphone is not used)';
+
+  @override
+  String get preciseUnavailable =>
+      'This phone has no on-device speech recognition for Precise';
+
+  @override
   String get linkSyncOffHint =>
       'Switching opens the other format where you left it';
 

@@ -19,12 +19,13 @@ import 'data/reading_position.dart';
 import '../linking/link_providers.dart';
 import '../linking/ebook_spans.dart';
 import '../linking/link_switch.dart';
+import '../linking/precise_service.dart';
 import '../linking/read_along.dart';
 import '../linking/reader_dock.dart';
 import '../player/state/playback_controller.dart';
 import '../settings/state/settings_providers.dart';
 import '../linking/linked_listen_action.dart';
-import '../linking/sync_strategy.dart' show ChapterSpan;
+import '../linking/sync_strategy.dart' show ChapterSpan, SyncMode;
 import 'ereader_settings_panel.dart';
 import 'epub_cfi_fix.dart';
 import 'reader_chrome.dart';
@@ -251,6 +252,8 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   bool _follow = false;
   int _marked = -1;
   List<ChapterSpan>? _ebookSpans;
+  // Precise: a switch from the audiobook to refine once the text is laid out.
+  AudioPoint? _refineFrom;
 
   late final ReadingTracker _reading;
 
@@ -279,6 +282,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       final bookFuture = openEpubFile(file);
       final audioPoint = ref.read(pendingEbookSwitchProvider)[widget.itemId];
       if (audioPoint != null) {
+        if (audioPoint.mode == SyncMode.precise) _refineFrom = audioPoint;
         ref
             .read(pendingEbookSwitchProvider.notifier)
             .update((m) => {...m}..remove(widget.itemId));
@@ -531,6 +535,56 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     WidgetsBinding.instance.addPostFrameCallback(fix);
   }
 
+  /// Precise, audio -> text: listens to the audiobook at the switch point and
+  /// moves to the paragraph the narrator is actually reading.
+  void _maybeRefine() {
+    final p = _refineFrom;
+    if (p == null || _paragraphs.isEmpty || !mounted) return;
+    _refineFrom = null;
+    final audio = p.audio;
+    if (audio == null) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final l10n = context.l10n;
+    final container = ProviderScope.containerOf(context, listen: false);
+    final estimate = (_startFraction * _paragraphs.length).floor();
+    final texts = [for (final q in _paragraphs) q.element.text];
+    messenger?.showSnackBar(
+      SnackBar(
+        content: Text(l10n.preciseFinding),
+        duration: const Duration(seconds: 30),
+      ),
+    );
+    refineParagraph(container, audio, p.seconds, texts, estimate).then((r) {
+      messenger?.hideCurrentSnackBar();
+      if (!mounted) return;
+      if (r == null) {
+        messenger?.showSnackBar(
+          SnackBar(content: Text(l10n.preciseApproximate)),
+        );
+        return;
+      }
+      _revealIn(r.paragraph, within: r.within);
+    });
+  }
+
+  /// The words at the top of the screen (for Precise to find in the audio).
+  String _visibleText() {
+    final v = _controller?.currentValue;
+    if (v == null || _paragraphs.isEmpty) return '';
+    final pos = v.position;
+    final within =
+        (-pos.itemLeadingEdge /
+                (pos.itemTrailingEdge - pos.itemLeadingEdge).clamp(0.001, 1e9))
+            .clamp(0.0, 0.95);
+    final out = <String>[];
+    for (var i = pos.index; i < _paragraphs.length && out.length < 60; i++) {
+      var words = _paragraphs[i].element.text.split(RegExp(r'\s+'));
+      if (i == pos.index) words = words.skip((within * words.length).floor()).toList();
+      out.addAll(words);
+    }
+    return out.join(' ');
+  }
+
   /// Stops following the audio (the reader moved on its own).
   void _detach() {
     if (_follow && mounted) setState(() => _follow = false);
@@ -610,12 +664,22 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       mode: mode,
     );
     if (seconds == null) return;
+    var start = seconds;
+    if (mode == SyncMode.precise) {
+      final refined = await refineAudioStart(
+        ProviderScope.containerOf(context, listen: false),
+        audio,
+        seconds,
+        _paragraphs[index].element.text,
+      );
+      if (refined != null) start = refined;
+    }
     final controller = ref.read(playbackControllerProvider.notifier);
     if (ref.read(linkedPlayingProvider(widget.itemId)) != null) {
-      await controller.seekToGlobalPosition(seconds);
+      await controller.seekToGlobalPosition(start);
       await controller.resume();
     } else {
-      await controller.playItem(audio.id, startAt: seconds);
+      await controller.playItem(audio.id, startAt: start);
     }
     if (!mounted) return;
     setState(() {
@@ -887,7 +951,14 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                     justify: settings.justify,
                     highlights: _highlightsByParagraph,
                     marked: () => _marked,
-                    onParagraphs: (p) => _paragraphs = p,
+                    onParagraphs: (p) {
+                    _paragraphs = p;
+                    if (_refineFrom != null) {
+                      WidgetsBinding.instance.addPostFrameCallback(
+                        (_) => _maybeRefine(),
+                      );
+                    }
+                  },
                     onBook: (b, c) {
                       _book = b;
                       _chapters = c;
@@ -971,6 +1042,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
             final book = _book;
             return EbookPoint(
               fraction: _fraction,
+              visibleText: _visibleText(),
               spans: book == null
                   ? const [ChapterSpan('', 0, 1)]
                   : chapterSpansOfBook(book),
