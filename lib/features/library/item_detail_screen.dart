@@ -89,7 +89,8 @@ class ItemDetailScreen extends ConsumerWidget {
         // Keep showing the page while a refetch runs (no spinner flash).
         skipLoadingOnReload: true,
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text(context.l10n.failedToLoad(error))),
+        error: (error, _) =>
+            Center(child: Text(context.l10n.failedToLoad(error))),
         data: (item) => serverUrl == null
             ? const SizedBox.shrink()
             : item.isPodcast
@@ -193,17 +194,6 @@ class _ItemDetailBody extends ConsumerWidget {
               ],
             ),
           ),
-        if (item.series.isNotEmpty &&
-            item.libraryId != null &&
-            ref.watch(canDownloadProvider))
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: _DownloadSeriesButton(
-              item: item,
-              serverUrl: serverUrl,
-              token: token,
-            ),
-          ),
         if (item.progress != null) ...[
           const SizedBox(height: 12),
           LinearProgressIndicator(value: _displayProgressFraction(item)),
@@ -219,28 +209,28 @@ class _ItemDetailBody extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (!item.isEbookOnly)
-            FilledButton.icon(
-              onPressed: item.tracks.isEmpty || isLoadingPlay
-                  ? null
-                  : () async {
-                      await ref
-                          .read(playbackControllerProvider.notifier)
-                          .playItem(item.id);
-                      if (context.mounted &&
-                          ref.read(currentPlaybackItemProvider)?.id ==
-                              item.id) {
-                        openNowPlaying(context, ref);
-                      }
-                    },
-              icon: isLoadingPlay
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.play_arrow),
-              label: Text(context.l10n.play),
-            ),
+              FilledButton.icon(
+                onPressed: item.tracks.isEmpty || isLoadingPlay
+                    ? null
+                    : () async {
+                        await ref
+                            .read(playbackControllerProvider.notifier)
+                            .playItem(item.id);
+                        if (context.mounted &&
+                            ref.read(currentPlaybackItemProvider)?.id ==
+                                item.id) {
+                          openNowPlaying(context, ref);
+                        }
+                      },
+                icon: isLoadingPlay
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.play_arrow),
+                label: Text(context.l10n.play),
+              ),
             if (item.hasEbook) ...[
               if (!item.isEbookOnly) const SizedBox(width: 12),
               OutlinedButton.icon(
@@ -250,8 +240,8 @@ class _ItemDetailBody extends ConsumerWidget {
                   _ebookPercent(item) >= 100
                       ? context.l10n.readAgain
                       : _ebookPercent(item) > 0
-                          ? context.l10n.readingPercent(_ebookPercent(item))
-                          : context.l10n.read,
+                      ? context.l10n.readingPercent(_ebookPercent(item))
+                      : context.l10n.read,
                 ),
               ),
             ],
@@ -282,7 +272,8 @@ class _ItemDetailBody extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             [
-              if (item.duration != null) formatDurationText(context.l10n, item.duration!),
+              if (item.duration != null)
+                formatDurationText(context.l10n, item.duration!),
               if (item.chapters.isNotEmpty)
                 context.l10n.chaptersCount(item.chapters.length),
               // A scraped year of 0 means "unknown", not the year zero.
@@ -297,7 +288,10 @@ class _ItemDetailBody extends ConsumerWidget {
         ],
         if (item.description != null) ...[
           const SizedBox(height: 20),
-          Text(plainTextFromHtml(item.description!), style: textTheme.bodyMedium),
+          Text(
+            plainTextFromHtml(item.description!),
+            style: textTheme.bodyMedium,
+          ),
         ],
       ],
     );
@@ -313,9 +307,7 @@ class _ItemDetailBody extends ConsumerWidget {
     if (!ebookFile.isSupported) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            context.l10n.isnTSupportedYetNo(ebookFile.format),
-          ),
+          content: Text(context.l10n.isnTSupportedYetNo(ebookFile.format)),
         ),
       );
       return;
@@ -327,7 +319,6 @@ class _ItemDetailBody extends ConsumerWidget {
         : '/reader/comic/${item.id}';
     context.push(path);
   }
-
 
   /// The server's `progress` fraction field isn't recomputed by the
   /// sessionless progress-sync PATCH we use (5.9) — only `currentTime`/
@@ -383,77 +374,11 @@ class _ItemDetailBody extends ConsumerWidget {
   }
 }
 
-/// PLAN.md Phase 6.2: "download series" without the full series-browse UI
-/// (4.5, still deferred) — one tap queues every not-yet-downloaded book in
-/// the item's first series membership.
-class _DownloadSeriesButton extends ConsumerStatefulWidget {
-  const _DownloadSeriesButton({
-    required this.item,
-    required this.serverUrl,
-    required this.token,
-  });
-
-  final LibraryItemDetail item;
-  final String serverUrl;
-  final String? token;
-
-  @override
-  ConsumerState<_DownloadSeriesButton> createState() =>
-      _DownloadSeriesButtonState();
-}
-
-class _DownloadSeriesButtonState extends ConsumerState<_DownloadSeriesButton> {
-  bool _busy = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final series = widget.item.series.first;
-    return TextButton.icon(
-      onPressed: _busy
-          ? null
-          : () async {
-              setState(() => _busy = true);
-              final messenger = ScaffoldMessenger.of(context);
-              try {
-                final queued = await ref
-                    .read(downloadControllerProvider.notifier)
-                    .downloadSeries(
-                      libraryId: widget.item.libraryId!,
-                      seriesId: series.id,
-                      serverUrl: widget.serverUrl,
-                      token: widget.token,
-                    );
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      queued == 0
-                          ? context.l10n.allBooksAlreadyDownloaded(series.name)
-                          : context.l10n.downloadingBooksFromSeries(
-                              queued,
-                              series.name,
-                            ),
-                    ),
-                  ),
-                );
-              } finally {
-                if (mounted) setState(() => _busy = false);
-              }
-            },
-      icon: _busy
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.download_outlined, size: 18),
-      label: Text(context.l10n.downloadSeries(series.name)),
-    );
-  }
-}
-
-/// PLAN.md Phase 6.1: not-downloaded / downloading (with progress) /
-/// downloaded (with delete) states.
-class _DownloadButton extends ConsumerWidget {
+/// PLAN.md Phase 6.1: not-downloaded / downloading (with progress and a
+/// cancel) / downloaded (with delete) states. When the book is in a series the
+/// chip has a dropdown arrow whose menu holds "Download series" (PLAN.md Phase
+/// 6.2: queues every not-yet-downloaded book in the first series).
+class _DownloadButton extends ConsumerStatefulWidget {
   const _DownloadButton({
     required this.item,
     required this.serverUrl,
@@ -465,7 +390,43 @@ class _DownloadButton extends ConsumerWidget {
   final String? token;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DownloadButton> createState() => _DownloadButtonState();
+}
+
+class _DownloadButtonState extends ConsumerState<_DownloadButton> {
+  bool _busy = false;
+
+  Future<void> _downloadSeries() async {
+    final series = widget.item.series.first;
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    try {
+      final queued = await ref
+          .read(downloadControllerProvider.notifier)
+          .downloadSeries(
+            libraryId: widget.item.libraryId!,
+            seriesId: series.id,
+            serverUrl: widget.serverUrl,
+            token: widget.token,
+          );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            queued == 0
+                ? l10n.allBooksAlreadyDownloaded(series.name)
+                : l10n.downloadingBooksFromSeries(queued, series.name),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
     final downloads = ref.watch(downloadsListProvider).valueOrNull ?? const [];
     DownloadedItem? existing;
     for (final d in downloads) {
@@ -475,52 +436,120 @@ class _DownloadButton extends ConsumerWidget {
       }
     }
 
-    if (existing == null) {
-      return OutlinedButton.icon(
-        onPressed: () => ref
-            .read(downloadControllerProvider.notifier)
-            .download(item: item, serverUrl: serverUrl, token: token),
-        icon: const Icon(Icons.download_outlined),
-        label: Text(context.l10n.download),
-      );
-    }
+    final controller = ref.read(downloadControllerProvider.notifier);
+    final inSeries = item.series.isNotEmpty && item.libraryId != null;
 
-    if (existing.status == 'complete') {
-      return OutlinedButton.icon(
-        onPressed: () =>
-            ref.read(downloadControllerProvider.notifier).delete(item.id),
-        icon: const Icon(Icons.download_done),
-        label: Text(context.l10n.downloaded),
-      );
-    }
-
-    final progress = ref.watch(downloadProgressProvider)[item.id];
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 130,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              LinearProgressIndicator(value: progress),
-              const SizedBox(height: 4),
-              Text(
-                progress == null
-                    ? context.l10n.downloadingEllipsis
-                    : '${(progress * 100).round()}%',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-            ],
+    if (existing != null && existing.status != 'complete') {
+      final progress = ref.watch(downloadProgressProvider)[item.id];
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // The bar sits on the X's centre line; the percentage hangs below.
+          SizedBox(
+            width: 130,
+            height: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                LinearProgressIndicator(value: progress),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 24 + 6,
+                  child: Text(
+                    progress == null
+                        ? context.l10n.downloadingEllipsis
+                        : '${(progress * 100).round()}%',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
+              ],
+            ),
           ),
+          IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: context.l10n.cancelDownload,
+            onPressed: () => controller.cancel(item.id),
+          ),
+        ],
+      );
+    }
+
+    final done = existing != null;
+    final scheme = Theme.of(context).colorScheme;
+    final label = done ? context.l10n.downloaded : context.l10n.download;
+    final icon = done ? Icons.download_done : Icons.download_outlined;
+    void onPressed() => done
+        ? controller.delete(item.id)
+        : controller.download(
+            item: item,
+            serverUrl: widget.serverUrl,
+            token: widget.token,
+          );
+
+    if (!inSeries) {
+      return OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(label),
+      );
+    }
+    // One outlined chip, split in two: the download action, then the arrow.
+    return Material(
+      color: Colors.transparent,
+      shape: StadiumBorder(side: BorderSide(color: scheme.outline)),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              onTap: onPressed,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 18, color: scheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      label,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelLarge?.copyWith(color: scheme.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            VerticalDivider(width: 1, color: scheme.outlineVariant),
+            PopupMenuButton<void>(
+              tooltip: context.l10n.moreActions,
+              enabled: !_busy,
+              onSelected: (_) => _downloadSeries(),
+              itemBuilder: (_) => [
+                PopupMenuItem<void>(
+                  value: null,
+                  child: Text(
+                    context.l10n.downloadSeries(item.series.first.name),
+                  ),
+                ),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: _busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(Icons.arrow_drop_down, color: scheme.primary),
+              ),
+            ),
+          ],
         ),
-        IconButton(
-          icon: const Icon(Icons.close),
-          tooltip: context.l10n.cancelDownload,
-          onPressed: () =>
-              ref.read(downloadControllerProvider.notifier).cancel(item.id),
-        ),
-      ],
+      ),
     );
   }
 }
