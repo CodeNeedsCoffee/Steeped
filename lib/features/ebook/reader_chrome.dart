@@ -156,7 +156,8 @@ class _ReaderChromeState extends State<ReaderChrome> {
     _downAt = null;
     _downTime = null;
     if (at == null || t == null) return;
-    final isTap = (e.localPosition - at).distance < kTouchSlop &&
+    final isTap =
+        (e.localPosition - at).distance < kTouchSlop &&
         e.timeStamp - t < const Duration(milliseconds: 350);
     if (isTap) _onTap(e.localPosition.dx / width);
   }
@@ -209,27 +210,6 @@ class _ReaderChromeState extends State<ReaderChrome> {
               ),
             ),
           ),
-          if (widget.fadeBottomEdge)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: _covered().bottom,
-              height: 18 * s.fontScale * s.lineSpacing * 1.2,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        s.backgroundColor.withValues(alpha: 0),
-                        s.backgroundColor,
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
           if (s.brightness < 1)
             Positioned.fill(
               child: IgnorePointer(
@@ -274,54 +254,78 @@ class _ReaderChromeState extends State<ReaderChrome> {
             bottom: 0,
             left: 0,
             right: 0,
-            child: _Bar(
-              key: _bottomBarKey,
-              visible: _showBars && progress != null,
-              color: s.backgroundColor,
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Semantics(
-                        label: context.l10n.readingProgress,
-                        child: Slider(
-                          value: progress ?? 0,
-                          onChanged: widget.onScrub == null
-                              ? null
-                              : (v) => setState(() => _dragValue = v),
-                          onChangeEnd: widget.onScrub == null
-                              ? null
-                              : (v) {
-                                  setState(() => _dragValue = null);
-                                  widget.onScrub!(v);
-                                },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.fadeBottomEdge)
+                  IgnorePointer(
+                    child: Container(
+                      height: 18 * s.fontScale * s.lineSpacing * 1.2,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            s.backgroundColor.withValues(alpha: 0),
+                            s.backgroundColor,
+                          ],
                         ),
                       ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.footerLabel ?? '',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: fg, fontSize: 12),
-                            ),
-                          ),
-                          Text(
-                            widget.progressNote == null
-                                ? '${((progress ?? 0) * 100).round()}%'
-                                : '${((progress ?? 0) * 100).round()}% \u00b7 ${widget.progressNote}',
-                            style: TextStyle(color: fg, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+                // Only laid out while shown, so the fade above it drops to the
+                // screen edge when the bars are hidden.
+                if (_showBars && progress != null)
+                  _Bar(
+                    key: _bottomBarKey,
+                    visible: true,
+                    color: s.backgroundColor,
+                    child: SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Semantics(
+                              label: context.l10n.readingProgress,
+                              child: Slider(
+                                value: progress,
+                                onChanged: widget.onScrub == null
+                                    ? null
+                                    : (v) => setState(() => _dragValue = v),
+                                onChangeEnd: widget.onScrub == null
+                                    ? null
+                                    : (v) {
+                                        setState(() => _dragValue = null);
+                                        widget.onScrub!(v);
+                                      },
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    widget.footerLabel ?? '',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(color: fg, fontSize: 12),
+                                  ),
+                                ),
+                                Text(
+                                  widget.progressNote == null
+                                      ? '${((progress) * 100).round()}%'
+                                      : '${((progress) * 100).round()}% \u00b7 ${widget.progressNote}',
+                                  style: TextStyle(color: fg, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
