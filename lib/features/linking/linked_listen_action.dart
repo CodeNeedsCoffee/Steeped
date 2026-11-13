@@ -19,6 +19,8 @@ class LinkedListenAction extends ConsumerWidget {
     required this.saveFirst,
     this.pointNow,
     this.onListenAlongside,
+    this.onHidePlayer,
+    this.playerShown = false,
     this.canListenAlongside = false,
     super.key,
   });
@@ -33,6 +35,13 @@ class LinkedListenAction extends ConsumerWidget {
   /// Called after audio was started beside the reader (so it can start
   /// following it) or when "Show player" was chosen.
   final VoidCallback? onListenAlongside;
+
+  /// Called when "Hide player" was chosen.
+  final VoidCallback? onHidePlayer;
+
+  /// The player strip (or side panel) is on screen right now, so the menu
+  /// offers to hide it.
+  final bool playerShown;
 
   /// Only the EPUB reader has a player strip and a page to follow; a PDF or
   /// comic just switches.
@@ -83,10 +92,16 @@ class LinkedListenAction extends ConsumerWidget {
             switchLabel: l10n.switchToAudiobook,
             bothLabel: l10n.listenWhileReading,
             showPlayerLabel: l10n.showPlayer,
+            hidePlayerLabel: l10n.hidePlayer,
+            playerShown: playerShown,
             alreadyPlaying: playing,
             forceAsk: forceAsk,
           );
     if (choice == null || !context.mounted) return;
+    if (choice == SwitchChoice.hidePlayer) {
+      onHidePlayer?.call();
+      return;
+    }
     saveFirst();
     switch (choice) {
       case SwitchChoice.switchOnly:
@@ -111,6 +126,8 @@ class LinkedListenAction extends ConsumerWidget {
         onListenAlongside?.call();
       case SwitchChoice.showPlayer:
         onListenAlongside?.call();
+      case SwitchChoice.hidePlayer:
+        break; // handled above
     }
   }
 }

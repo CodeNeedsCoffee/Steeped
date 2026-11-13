@@ -17,6 +17,7 @@ Future<SwitchChoice?> _press(
   String mode, {
   bool playing = false,
   bool forceAsk = false,
+  bool shown = false,
   String? tapLabel,
 }) async {
   SwitchChoice? result;
@@ -44,6 +45,8 @@ Future<SwitchChoice?> _press(
                       switchLabel: 'Switch',
                       bothLabel: 'Both',
                       showPlayerLabel: 'Show player',
+                      hidePlayerLabel: 'Hide player',
+                      playerShown: shown,
                       alreadyPlaying: playing,
                       forceAsk: forceAsk,
                     );
@@ -97,5 +100,17 @@ void main() {
   testWidgets('already playing offers Show player and always asks', (t) async {
     final r = await _press(t, 'both', playing: true, tapLabel: 'Show player');
     expect(r, SwitchChoice.showPlayer);
+  });
+
+  testWidgets('a showing player offers Hide player instead', (t) async {
+    final r = await _press(
+      t,
+      'both',
+      playing: true,
+      shown: true,
+      tapLabel: 'Hide player',
+    );
+    expect(r, SwitchChoice.hidePlayer);
+    expect(find.text('Show player'), findsNothing);
   });
 }

@@ -1218,6 +1218,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get showPlayer => 'Show player';
 
   @override
+  String get hidePlayer => 'Hide player';
+
+  @override
   String get switchToEbook => 'Switch to ebook';
 
   @override

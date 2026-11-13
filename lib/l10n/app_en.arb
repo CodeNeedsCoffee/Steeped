@@ -815,6 +815,7 @@
   "switchToAudiobook": "Switch to audiobook",
   "listenWhileReading": "Listen while reading",
   "showPlayer": "Show player",
+  "hidePlayer": "Hide player",
   "switchToEbook": "Switch to ebook",
   "readAlong": "Read along",
   "linkSwitchBehaviour": "When switching",

@@ -254,6 +254,10 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   bool _follow = false;
   int _marked = -1;
 
+  /// The player strip: null follows the "show player" setting; the headphones
+  /// menu's Show / Hide player overrides it for this reading session.
+  bool? _playerOverride;
+
   /// Places confirmed by listening; the marker follows these before it falls
   /// back to the chapter estimate.
   List<SyncAnchor> _anchors = const [];
@@ -965,7 +969,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     final playingAudio = ref.watch(linkedPlayingProvider(widget.itemId));
     final wantPlayer =
         playingAudio != null &&
-        (ref.watch(appSettingsProvider).valueOrNull?.linkDock ?? true);
+        (_playerOverride ??
+            ref.watch(appSettingsProvider).valueOrNull?.linkDock ??
+            true);
     // Beside the page when there is room, otherwise a strip under it.
     final sidePanel =
         wantPlayer && wideEnoughForPanel(MediaQuery.sizeOf(context).width);
@@ -1146,7 +1152,10 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           itemId: widget.itemId,
           saveFirst: _sync,
           canListenAlongside: true,
+          playerShown: wantPlayer,
+          onHidePlayer: () => setState(() => _playerOverride = false),
           onListenAlongside: () {
+            _playerOverride = true;
             if (!_follow &&
                 (ref.read(appSettingsProvider).valueOrNull?.linkFollow ??
                     true)) {

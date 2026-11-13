@@ -2038,6 +2038,12 @@ abstract class AppLocalizations {
   /// **'Show player'**
   String get showPlayer;
 
+  /// No description provided for @hidePlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide player'**
+  String get hidePlayer;
+
   /// No description provided for @switchToEbook.
   ///
   /// In en, this message translates to:
