@@ -10,7 +10,6 @@ import '../../widgets/cover_image.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
 import '../auth/state/permission_providers.dart';
-import '../player/discard_progress_dialog.dart';
 import '../linking/linked_book_section.dart';
 import 'library_actions.dart';
 import 'series_detail_screen.dart';
@@ -77,8 +76,12 @@ class ItemDetailScreen extends ConsumerWidget {
               IconButton(
                 tooltip: context.l10n.moreActions,
                 icon: const Icon(Icons.more_vert),
-                onPressed: () =>
-                    showItemQuickActions(context, ref, item.toLibraryItem()),
+                onPressed: () => showItemQuickActions(
+                  context,
+                  ref,
+                  item.toLibraryItem(),
+                  canDiscardProgress: item.progress != null,
+                ),
               ),
         ],
       ),
@@ -209,18 +212,6 @@ class _ItemDetailBody extends ConsumerWidget {
                 ? context.l10n.finished
                 : _progressSummary(context, item),
             style: textTheme.labelSmall,
-          ),
-          Align(
-            child: TextButton.icon(
-              onPressed: () => confirmAndDiscardProgress(
-                context,
-                ref,
-                libraryItemId: item.id,
-                title: item.title,
-              ),
-              icon: const Icon(Icons.restart_alt, size: 18),
-              label: Text(context.l10n.discardProgressButton),
-            ),
           ),
         ],
         const SizedBox(height: 20),

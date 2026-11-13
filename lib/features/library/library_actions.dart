@@ -8,6 +8,7 @@ import '../auth/state/session_state.dart';
 import '../auth/state/permission_providers.dart';
 import '../downloads/state/download_controller.dart';
 import 'series_detail_screen.dart';
+import '../player/discard_progress_dialog.dart';
 import '../player/now_playing_navigation.dart';
 import '../player/state/playback_controller.dart';
 import 'state/library_providers.dart';
@@ -271,11 +272,15 @@ Future<void> showAddToCollectionSheet(
 
 /// LIBRARY_PLAN.md L6: the long-press sheet shared by grids, shelves and
 /// search results.
+///
+/// [canDiscardProgress] adds "Discard progress" (with its confirmation); the
+/// item page passes it when the item has progress to discard.
 Future<void> showItemQuickActions(
   BuildContext context,
   WidgetRef ref,
-  LibraryItem item,
-) {
+  LibraryItem item, {
+  bool canDiscardProgress = false,
+}) {
   final libraryId = item.libraryId ?? ref.read(selectedLibraryIdProvider);
   final isBook = item.mediaType == 'book';
   return showModalBottomSheet<void>(
@@ -400,6 +405,20 @@ Future<void> showItemQuickActions(
               onTap: () => _markFinished(sheetContext, ref, item, false),
             ),
           ],
+          if (canDiscardProgress)
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(context.l10n.discardProgressButton),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                confirmAndDiscardProgress(
+                  context,
+                  ref,
+                  libraryItemId: item.id,
+                  title: item.title,
+                );
+              },
+            ),
         ],
       ),
     ),
