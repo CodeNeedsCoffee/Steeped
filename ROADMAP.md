@@ -544,7 +544,8 @@ The user then reported four reader problems, all on Alchemised:
 - **M3:** long-press "Play from here" in the text selection menu.
 - **M4:** Now Playing "Read along" text window (`bookTextProvider`, same paragraph split as the reader), tap opens the reader at that spot.
 - **M7:** reading beside playing audio no longer adds streak minutes (`ReadingTracker` skips while audio plays).
-- **Tests:** 360 pass (new: read_along, switch_menu, merge_highlights, reading_overlap). **Not done / needs a device:** the real layout of the strip, Follow scrolling feel, "a page too far" confirmation, Play from here accuracy, M5 landscape split, M6 Precise.
+- **M5:** at 720 dp wide or more (landscape phone, tablet) the strip becomes a 320 dp player column beside the page: cover, title, chapter, progress, play/skips, Follow switch, chapter skip, speed, sleep timer.
+- **Tests:** 360 pass (new: read_along, switch_menu, merge_highlights, reading_overlap). **Not done / needs a device:** the real layout of the strip, Follow scrolling feel, "a page too far" confirmation, Play from here accuracy, the M5 layout on a real landscape screen, M6 Precise.
 
 ## To do
 

@@ -783,9 +783,13 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     });
     ref.listen(playbackPositionProvider, (_, n) => _onAudioTick(n.valueOrNull));
     final playingAudio = ref.watch(linkedPlayingProvider(widget.itemId));
-    final showDock =
+    final wantPlayer =
         playingAudio != null &&
         (ref.watch(appSettingsProvider).valueOrNull?.linkDock ?? true);
+    // Beside the page when there is room, otherwise a strip under it.
+    final sidePanel =
+        wantPlayer && wideEnoughForPanel(MediaQuery.sizeOf(context).width);
+    final showDock = wantPlayer && !sidePanel;
     final settings =
         ref.watch(ereaderSettingsProvider).valueOrNull ??
         const EreaderSettings();
@@ -897,7 +901,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       );
     }
 
-    return ReaderChrome(
+    final chrome = ReaderChrome(
       settings: settings,
       title: _title,
       body: body,
@@ -977,6 +981,20 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           icon: const Icon(Icons.text_fields),
           tooltip: context.l10n.readingSettingsTooltip,
           onPressed: () => _showSettings(context),
+        ),
+      ],
+    );
+    if (!sidePanel) return chrome;
+    return Row(
+      children: [
+        Expanded(child: chrome),
+        SizedBox(
+          width: 320,
+          child: ReaderPlayerPanel(
+            audio: playingAudio,
+            following: _follow,
+            onToggleFollow: _toggleFollow,
+          ),
         ),
       ],
     );

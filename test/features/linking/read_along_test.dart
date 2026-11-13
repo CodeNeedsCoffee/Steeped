@@ -4,6 +4,7 @@ import 'package:steeped/features/ebook/data/ereader_settings.dart';
 import 'package:steeped/features/ebook/reader_chrome.dart';
 import 'package:steeped/features/linking/link_switch.dart';
 import 'package:steeped/features/linking/read_along.dart';
+import 'package:steeped/features/linking/reader_dock.dart';
 import 'package:steeped/features/linking/sync_strategy.dart';
 import 'package:steeped/features/settings/data/app_settings.dart';
 import 'package:steeped/l10n/gen/app_localizations.dart';
@@ -68,6 +69,12 @@ void main() {
     expect(at(10), isFalse);
     expect(at(900), isFalse);
     expect(at(-50), isFalse);
+  });
+
+  test('the side panel needs a landscape phone or a tablet', () {
+    expect(wideEnoughForPanel(411), isFalse);
+    expect(wideEnoughForPanel(840), isTrue);
+    expect(wideEnoughForPanel(720), isTrue);
   });
 
   test('chapter progress reports the time left in the chapter', () {

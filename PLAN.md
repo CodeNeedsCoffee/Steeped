@@ -517,7 +517,7 @@ Interpolation drifts within a chapter (narration speed, front matter, abridged a
 - M2 (built, untested on a device) Follow: position -> paragraph, marker band, scroll, Follow/Re-sync chip, detach on manual scroll.
 - M3 (built, untested on a device) Play from here (long-press) plus anchors that refine the estimate.
 - M4 (built, untested on a device) Now Playing read-along window (reverse direction).
-- M5 Landscape/tablet split.
+- M5 (built 2026-11-13, untested on a device) Landscape/tablet split: at 720 dp wide or more the strip becomes a 320 dp player column beside the page (`ReaderPlayerPanel`).
 - M6 Precise alignment (needs J5/J6).
 - M7 (built) Streaks and stats: reading and listening at the same time must count wall-clock minutes once per day (union of the two sessions), not twice; the "keep screen on" setting stays the reader's own.
 - M0 (built 2026-11-13, untested on a device) Switch-button drop-down (above) and the "When switching" setting.
