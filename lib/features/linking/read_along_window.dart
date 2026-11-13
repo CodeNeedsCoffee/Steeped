@@ -15,16 +15,17 @@ import 'ebook_spans.dart';
 import 'link_providers.dart';
 import 'link_switch.dart';
 import 'read_along.dart';
-import 'sync_strategy.dart';
 
 /// A linked EPUB's paragraph texts and chapter spans, parsed once for the
 /// read-along window (the same paragraph split the reader itself uses, so a
 /// paragraph position means the same thing in both).
 class BookText {
-  const BookText(this.paragraphs, this.spans);
+  const BookText(this.paragraphs, this.map);
 
   final List<String> paragraphs;
-  final List<ChapterSpan> spans;
+
+  /// The book in words: chapters and places, the same as the reader uses.
+  final ParagraphMap map;
 }
 
 final bookTextProvider = FutureProvider.autoDispose.family<BookText?, String>((
@@ -37,9 +38,23 @@ final bookTextProvider = FutureProvider.autoDispose.family<BookText?, String>((
   final EpubBook book = await openEpubFile(file);
   final chapters = parseChapters(book);
   final paragraphs = parseParagraphs(chapters, book.Content);
-  return BookText([
+  final texts = [
     for (final p in paragraphs.flatParagraphs) p.element.text.trim(),
-  ], chapterSpansOfBook(book));
+  ];
+  return BookText(
+    texts,
+    ParagraphMap(
+      [for (final t in texts) RegExp(r'\S+').allMatches(t).length],
+      [
+        for (var i = 0; i < chapters.length; i++)
+          if (i < paragraphs.chapterIndexes.length)
+            (
+              title: chapters[i].Title?.trim() ?? '',
+              start: paragraphs.chapterIndexes[i],
+            ),
+      ],
+    ),
+  );
 });
 
 /// The few lines of the book around where the audiobook is, scrolling with it
@@ -68,12 +83,13 @@ class ReadAlongWindow extends ConsumerWidget {
     } else if (book == null || book.paragraphs.isEmpty) {
       content = const SizedBox.shrink();
     } else {
-      final pos = followPosition(
-        AudioPoint(seconds: seconds, spans: audioSpansOf(audio), mode: mode),
-        book.spans,
-        book.paragraphs.length,
-      );
-      if (pos == null) return const SizedBox.shrink();
+      final f = AudioPoint(
+        seconds: seconds,
+        spans: audioSpansOf(audio),
+        mode: mode,
+      ).fractionIn(book.map.spans);
+      if (f == null) return const SizedBox.shrink();
+      final pos = book.map.paragraphPos(f);
       final at = pos.floor();
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.start,

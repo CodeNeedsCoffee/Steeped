@@ -41,6 +41,20 @@ double? followPosition(
   return (f * paragraphCount).clamp(0.0, paragraphCount - 0.0001);
 }
 
+/// The audio time for a place [fraction] (0..1, however the caller measures
+/// it, as long as [ebookSpans] use the same unit).
+double? audioSecondsForFraction({
+  required double fraction,
+  required List<ChapterSpan> ebookSpans,
+  required List<ChapterSpan> audioSpans,
+  required SyncMode mode,
+}) {
+  if (mode == SyncMode.off) return null;
+  return strategyFor(
+    mode,
+  ).map(fraction.clamp(0.0, 1.0), ebookSpans, audioSpans)?.position;
+}
+
 /// The audio time for the start of paragraph [index] (play from here).
 double? audioSecondsForParagraph({
   required int index,

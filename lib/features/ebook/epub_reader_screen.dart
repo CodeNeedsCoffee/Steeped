@@ -253,8 +253,11 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   bool _follow = false;
   int _marked = -1;
   List<ChapterSpan>? _ebookSpans;
-  // Precise: a switch from the audiobook to refine once the text is laid out.
-  AudioPoint? _refineFrom;
+  // A switch from the audiobook, mapped properly (by words) once the text is
+  // laid out; Precise then refines it by listening.
+  AudioPoint? _audioFrom;
+  ParagraphMap? _map;
+  int _mapFor = -1;
 
   late final ReadingTracker _reading;
 
@@ -283,7 +286,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       final bookFuture = openEpubFile(file);
       final audioPoint = ref.read(pendingEbookSwitchProvider)[widget.itemId];
       if (audioPoint != null) {
-        if (audioPoint.mode == SyncMode.precise) _refineFrom = audioPoint;
+        _audioFrom = audioPoint;
         ref
             .read(pendingEbookSwitchProvider.notifier)
             .update((m) => {...m}..remove(widget.itemId));
@@ -536,12 +539,51 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     WidgetsBinding.instance.addPostFrameCallback(fix);
   }
 
+  /// The book in words (chapters, and places converted both ways), built once
+  /// the text is laid out. Null until then.
+  ParagraphMap? get _paragraphMap {
+    if (_paragraphs.isEmpty) return null;
+    if (_map == null || _mapFor != _paragraphs.length) {
+      final c = _controller;
+      _map = ParagraphMap(
+        [
+          for (final q in _paragraphs)
+            RegExp(r'\S+').allMatches(q.element.text).length,
+        ],
+        [
+          if (c != null)
+            for (final e in _tocEntries ??= c.tableOfContents())
+              (title: (e.title as String?)?.trim() ?? '', start: e.startIndex as int),
+        ],
+      );
+      _mapFor = _paragraphs.length;
+    }
+    return _map;
+  }
+
+  /// A switch from the audiobook arrives as a rough spot (chapter sizes by
+  /// HTML length). Once the text is laid out, redo it by words, which follows
+  /// the narration far more closely, then (Precise) refine by listening.
+  void _onTextReady() {
+    final p = _audioFrom;
+    final map = _paragraphMap;
+    if (p == null || map == null || !mounted) return;
+    _audioFrom = null;
+    final f = p.fractionIn(map.spans);
+    if (f != null) {
+      final pos = map.paragraphPos(f);
+      final n = _paragraphs.length;
+      if ((pos - _startFraction * n).abs() > n * 0.01) {
+        _revealIn(pos.floor(), within: pos - pos.floor());
+      }
+      _startFraction = pos / n;
+    }
+    if (p.mode == SyncMode.precise) _refine(p);
+  }
+
   /// Precise, audio -> text: listens to the audiobook at the switch point and
   /// moves to the paragraph the narrator is actually reading.
-  void _maybeRefine() {
-    final p = _refineFrom;
-    if (p == null || _paragraphs.isEmpty || !mounted) return;
-    _refineFrom = null;
+  void _refine(AudioPoint p) {
     final audio = p.audio;
     if (audio == null) return;
     final messenger = ScaffoldMessenger.maybeOf(context);
@@ -600,7 +642,11 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     if (_follow && mounted) setState(() => _follow = false);
   }
 
+  /// Chapters of the book: by words once the text is laid out, by HTML size
+  /// before that.
   List<ChapterSpan> get _spans {
+    final map = _paragraphMap;
+    if (map != null && map.spans.isNotEmpty) return map.spans;
     final book = _book;
     return _ebookSpans ??= book == null
         ? const [ChapterSpan('', 0, 1)]
@@ -631,12 +677,16 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     final mode = syncModeFromName(
       ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
     );
-    final pos = followPosition(
-      AudioPoint(seconds: seconds, spans: audioSpansOf(audio), mode: mode),
-      _spans,
-      _paragraphs.length,
-    );
-    if (pos == null) return;
+    final f = AudioPoint(
+      seconds: seconds,
+      spans: audioSpansOf(audio),
+      mode: mode,
+    ).fractionIn(_spans);
+    if (f == null) return;
+    final map = _paragraphMap;
+    final pos = map != null
+        ? map.paragraphPos(f)
+        : (f * _paragraphs.length).clamp(0.0, _paragraphs.length - 0.0001);
     final index = pos.floor();
     if (index == _marked && !force) return;
     setState(() => _marked = index);
@@ -666,9 +716,11 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     final mode = syncModeFromName(
       ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
     );
-    final seconds = audioSecondsForParagraph(
-      index: index,
-      paragraphCount: _paragraphs.length,
+    final map = _paragraphMap;
+    final seconds = audioSecondsForFraction(
+      fraction: map != null
+          ? map.wordFraction(index.toDouble())
+          : index / _paragraphs.length,
       ebookSpans: _spans,
       audioSpans: audioSpansOf(audio),
       mode: mode,
@@ -967,9 +1019,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                     marked: () => _marked,
                     onParagraphs: (p) {
                     _paragraphs = p;
-                    if (_refineFrom != null) {
+                    if (_audioFrom != null) {
                       WidgetsBinding.instance.addPostFrameCallback(
-                        (_) => _maybeRefine(),
+                        (_) => _onTextReady(),
                       );
                     }
                   },
@@ -1054,12 +1106,18 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           },
           pointNow: () {
             final book = _book;
+            final map = _paragraphMap;
+            final here = _positionNow();
             return EbookPoint(
-              fraction: _fraction,
+              fraction: map != null && here != null
+                  ? map.wordFraction(here)
+                  : _fraction,
               visibleText: _visibleText(),
               paragraphTexts: [for (final q in _paragraphs) q.element.text],
               paragraphPosition: _positionNow(),
-              spans: book == null
+              spans: map != null
+                  ? map.spans
+                  : book == null
                   ? const [ChapterSpan('', 0, 1)]
                   : chapterSpansOfBook(book),
             );
