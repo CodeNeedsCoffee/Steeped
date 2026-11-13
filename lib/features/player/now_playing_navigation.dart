@@ -27,8 +27,15 @@ import 'package:go_router/go_router.dart';
 /// correct no matter how the route leaves the stack.
 final nowPlayingOpenProvider = StateProvider<bool>((ref) => false);
 
-void openNowPlaying(BuildContext context, WidgetRef ref) {
+/// [replace] swaps the current screen for Now Playing instead of stacking on
+/// it (switching from an ebook reader to its audiobook), so Back goes to the
+/// book page rather than through every screen visited on the way.
+void openNowPlaying(BuildContext context, WidgetRef ref, {bool replace = false}) {
   if (ref.read(nowPlayingOpenProvider)) return;
   ref.read(nowPlayingOpenProvider.notifier).state = true;
-  context.push('/now-playing');
+  if (replace) {
+    context.pushReplacement('/now-playing');
+  } else {
+    context.push('/now-playing');
+  }
 }

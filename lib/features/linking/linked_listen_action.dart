@@ -33,7 +33,14 @@ class LinkedListenAction extends ConsumerWidget {
         final audio = await ref.read(itemDetailProvider(link.audioItemId).future);
         final ebook = await ref.read(itemDetailProvider(itemId).future);
         if (!context.mounted) return;
-        await switchToAudio(context, ref, audio: audio, ebook: ebook);
+        // Replace the reader so Back returns to the book page, not the reader.
+        await switchToAudio(
+          context,
+          ref,
+          audio: audio,
+          ebook: ebook,
+          replaceCurrent: true,
+        );
       },
     );
   }

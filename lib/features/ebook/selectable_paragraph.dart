@@ -187,13 +187,24 @@ class _SelectableParagraphState extends State<SelectableParagraph> {
     return out;
   }
 
+  // The parsed spans depend only on the HTML (the style is applied by
+  // `Text.rich`), so keep them until it changes. The reader rebuilds every
+  // visible paragraph on each scroll frame; re-parsing the HTML each time made
+  // scrolling stutter on a phone.
+  List<TextSpan>? _spans;
+  String? _spansFor;
+
   @override
   Widget build(BuildContext context) {
-    _disposeRecognizers();
+    if (_spans == null || _spansFor != widget.html) {
+      _disposeRecognizers();
+      _spans = _leaves();
+      _spansFor = widget.html;
+    }
     return Padding(
       padding: widget.padding,
       child: Text.rich(
-        TextSpan(children: _leaves()),
+        TextSpan(children: _spans),
         style: widget.style,
         textAlign: widget.justify ? TextAlign.justify : TextAlign.start,
       ),

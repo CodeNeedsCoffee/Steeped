@@ -59,6 +59,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // The launcher label; debug builds override it so a test build can sit
+        // beside the installed app without being mistaken for it.
+        manifestPlaceholders["appLabel"] = "Steeped"
     }
 
     signingConfigs {
@@ -74,6 +77,12 @@ android {
     }
 
     buildTypes {
+        // Debug builds install as com.codeneedscoffee.steeped.debug, with their
+        // own data and login, so testing never replaces the real app.
+        debug {
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appLabel"] = "Steeped Dev"
+        }
         release {
             val releaseSigning = signingConfigs.getByName("release")
             signingConfig =

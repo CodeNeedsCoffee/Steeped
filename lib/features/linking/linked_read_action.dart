@@ -36,6 +36,7 @@ class LinkedReadAction extends ConsumerWidget {
           audio: audio,
           ebook: ebook,
           audioSeconds: seconds,
+          replaceCurrent: true,
         );
       },
     );

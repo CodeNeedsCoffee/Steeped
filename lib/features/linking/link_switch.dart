@@ -40,6 +40,7 @@ Future<void> switchToEbook(
   required LibraryItemDetail audio,
   required LibraryItemDetail ebook,
   double? audioSeconds,
+  bool replaceCurrent = false,
 }) async {
   final mode = _modeOf(
     ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
@@ -63,7 +64,7 @@ Future<void> switchToEbook(
       }
     }
   }
-  if (context.mounted) _openReader(context, ebook);
+  if (context.mounted) _openReader(context, ebook, replace: replaceCurrent);
 }
 
 /// Starts the audiobook [audio] at the spot matching the ebook's position.
@@ -72,6 +73,7 @@ Future<void> switchToAudio(
   WidgetRef ref, {
   required LibraryItemDetail audio,
   required LibraryItemDetail ebook,
+  bool replaceCurrent = false,
 }) async {
   final mode = _modeOf(
     ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
@@ -97,18 +99,26 @@ Future<void> switchToAudio(
       .playItem(audio.id, startAt: startAt);
   if (context.mounted &&
       ref.read(currentPlaybackItemProvider)?.id == audio.id) {
-    openNowPlaying(context, ref);
+    openNowPlaying(context, ref, replace: replaceCurrent);
   }
 }
 
-void _openReader(BuildContext context, LibraryItemDetail ebook) {
+void _openReader(
+  BuildContext context,
+  LibraryItemDetail ebook, {
+  bool replace = false,
+}) {
   final f = ebook.ebookFile;
   if (f == null) return;
-  context.push(
-    f.isEpub
-        ? '/reader/epub/${ebook.id}'
-        : f.isPdf
-        ? '/reader/pdf/${ebook.id}'
-        : '/reader/comic/${ebook.id}',
-  );
+  final path = f.isEpub
+      ? '/reader/epub/${ebook.id}'
+      : f.isPdf
+      ? '/reader/pdf/${ebook.id}'
+      : '/reader/comic/${ebook.id}';
+  // Replacing keeps Back going to the book page, not through every switch.
+  if (replace) {
+    context.pushReplacement(path);
+  } else {
+    context.push(path);
+  }
 }

@@ -339,17 +339,28 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
     // licence heading deep into a book), so name the chapter from the contents.
     final title =
         _titleAt(_controller!, v.position.index) ?? v.chapter?.Title?.trim();
-    setState(() {
-      _fraction = _currentFraction();
-      _chapterLabel = (title != null && title.isNotEmpty)
-          ? title
-          : context.l10n.chapterNumber(v.chapterNumber);
-    });
+    final fraction = _currentFraction();
+    final label = (title != null && title.isNotEmpty)
+        ? title
+        : context.l10n.chapterNumber(v.chapterNumber);
+    // This fires on every scroll frame. Rebuilding the whole reader each time
+    // made it lag, so rebuild only when something shown changes: the slider
+    // and percentage move in half-percent steps, or the chapter name changes.
+    final changed =
+        (fraction * 200).round() != (_fraction * 200).round() ||
+        label != _chapterLabel;
+    _fraction = fraction;
+    _chapterLabel = label;
+    if (changed) setState(() {});
   }
+
+  /// The table of contents as `epub_view` reports it, read once: it builds a
+  /// new list of every entry each time it is asked.
+  List<dynamic>? _tocEntries;
 
   String? _titleAt(EpubController c, int index) {
     String? title;
-    for (final e in c.tableOfContents()) {
+    for (final e in _tocEntries ??= c.tableOfContents()) {
       if (e.startIndex > index) break;
       final t = e.title?.trim();
       if (t != null && t.isNotEmpty) title = t;
