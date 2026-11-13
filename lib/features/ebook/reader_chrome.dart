@@ -315,40 +315,45 @@ class _ReaderChromeState extends State<ReaderChrome> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (widget.dock != null) widget.dock!,
-                            Semantics(
-                              label: context.l10n.readingProgress,
-                              child: Slider(
-                                value: progress,
-                                onChanged: widget.onScrub == null
-                                    ? null
-                                    : (v) => setState(() => _dragValue = v),
-                                onChangeEnd: widget.onScrub == null
-                                    ? null
-                                    : (v) {
-                                        setState(() => _dragValue = null);
-                                        widget.onScrub!(v);
-                                      },
+                            // The player strip takes the place of the reading
+                            // slider and its labels while it is showing.
+                            if (widget.dock != null)
+                              widget.dock!
+                            else ...[
+                              Semantics(
+                                label: context.l10n.readingProgress,
+                                child: Slider(
+                                  value: progress,
+                                  onChanged: widget.onScrub == null
+                                      ? null
+                                      : (v) => setState(() => _dragValue = v),
+                                  onChangeEnd: widget.onScrub == null
+                                      ? null
+                                      : (v) {
+                                          setState(() => _dragValue = null);
+                                          widget.onScrub!(v);
+                                        },
+                                ),
                               ),
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    widget.footerLabel ?? '',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      widget.footerLabel ?? '',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: fg, fontSize: 12),
+                                    ),
+                                  ),
+                                  Text(
+                                    widget.progressNote == null
+                                        ? '${((progress) * 100).round()}%'
+                                        : '${((progress) * 100).round()}% \u00b7 ${widget.progressNote}',
                                     style: TextStyle(color: fg, fontSize: 12),
                                   ),
-                                ),
-                                Text(
-                                  widget.progressNote == null
-                                      ? '${((progress) * 100).round()}%'
-                                      : '${((progress) * 100).round()}% \u00b7 ${widget.progressNote}',
-                                  style: TextStyle(color: fg, fontSize: 12),
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),

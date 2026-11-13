@@ -1072,7 +1072,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                   chapterBuilder: _safeChapterBuilder(
                     justify: settings.justify,
                     highlights: _highlightsByParagraph,
-                    marked: () => _marked,
+                    marked: () => wantPlayer ? _marked : -1,
                     onParagraphs: (p) {
                     _paragraphs = p;
                     if (_audioFrom != null) {
@@ -1153,9 +1153,13 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           saveFirst: _sync,
           canListenAlongside: true,
           playerShown: wantPlayer,
-          onHidePlayer: () => setState(() => _playerOverride = false),
+          onHidePlayer: () => setState(() {
+            _playerOverride = false;
+            _follow = false;
+          }),
           onListenAlongside: () {
-            _playerOverride = true;
+            if (!mounted) return;
+            setState(() => _playerOverride = true);
             if (!_follow &&
                 (ref.read(appSettingsProvider).valueOrNull?.linkFollow ??
                     true)) {
