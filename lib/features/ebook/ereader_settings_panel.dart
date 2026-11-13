@@ -160,6 +160,11 @@ class EreaderSettingsPanel extends ConsumerWidget {
               ),
             ],
           ),
+          _switchRow(
+            context.l10n.justifyText,
+            settings.justify,
+            (v) => controller.save(settings.copyWith(justify: v)),
+          ),
           Text(context.l10n.fontSize),
           Slider(
             value: settings.fontScale,
@@ -178,11 +183,6 @@ class EreaderSettingsPanel extends ConsumerWidget {
             label: settings.lineSpacing.toStringAsFixed(1),
             onChanged: (v) =>
                 controller.save(settings.copyWith(lineSpacing: v)),
-          ),
-          _switchRow(
-            context.l10n.justifyText,
-            settings.justify,
-            (v) => controller.save(settings.copyWith(justify: v)),
           ),
           Text(context.l10n.marginsSides),
           Slider(
