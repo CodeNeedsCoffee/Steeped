@@ -519,6 +519,22 @@ The user then reported four reader problems, all on Alchemised:
 - A first fix for the crash "Cannot get size during build" (measuring the bottom bar while building) was caught
   on the phone and fixed; a test now covers the page-step geometry.
 
+### Quick switch no longer freezes (2026-11-12), verified on the emulator
+
+- **Cause:** a switch did all its work before changing screens: for Read it downloaded and parsed the whole EPUB to
+  find chapter spans, for Listen it fetched the reading position, parsed the EPUB again and loaded the audio, and both
+  could re-fetch item details (auto-disposing providers). The old screen just sat there.
+- **Fix:** the screen changes at once and the slow parts run behind the destination's own spinner. Read: the reader
+  maps the audio position itself after it has opened the book (one parse, shared with the reader). Listen: the open
+  reader hands over its position and chapters (no network, no second parse), Now Playing opens first with its spinner,
+  and the audio loads behind it; if it fails to load the screen pops back. The buttons load the linked item's details
+  in the background so tapping needs no wait.
+- **Measured (emulator, debug build):** Read -> reader with spinner in 0.74 s, Listen -> spinner in 0.74 s, Now Playing's
+  Read -> reader in 0.41 s. Landing spots: reader 65% for audio 65%; audio at 34:55 of 53:42 (65%). One Back press
+  after Read -> Listen -> Read returns to the book page. Not yet re-checked on the Pixel (the user needed it).
+- Also done in this round: top/bottom margin slider, smaller top gap, Justify under Bold. Still open: tap-to-turn on the
+  Pixel (works on the emulator; the user has not said where they tap).
+
 ## To do
 
 - G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).
