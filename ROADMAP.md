@@ -535,6 +535,17 @@ The user then reported four reader problems, all on Alchemised:
 - Also done in this round: top/bottom margin slider, smaller top gap, Justify under Bold. Still open: tap-to-turn on the
   Pixel (works on the emulator; the user has not said where they tap).
 
+### Highlight/bookmark fixes and Phase M (read and listen together), built 2026-11-13, not yet run on a device
+
+- **Reader fixes:** a word highlighted twice is kept once (`mergeHighlights`); bookmarks can be renamed (reader: pencil in the Bookmarks tab; audio: new `PATCH /api/me/item/:id/bookmark`, assumed from the server API and unchecked); jumping to a highlight or bookmark now measures where the line landed and corrects it (`_revealIn`), and a bookmark jumps by its saved fraction instead of the CFI. The "a page too far" cause was not reproduced, so this needs the Pixel to confirm.
+- **M0:** Listen (reader, EPUB only) and Read (Now Playing) open a drop-down: switch, or listen while reading / read along. Setting "When switching" (ask / switch / both); long-press always asks; already playing -> "Show player".
+- **M1:** `ReaderPlayerDock` in the reader's bottom bar for the linked audiobook only (play/pause, skips, chapter time left, Follow, expand sheet with speed, sleep timer, chapter skip). Counted as covered area for page turns.
+- **M2:** Follow: audio position -> paragraph (`followPosition`), accent band on that paragraph, scrolls only when it leaves the comfort zone, detaches on page turn / scrub / jump / finger drag. Settings: strip on/off, follow on/off.
+- **M3:** long-press "Play from here" in the text selection menu.
+- **M4:** Now Playing "Read along" text window (`bookTextProvider`, same paragraph split as the reader), tap opens the reader at that spot.
+- **M7:** reading beside playing audio no longer adds streak minutes (`ReadingTracker` skips while audio plays).
+- **Tests:** 360 pass (new: read_along, switch_menu, merge_highlights, reading_overlap). **Not done / needs a device:** the real layout of the strip, Follow scrolling feel, "a page too far" confirmation, Play from here accuracy, M5 landscape split, M6 Precise.
+
 ## To do
 
 - G6: spike `POST /api/session/local` for reading sessions (decide device-only vs server).

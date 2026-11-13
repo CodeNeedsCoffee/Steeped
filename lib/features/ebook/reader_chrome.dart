@@ -28,6 +28,7 @@ class ReaderChrome extends StatefulWidget {
     this.onScrub,
     this.footerLabel,
     this.progressNote,
+    this.dock,
     super.key,
   });
 
@@ -64,6 +65,10 @@ class ReaderChrome extends StatefulWidget {
 
   /// Shown after the percentage (for example the time left).
   final String? progressNote;
+
+  /// A strip shown above the progress bar (the linked audiobook's player).
+  /// It is part of the bottom bar, so page turns treat it as covered.
+  final Widget? dock;
 
   @override
   State<ReaderChrome> createState() => _ReaderChromeState();
@@ -310,6 +315,7 @@ class _ReaderChromeState extends State<ReaderChrome> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            if (widget.dock != null) widget.dock!,
                             Semantics(
                               label: context.l10n.readingProgress,
                               child: Slider(

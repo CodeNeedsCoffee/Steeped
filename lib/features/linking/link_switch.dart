@@ -11,12 +11,12 @@ import 'ebook_spans.dart';
 import 'link_providers.dart';
 import 'sync_strategy.dart';
 
-SyncMode _modeOf(String name) => SyncMode.values.firstWhere(
+SyncMode syncModeFromName(String name) => SyncMode.values.firstWhere(
   (m) => m.name == name,
   orElse: () => SyncMode.estimated,
 );
 
-List<ChapterSpan> _audioSpans(LibraryItemDetail audio) => [
+List<ChapterSpan> audioSpansOf(LibraryItemDetail audio) => [
   for (final c in audio.chapters) ChapterSpan(c.title, c.start, c.end),
   if (audio.chapters.isEmpty && audio.duration != null)
     ChapterSpan('', 0, audio.duration!),
@@ -72,13 +72,13 @@ Future<void> switchToEbook(
   double? audioSeconds,
   bool replaceCurrent = false,
 }) async {
-  final mode = _modeOf(
+  final mode = syncModeFromName(
     ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
   );
   final seconds = audioSeconds ?? audio.progress?.currentTime ?? 0;
   final point = AudioPoint(
     seconds: seconds,
-    spans: _audioSpans(audio),
+    spans: audioSpansOf(audio),
     mode: mode,
   );
   if (ebook.ebookFile?.isEpub == true) {
@@ -110,15 +110,18 @@ Future<void> switchToAudio(
   required LibraryItemDetail ebook,
   EbookPoint? from,
   bool replaceCurrent = false,
+
+  /// Start the audio without leaving the reader ("listen while reading").
+  bool alongside = false,
 }) async {
-  final mode = _modeOf(
+  final mode = syncModeFromName(
     ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
   );
   final router = GoRouter.of(context);
   // The widget that started this is replaced by Now Playing, which makes its
   // own `ref` unusable from here on; the app's container outlives it.
   final container = ProviderScope.containerOf(context, listen: false);
-  openNowPlaying(context, ref, replace: replaceCurrent);
+  if (!alongside) openNowPlaying(context, ref, replace: replaceCurrent);
 
   double? startAt;
   try {
@@ -146,7 +149,7 @@ Future<void> switchToAudio(
         }
         startAt = strategyFor(
           mode,
-        ).map(fraction, spans, _audioSpans(audio))?.position;
+        ).map(fraction, spans, audioSpansOf(audio))?.position;
       }
     }
   } catch (_) {
@@ -158,7 +161,8 @@ Future<void> switchToAudio(
       .read(playbackControllerProvider.notifier)
       .playItem(audio.id, startAt: startAt);
   // The audio did not load (offline, no tracks): leave the spinner screen.
-  if (container.read(currentPlaybackItemProvider)?.id != audio.id &&
+  if (!alongside &&
+      container.read(currentPlaybackItemProvider)?.id != audio.id &&
       router.canPop()) {
     router.pop();
   }

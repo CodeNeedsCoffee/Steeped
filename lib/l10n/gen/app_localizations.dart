@@ -2014,6 +2014,102 @@ abstract class AppLocalizations {
   /// **'Switch position'**
   String get linkSyncMode;
 
+  /// No description provided for @switchToAudiobook.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to audiobook'**
+  String get switchToAudiobook;
+
+  /// No description provided for @listenWhileReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen while reading'**
+  String get listenWhileReading;
+
+  /// No description provided for @showPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Show player'**
+  String get showPlayer;
+
+  /// No description provided for @switchToEbook.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to ebook'**
+  String get switchToEbook;
+
+  /// No description provided for @readAlong.
+  ///
+  /// In en, this message translates to:
+  /// **'Read along'**
+  String get readAlong;
+
+  /// No description provided for @linkSwitchBehaviour.
+  ///
+  /// In en, this message translates to:
+  /// **'When switching'**
+  String get linkSwitchBehaviour;
+
+  /// No description provided for @linkSwitchAsk.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask'**
+  String get linkSwitchAsk;
+
+  /// No description provided for @linkSwitchSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get linkSwitchSwitch;
+
+  /// No description provided for @linkSwitchBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'Both'**
+  String get linkSwitchBoth;
+
+  /// No description provided for @linkFollowSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow the audio while reading'**
+  String get linkFollowSetting;
+
+  /// No description provided for @linkDockSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Player strip in the reader'**
+  String get linkDockSetting;
+
+  /// No description provided for @followAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow'**
+  String get followAudio;
+
+  /// No description provided for @followingAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Following audio'**
+  String get followingAudio;
+
+  /// No description provided for @playFromHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Play from here'**
+  String get playFromHere;
+
+  /// No description provided for @expandPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand player'**
+  String get expandPlayer;
+
+  /// No description provided for @timeLeftShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String timeLeftShort(String time);
+
   /// No description provided for @linkSyncOff.
   ///
   /// In en, this message translates to:

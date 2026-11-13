@@ -44,6 +44,9 @@ class AppSettings {
     this.sleepFadeOut = true,
     this.sleepFadeSeconds = 10,
     this.linkSyncMode = 'estimated',
+    this.linkSwitchMode = 'ask',
+    this.linkFollow = true,
+    this.linkDock = true,
     this.showStreak = true,
     this.streakGoalMinutes = 0,
     this.streakForgive = true,
@@ -109,6 +112,9 @@ class AppSettings {
       sleepFadeOut: json['sleepFadeOut'] as bool? ?? true,
       sleepFadeSeconds: json['sleepFadeSeconds'] as int? ?? 10,
       linkSyncMode: json['linkSyncMode'] as String? ?? 'estimated',
+      linkSwitchMode: json['linkSwitchMode'] as String? ?? 'ask',
+      linkFollow: json['linkFollow'] as bool? ?? true,
+      linkDock: json['linkDock'] as bool? ?? true,
       showStreak: json['showStreak'] as bool? ?? true,
       streakGoalMinutes: json['streakGoalMinutes'] as int? ?? 0,
       streakForgive: json['streakForgive'] as bool? ?? true,
@@ -215,6 +221,16 @@ class AppSettings {
   /// `SyncMode` name: `off` or `estimated` (`precise` is added with J6).
   final String linkSyncMode;
 
+  /// What the Listen/Read buttons do: ask, switch, or both (listen while
+  /// reading / read along).
+  final String linkSwitchMode;
+
+  /// Scroll the page to follow the audio when listening while reading.
+  final bool linkFollow;
+
+  /// Show the player strip in the reader for the linked audiobook.
+  final bool linkDock;
+
   /// Streaks: show the Home chip; the daily bar in minutes (0 = any activity);
   /// forgive one missed day a week; count weeks instead of days.
   final bool showStreak;
@@ -286,6 +302,9 @@ class AppSettings {
     'sleepFadeOut': sleepFadeOut,
     'sleepFadeSeconds': sleepFadeSeconds,
     'linkSyncMode': linkSyncMode,
+    'linkSwitchMode': linkSwitchMode,
+    'linkFollow': linkFollow,
+    'linkDock': linkDock,
     'showStreak': showStreak,
     'streakGoalMinutes': streakGoalMinutes,
     'streakForgive': streakForgive,
@@ -331,6 +350,9 @@ class AppSettings {
     bool? sleepFadeOut,
     int? sleepFadeSeconds,
     String? linkSyncMode,
+    String? linkSwitchMode,
+    bool? linkFollow,
+    bool? linkDock,
     bool? showStreak,
     int? streakGoalMinutes,
     bool? streakForgive,
@@ -384,6 +406,9 @@ class AppSettings {
       sleepFadeOut: sleepFadeOut ?? this.sleepFadeOut,
       sleepFadeSeconds: sleepFadeSeconds ?? this.sleepFadeSeconds,
       linkSyncMode: linkSyncMode ?? this.linkSyncMode,
+      linkSwitchMode: linkSwitchMode ?? this.linkSwitchMode,
+      linkFollow: linkFollow ?? this.linkFollow,
+      linkDock: linkDock ?? this.linkDock,
       showStreak: showStreak ?? this.showStreak,
       streakGoalMinutes: streakGoalMinutes ?? this.streakGoalMinutes,
       streakForgive: streakForgive ?? this.streakForgive,

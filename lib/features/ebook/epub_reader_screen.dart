@@ -19,6 +19,10 @@ import 'data/reading_position.dart';
 import '../linking/link_providers.dart';
 import '../linking/ebook_spans.dart';
 import '../linking/link_switch.dart';
+import '../linking/read_along.dart';
+import '../linking/reader_dock.dart';
+import '../player/state/playback_controller.dart';
+import '../settings/state/settings_providers.dart';
 import '../linking/linked_listen_action.dart';
 import '../linking/sync_strategy.dart' show ChapterSpan;
 import 'ereader_settings_panel.dart';
@@ -45,6 +49,7 @@ ChaptersBuilder _safeChapterBuilder({
   required Map<int, List<String>> Function() highlights,
   required void Function(List<Paragraph>) onParagraphs,
   required void Function(EpubBook, List<EpubChapter>) onBook,
+  required int Function() marked,
 }) =>
     (
       BuildContext context,
@@ -65,64 +70,89 @@ ChaptersBuilder _safeChapterBuilder({
           builders as EpubViewBuilders<DefaultBuilderOptions>;
       final options = defaultBuilder.options;
 
-      return Column(
-        children: <Widget>[
-          if (chapterIndex >= 0 && paragraphIndex == 0)
-            builders.chapterDividerBuilder(chapters[chapterIndex]),
-          isSelectableParagraph(paragraphs[index].element)
-              ? SelectableParagraph(
-                  html: _withHighlights(
-                    paragraphs[index].element,
-                    highlights()[index],
-                  ),
-                  style: options.textStyle,
-                  padding:
-                      (options.paragraphPadding as EdgeInsets?) ??
-                      EdgeInsets.zero,
-                  justify: justify,
-                  onLink: onExternalLinkPressed,
-                  index: index,
-                )
-              : Html(
-                  data: _withHighlights(
-                    paragraphs[index].element,
-                    highlights()[index],
-                  ),
-                  onLinkTap: (href, attributes, element) =>
-                      onExternalLinkPressed(href ?? ''),
-                  style: {
-                    'html': Style(
-                      padding: HtmlPaddings.only(
-                        top: (options.paragraphPadding as EdgeInsets?)?.top,
-                        right: (options.paragraphPadding as EdgeInsets?)?.right,
-                        bottom:
-                            (options.paragraphPadding as EdgeInsets?)?.bottom,
-                        left: (options.paragraphPadding as EdgeInsets?)?.left,
+      return _AudioMarker(
+        active: marked() == index,
+        child: Column(
+          children: <Widget>[
+            if (chapterIndex >= 0 && paragraphIndex == 0)
+              builders.chapterDividerBuilder(chapters[chapterIndex]),
+            isSelectableParagraph(paragraphs[index].element)
+                ? SelectableParagraph(
+                    html: _withHighlights(
+                      paragraphs[index].element,
+                      highlights()[index],
+                    ),
+                    style: options.textStyle,
+                    padding:
+                        (options.paragraphPadding as EdgeInsets?) ??
+                        EdgeInsets.zero,
+                    justify: justify,
+                    onLink: onExternalLinkPressed,
+                    index: index,
+                  )
+                : Html(
+                    data: _withHighlights(
+                      paragraphs[index].element,
+                      highlights()[index],
+                    ),
+                    onLinkTap: (href, attributes, element) =>
+                        onExternalLinkPressed(href ?? ''),
+                    style: {
+                      'html': Style(
+                        padding: HtmlPaddings.only(
+                          top: (options.paragraphPadding as EdgeInsets?)?.top,
+                          right:
+                              (options.paragraphPadding as EdgeInsets?)?.right,
+                          bottom:
+                              (options.paragraphPadding as EdgeInsets?)?.bottom,
+                          left: (options.paragraphPadding as EdgeInsets?)?.left,
+                        ),
+                      ).merge(Style.fromTextStyle(options.textStyle)),
+                      if (justify) 'p': Style(textAlign: TextAlign.justify),
+                      'mark': Style(
+                        backgroundColor: const Color(0x66FFC83D),
+                        color: options.textStyle.color,
                       ),
-                    ).merge(Style.fromTextStyle(options.textStyle)),
-                    if (justify) 'p': Style(textAlign: TextAlign.justify),
-                    'mark': Style(
-                      backgroundColor: const Color(0x66FFC83D),
-                      color: options.textStyle.color,
-                    ),
-                  },
-                  extensions: [
-                    TagExtension(
-                      tagsToExtend: {'img'},
-                      builder: (imageContext) {
-                        final bytes = _resolveImageBytes(
-                          document,
-                          imageContext.attributes['src'],
-                        );
-                        if (bytes == null) return const SizedBox.shrink();
-                        return Image(image: MemoryImage(bytes));
-                      },
-                    ),
-                  ],
-                ),
-        ],
+                    },
+                    extensions: [
+                      TagExtension(
+                        tagsToExtend: {'img'},
+                        builder: (imageContext) {
+                          final bytes = _resolveImageBytes(
+                            document,
+                            imageContext.attributes['src'],
+                          );
+                          if (bytes == null) return const SizedBox.shrink();
+                          return Image(image: MemoryImage(bytes));
+                        },
+                      ),
+                    ],
+                  ),
+          ],
+        ),
       );
     };
+
+/// A thin accent band down the left edge of the paragraph the audio is
+/// reading (listening while reading).
+class _AudioMarker extends StatelessWidget {
+  const _AudioMarker({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => active
+      ? DecoratedBox(
+          decoration: const BoxDecoration(
+            border: Border(
+              left: BorderSide(color: Color(0xCCFFC83D), width: 3),
+            ),
+          ),
+          child: child,
+        )
+      : child;
+}
 
 /// Wraps each highlighted snippet in `<mark>` inside a copy of the paragraph.
 /// Best effort: a snippet that spans inline tags (bold, links) inside one
@@ -217,6 +247,10 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   double _startFraction = 0;
   bool _resumeChecked = false;
   String _chapterLabel = '';
+  // Listening while reading: follow the audio, and the paragraph it is at.
+  bool _follow = false;
+  int _marked = -1;
+  List<ChapterSpan>? _ebookSpans;
 
   late final ReadingTracker _reading;
 
@@ -393,6 +427,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   void _jumpToFraction(double f) {
     final c = _controller;
     if (c == null) return;
+    _detach();
     c.jumpTo(index: (f * _estimatedTotal(c)).floor());
   }
 
@@ -449,6 +484,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   void _turn(int direction, EdgeInsets covered) {
     final pos = _scrollPosition();
     if (pos == null) return;
+    _detach();
     final s = ref.read(ereaderSettingsProvider).valueOrNull;
     final line = 18 * (s?.fontScale ?? 1.0) * (s?.lineSpacing ?? 1.25);
     final visible = pos.viewportDimension - covered.top - covered.bottom;
@@ -464,9 +500,16 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   /// the line of [snippet] (a highlight) or [within] of the paragraph's height
   /// (a bookmark) is moved to just under the top bar, whether the jump landed
   /// short of it or past it.
-  void _revealIn(int index, {String? snippet, double within = 0}) {
+  void _revealIn(
+    int index, {
+    String? snippet,
+    double within = 0,
+    double at = 0.15,
+    bool fromFollow = false,
+  }) {
     final c = _controller;
     if (c == null) return;
+    if (!fromFollow) _detach();
     c.jumpTo(index: index);
     var tries = 0;
     void fix(Duration _) {
@@ -478,13 +521,107 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
         if (++tries < 6) WidgetsBinding.instance.addPostFrameCallback(fix);
         return;
       }
-      final y = (snippet == null ? null : snippetY(index, snippet)) ??
+      final y =
+          (snippet == null ? null : snippetY(index, snippet)) ??
           b.top + within * b.height;
-      final want = box.localToGlobal(Offset.zero).dy + box.size.height * 0.15;
+      final want = box.localToGlobal(Offset.zero).dy + box.size.height * at;
       if ((y - want).abs() > 8) pos.jumpTo(pos.pixels + y - want);
     }
 
     WidgetsBinding.instance.addPostFrameCallback(fix);
+  }
+
+  /// Stops following the audio (the reader moved on its own).
+  void _detach() {
+    if (_follow && mounted) setState(() => _follow = false);
+  }
+
+  List<ChapterSpan> get _spans {
+    final book = _book;
+    return _ebookSpans ??= book == null
+        ? const [ChapterSpan('', 0, 1)]
+        : chapterSpansOfBook(book);
+  }
+
+  void _toggleFollow() {
+    if (_follow) {
+      setState(() => _follow = false);
+    } else {
+      setState(() => _follow = true);
+      _onAudioTick(ref.read(playbackPositionProvider).valueOrNull, force: true);
+    }
+  }
+
+  /// Audio position -> the paragraph it is at: moves the marker, and while
+  /// following scrolls so that paragraph is on screen.
+  void _onAudioTick(double? seconds, {bool force = false}) {
+    final audio = ref.read(linkedPlayingProvider(widget.itemId));
+    final c = _controller;
+    if (seconds == null ||
+        audio == null ||
+        c == null ||
+        _paragraphs.isEmpty ||
+        _book == null) {
+      return;
+    }
+    final mode = syncModeFromName(
+      ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
+    );
+    final pos = followPosition(
+      AudioPoint(seconds: seconds, spans: audioSpansOf(audio), mode: mode),
+      _spans,
+      _paragraphs.length,
+    );
+    if (pos == null) return;
+    final index = pos.floor();
+    if (index == _marked && !force) return;
+    setState(() => _marked = index);
+    if (!_follow) return;
+    final b = paragraphBounds(index);
+    final box = _bodyKey.currentContext?.findRenderObject();
+    if (!force &&
+        b != null &&
+        box is RenderBox &&
+        box.attached &&
+        inComfortZone(
+          paragraphTop: b.top,
+          bodyTop: box.localToGlobal(Offset.zero).dy,
+          bodyHeight: box.size.height,
+        )) {
+      return;
+    }
+    _revealIn(index, within: pos - index, at: 0.3, fromFollow: true);
+  }
+
+  /// Long-press "Play from here": the audio starts at the selected paragraph.
+  Future<void> _playFromHere(double anchorY) async {
+    final audio = ref.read(linkedAudioProvider(widget.itemId));
+    final v = _controller?.currentValue;
+    if (audio == null || v == null || _paragraphs.isEmpty) return;
+    final index = paragraphIndexAtY(anchorY, _selectedText) ?? v.position.index;
+    final mode = syncModeFromName(
+      ref.read(appSettingsProvider).valueOrNull?.linkSyncMode ?? 'estimated',
+    );
+    final seconds = audioSecondsForParagraph(
+      index: index,
+      paragraphCount: _paragraphs.length,
+      ebookSpans: _spans,
+      audioSpans: audioSpansOf(audio),
+      mode: mode,
+    );
+    if (seconds == null) return;
+    final controller = ref.read(playbackControllerProvider.notifier);
+    if (ref.read(linkedPlayingProvider(widget.itemId)) != null) {
+      await controller.seekToGlobalPosition(seconds);
+      await controller.resume();
+    } else {
+      await controller.playItem(audio.id, startAt: seconds);
+    }
+    if (!mounted) return;
+    setState(() {
+      _follow = ref.read(appSettingsProvider).valueOrNull?.linkFollow ?? true;
+      _marked = index;
+    });
   }
 
   /// A bookmark's position is a fraction of the book in paragraphs; the whole
@@ -527,9 +664,11 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       ),
     );
     if (name == null) return;
-    setState(() => _bookmarks = [
-      for (final x in _bookmarks) x == b ? b.withLabel(name) : x,
-    ]);
+    setState(
+      () => _bookmarks = [
+        for (final x in _bookmarks) x == b ? b.withLabel(name) : x,
+      ],
+    );
     refreshSheet();
     await ref
         .read(ebookRepositoryProvider)
@@ -601,8 +740,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       }
     }
     final merged = mergeHighlights(_highlights, added);
-    if (added.isEmpty || merged.length == _highlights.length &&
-        merged.every(_highlights.contains)) {
+    if (added.isEmpty ||
+        merged.length == _highlights.length &&
+            merged.every(_highlights.contains)) {
       return;
     }
     setState(() => _highlights = merged);
@@ -621,6 +761,31 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Listening while reading: the audio starting beside the reader turns
+    // Follow on (if the setting allows); the audio stopping clears the marker.
+    ref.listen(linkedPlayingProvider(widget.itemId), (prev, next) {
+      if (next == null) {
+        if (_marked != -1 || _follow) {
+          setState(() {
+            _marked = -1;
+            _follow = false;
+          });
+        }
+      } else if (prev == null) {
+        final on =
+            ref.read(appSettingsProvider).valueOrNull?.linkFollow ?? true;
+        setState(() => _follow = on);
+        _onAudioTick(
+          ref.read(playbackPositionProvider).valueOrNull,
+          force: true,
+        );
+      }
+    });
+    ref.listen(playbackPositionProvider, (_, n) => _onAudioTick(n.valueOrNull));
+    final playingAudio = ref.watch(linkedPlayingProvider(widget.itemId));
+    final showDock =
+        playingAudio != null &&
+        (ref.watch(appSettingsProvider).valueOrNull?.linkDock ?? true);
     final settings =
         ref.watch(ereaderSettingsProvider).valueOrNull ??
         const EreaderSettings();
@@ -679,29 +844,51 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                       state.hideToolbar();
                     },
                   ),
+                  if (ref.read(linkedAudioProvider(widget.itemId)) != null)
+                    ContextMenuButtonItem(
+                      label: context.l10n.playFromHere,
+                      onPressed: () {
+                        final a = state.contextMenuAnchors;
+                        _playFromHere(
+                          (a.primaryAnchor.dy +
+                                  (a.secondaryAnchor?.dy ??
+                                      a.primaryAnchor.dy)) /
+                              2,
+                        );
+                        state.hideToolbar();
+                      },
+                    ),
                   ...state.contextMenuButtonItems,
                 ],
               ),
-          child: KeyedSubtree(
-            key: _bodyKey,
-            child: EpubView(
-              controller: controller,
-              builders: EpubViewBuilders<DefaultBuilderOptions>(
-                options: DefaultBuilderOptions(
-                  textStyle: settings.textStyle(),
-                  paragraphPadding: EdgeInsets.symmetric(
-                    horizontal: settings.margin,
-                    vertical: 4,
+          child: NotificationListener<ScrollStartNotification>(
+            onNotification: (n) {
+              // A finger drag in scroll mode moves the page itself.
+              if (n.dragDetails != null) _detach();
+              return false;
+            },
+            child: KeyedSubtree(
+              key: _bodyKey,
+              child: EpubView(
+                controller: controller,
+                builders: EpubViewBuilders<DefaultBuilderOptions>(
+                  options: DefaultBuilderOptions(
+                    textStyle: settings.textStyle(),
+                    paragraphPadding: EdgeInsets.symmetric(
+                      horizontal: settings.margin,
+                      vertical: 4,
+                    ),
                   ),
-                ),
-                chapterBuilder: _safeChapterBuilder(
-                  justify: settings.justify,
-                  highlights: _highlightsByParagraph,
-                  onParagraphs: (p) => _paragraphs = p,
-                  onBook: (b, c) {
-                    _book = b;
-                    _chapters = c;
-                  },
+                  chapterBuilder: _safeChapterBuilder(
+                    justify: settings.justify,
+                    highlights: _highlightsByParagraph,
+                    marked: () => _marked,
+                    onParagraphs: (p) => _paragraphs = p,
+                    onBook: (b, c) {
+                      _book = b;
+                      _chapters = c;
+                    },
+                  ),
                 ),
               ),
             ),
@@ -714,6 +901,14 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
       settings: settings,
       title: _title,
       body: body,
+      dock: showDock
+          ? ReaderPlayerDock(
+              audio: playingAudio,
+              following: _follow,
+              onToggleFollow: _toggleFollow,
+              color: settings.textColor,
+            )
+          : null,
       // Leaves room under the bars the first time; tapping the middle hides
       // them and the text keeps its place.
       onPage: paged ? _turn : null,
@@ -760,6 +955,14 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
         LinkedListenAction(
           itemId: widget.itemId,
           saveFirst: _sync,
+          canListenAlongside: true,
+          onListenAlongside: () {
+            if (!_follow &&
+                (ref.read(appSettingsProvider).valueOrNull?.linkFollow ??
+                    true)) {
+              _toggleFollow();
+            }
+          },
           pointNow: () {
             final book = _book;
             return EbookPoint(
@@ -804,6 +1007,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
         texts: [for (final p in _paragraphs) p.element.text],
         onPick: (index) {
           Navigator.pop(sheet);
+          _detach();
           controller.jumpTo(index: index);
         },
       ),
@@ -828,6 +1032,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                 chapter.title ?? context.l10n.chapterNumber(index + 1),
               ),
               onTap: () {
+                _detach();
                 controller.jumpTo(index: chapter.startIndex);
                 Navigator.pop(context);
               },
@@ -886,23 +1091,25 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                                           ),
                                         ),
                                         IconButton(
-                                      icon: const Icon(Icons.delete_outline),
-                                      onPressed: () async {
-                                        setState(
-                                          () => _bookmarks = [
-                                            for (final x in _bookmarks)
-                                              if (x != b) x,
-                                          ],
-                                        );
-                                        setSheet(() {});
-                                        await ref
-                                            .read(ebookRepositoryProvider)
-                                            .saveBookmarks(
-                                              widget.itemId,
-                                              _bookmarks,
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                          ),
+                                          onPressed: () async {
+                                            setState(
+                                              () => _bookmarks = [
+                                                for (final x in _bookmarks)
+                                                  if (x != b) x,
+                                              ],
                                             );
-                                      },
-                                    ),
+                                            setSheet(() {});
+                                            await ref
+                                                .read(ebookRepositoryProvider)
+                                                .saveBookmarks(
+                                                  widget.itemId,
+                                                  _bookmarks,
+                                                );
+                                          },
+                                        ),
                                       ],
                                     ),
                                     onTap: () {

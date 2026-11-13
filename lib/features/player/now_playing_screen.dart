@@ -1,3 +1,5 @@
+import '../linking/read_along.dart';
+import '../linking/read_along_window.dart';
 import 'package:flutter/material.dart';
 import '../linking/linked_read_action.dart';
 import 'package:flutter/services.dart';
@@ -268,6 +270,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
               ),
             ),
           ],
+          if (ref.watch(readAlongOpenProvider)) ReadAlongWindow(audio: item),
           const _SleepTimerChip(),
           const SizedBox(height: 20),
           Builder(

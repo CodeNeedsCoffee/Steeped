@@ -474,6 +474,48 @@ class SettingsScreen extends ConsumerWidget {
 
           _SectionHeader(context.l10n.sectionLinkedBooks),
           ListTile(
+            title: Text(context.l10n.linkSwitchBehaviour),
+            trailing: SizedBox(
+              width: 140,
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: settings.linkSwitchMode,
+                underline: const SizedBox.shrink(),
+                onChanged: (v) {
+                  if (v != null) {
+                    controller.save(settings.copyWith(linkSwitchMode: v));
+                  }
+                },
+                items: [
+                  DropdownMenuItem(
+                    value: 'ask',
+                    child: Text(context.l10n.linkSwitchAsk),
+                  ),
+                  DropdownMenuItem(
+                    value: 'switch',
+                    child: Text(context.l10n.linkSwitchSwitch),
+                  ),
+                  DropdownMenuItem(
+                    value: 'both',
+                    child: Text(context.l10n.linkSwitchBoth),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SwitchListTile(
+            title: Text(context.l10n.linkDockSetting),
+            value: settings.linkDock,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(linkDock: v)),
+          ),
+          SwitchListTile(
+            title: Text(context.l10n.linkFollowSetting),
+            value: settings.linkFollow,
+            onChanged: (v) =>
+                controller.save(settings.copyWith(linkFollow: v)),
+          ),
+          ListTile(
             title: Text(context.l10n.linkSyncMode),
             subtitle: Text(
               settings.linkSyncMode == SyncMode.off.name

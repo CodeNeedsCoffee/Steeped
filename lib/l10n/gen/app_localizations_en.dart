@@ -1206,6 +1206,56 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkSyncMode => 'Switch position';
 
   @override
+  String get switchToAudiobook => 'Switch to audiobook';
+
+  @override
+  String get listenWhileReading => 'Listen while reading';
+
+  @override
+  String get showPlayer => 'Show player';
+
+  @override
+  String get switchToEbook => 'Switch to ebook';
+
+  @override
+  String get readAlong => 'Read along';
+
+  @override
+  String get linkSwitchBehaviour => 'When switching';
+
+  @override
+  String get linkSwitchAsk => 'Ask';
+
+  @override
+  String get linkSwitchSwitch => 'Switch';
+
+  @override
+  String get linkSwitchBoth => 'Both';
+
+  @override
+  String get linkFollowSetting => 'Follow the audio while reading';
+
+  @override
+  String get linkDockSetting => 'Player strip in the reader';
+
+  @override
+  String get followAudio => 'Follow';
+
+  @override
+  String get followingAudio => 'Following audio';
+
+  @override
+  String get playFromHere => 'Play from here';
+
+  @override
+  String get expandPlayer => 'Expand player';
+
+  @override
+  String timeLeftShort(String time) {
+    return '$time left';
+  }
+
+  @override
   String get linkSyncOff => 'Off';
 
   @override

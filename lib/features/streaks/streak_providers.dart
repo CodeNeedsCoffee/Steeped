@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/storage/app_database.dart';
 import '../auth/state/session_controller.dart' show activeProfileIdProvider;
+import '../player/state/playback_controller.dart' show isPlayingProvider;
 import '../settings/state/settings_providers.dart';
 import '../stats/state/stats_providers.dart';
 import 'reading_days_store.dart';
@@ -56,15 +58,31 @@ final streakProvider = FutureProvider.autoDispose<StreakResult>((ref) async {
 /// [close]. Holds the app's container, which outlives the reader, so the final
 /// write after the screen is gone still lands.
 class ReadingTracker {
-  ReadingTracker(this._container) {
+  ReadingTracker(this._container, {bool Function()? audioPlaying})
+    : _audioPlaying =
+          audioPlaying ??
+          (() => _container.read(isPlayingProvider).valueOrNull ?? false) {
     _timer = Timer.periodic(const Duration(seconds: 30), (_) => _flush());
   }
 
   final ProviderContainer _container;
+  final bool Function() _audioPlaying;
   final _clock = ReadingClock();
   late final Timer _timer;
 
-  void touch() => _clock.touch(DateTime.now());
+  @visibleForTesting
+  ReadingClock get clock => _clock;
+
+  /// While audio plays the listening session already counts that time, so
+  /// reading beside it earns nothing extra: a minute of listening while
+  /// reading is one minute toward the streak, not two.
+  void touch({DateTime? at}) {
+    if (_audioPlaying()) {
+      _clock.pause();
+      return;
+    }
+    _clock.touch(at ?? DateTime.now());
+  }
 
   Future<void> _flush() async {
     final seconds = _clock.takePending();

@@ -513,14 +513,14 @@ Interpolation drifts within a chapter (narration speed, front matter, abridged a
 
 ### Steps
 
-- M1 Dock: collapsed/expanded, play/pause, skips, speed, sleep timer; counted as covered area; hidden when nothing is playing.
-- M2 Follow: position -> paragraph, marker band, scroll, Follow/Re-sync chip, detach on manual scroll.
-- M3 Play from here (long-press) plus anchors that refine the estimate.
-- M4 Now Playing read-along window (reverse direction).
+- M1 (built, untested on a device) Dock: collapsed/expanded, play/pause, skips, speed, sleep timer; counted as covered area; hidden when nothing is playing.
+- M2 (built, untested on a device) Follow: position -> paragraph, marker band, scroll, Follow/Re-sync chip, detach on manual scroll.
+- M3 (built, untested on a device) Play from here (long-press) plus anchors that refine the estimate.
+- M4 (built, untested on a device) Now Playing read-along window (reverse direction).
 - M5 Landscape/tablet split.
 - M6 Precise alignment (needs J5/J6).
-- M7 Streaks and stats: reading and listening at the same time must count wall-clock minutes once per day (union of the two sessions), not twice; the "keep screen on" setting stays the reader's own.
-- M0 Switch-button drop-down (above) and the "When switching" setting.
+- M7 (built) Streaks and stats: reading and listening at the same time must count wall-clock minutes once per day (union of the two sessions), not twice; the "keep screen on" setting stays the reader's own.
+- M0 (built 2026-11-13, untested on a device) Switch-button drop-down (above) and the "When switching" setting.
 - M8 Settings: Follow on by default for linked books (on/off), dock on/off, marker on/off. Strings, tests (pure position->paragraph mapping, anchors, dedupe of minutes), emulator check with the Pi pair.
 
 **Decided 2026-11-13:** the dock appears only for the linked audiobook of the book being read (never for something unrelated that happens to be playing).
