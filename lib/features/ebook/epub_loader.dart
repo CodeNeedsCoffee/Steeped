@@ -54,6 +54,23 @@ String _bodyInner(String html) {
   return m == null ? html : m.group(1)!;
 }
 
+/// `epub_view` turns each direct child of a chapter's `<body>` into one
+/// paragraph, and only looks inside `<div>` wrappers. A book whose chapter is
+/// `<body><section>...200 paragraphs...</section></body>` (Alchemised, and
+/// most books from some publishers) therefore became one huge "paragraph" per
+/// chapter: built all at once (lag), impossible to select from (no highlight)
+/// and coarse to track. Dropping the container tags, keeping their contents,
+/// makes every real paragraph its own item again.
+String unwrapContainerTags(String html) => html
+    .replaceAll(
+      RegExp(r'<\s*(section|article|main|aside)\b[^>]*>', caseSensitive: false),
+      '',
+    )
+    .replaceAll(
+      RegExp(r'<\s*/\s*(section|article|main|aside)\s*>', caseSensitive: false),
+      '',
+    );
+
 /// Reads the EPUB at [file] and folds unlisted spine files into the chapters.
 Future<EpubBook> openEpubFile(File file) async {
   final book = await EpubReader.readBook(await file.readAsBytes());
@@ -82,5 +99,9 @@ Future<EpubBook> openEpubFile(File file) async {
     bodyOf: (f) => html[f]?.Content,
     chapters: flat,
   );
+  for (final c in flat) {
+    final h = c.HtmlContent;
+    if (h != null) c.HtmlContent = unwrapContainerTags(h);
+  }
   return book;
 }

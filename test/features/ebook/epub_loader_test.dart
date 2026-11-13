@@ -1,5 +1,6 @@
 import 'package:epub_view/epub_view.dart' show EpubChapter;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:html/parser.dart' show parse;
 import 'package:steeped/features/ebook/epub_loader.dart';
 
 EpubChapter ch(String file, String html) => EpubChapter()
@@ -74,5 +75,25 @@ void main() {
       chapters: chapters,
     );
     expect(chapters[0].HtmlContent, contains('<p>end</p>'));
+  });
+
+  test('section wrappers are removed so each paragraph stands alone', () {
+    const html =
+        '<html><body><section class="chapter" id="c"><h2>CHAPTER 1</h2>'
+        '<p>one</p><p>two</p></section></body></html>';
+    final out = unwrapContainerTags(html);
+    expect(out, isNot(contains('<section')));
+    expect(out, isNot(contains('</section')));
+    expect(out, contains('<h2>CHAPTER 1</h2><p>one</p><p>two</p>'));
+    // The body's direct children are now the heading and both paragraphs.
+    final body = parse(out).body!;
+    expect(body.children.map((e) => e.localName), ['h2', 'p', 'p']);
+  });
+
+  test('nested and mixed-case container tags are removed; other tags stay', () {
+    const html = '<body><ARTICLE><section><p>a</p></SECTION></article>'
+        '<div><p>b</p></div><aside>c</aside><main>d</main></body>';
+    final out = unwrapContainerTags(html);
+    expect(out, '<body><p>a</p><div><p>b</p></div>cd</body>');
   });
 }
