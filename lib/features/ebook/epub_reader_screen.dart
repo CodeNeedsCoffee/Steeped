@@ -17,6 +17,7 @@ import '../library/state/library_providers.dart';
 import 'data/ereader_settings.dart';
 import 'data/reading_position.dart';
 import '../linking/link_providers.dart';
+import '../linking/sync_anchors.dart';
 import '../linking/ebook_spans.dart';
 import '../linking/link_switch.dart';
 import '../linking/precise_busy.dart';
@@ -564,12 +565,21 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
   /// A switch from the audiobook arrives as a rough spot (chapter sizes by
   /// HTML length). Once the text is laid out, redo it by words, which follows
   /// the narration far more closely, then (Precise) refine by listening.
-  void _onTextReady() {
+  Future<void> _onTextReady() async {
     final p = _audioFrom;
     final map = _paragraphMap;
     if (p == null || map == null || !mounted) return;
     _audioFrom = null;
-    final f = p.fractionIn(map.spans);
+    var f = p.fractionIn(map.spans);
+    // Places confirmed by earlier listening beat the chapter estimate.
+    final total = p.audio?.duration;
+    if (total != null && p.mode != SyncMode.off) {
+      final anchors = await ref
+          .read(syncAnchorStoreProvider)
+          .load(widget.itemId);
+      f = wordFor(anchors, p.seconds, total) ?? f;
+      if (!mounted) return;
+    }
     if (f != null) {
       final pos = map.paragraphPos(f);
       final n = _paragraphs.length;
@@ -604,6 +614,18 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
             return;
           }
           _revealIn(r.paragraph, within: r.within);
+          final map = _paragraphMap;
+          if (map != null) {
+            ref
+                .read(syncAnchorStoreProvider)
+                .add(
+                  widget.itemId,
+                  SyncAnchor(
+                    map.wordFraction(r.paragraph + r.within),
+                    p.seconds,
+                  ),
+                );
+          }
         });
   }
 
@@ -738,7 +760,17 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
           position: index.toDouble(),
         ),
       );
-      if (refined != null) start = refined;
+      if (refined != null) {
+        start = refined;
+        if (map != null) {
+          ref
+              .read(syncAnchorStoreProvider)
+              .add(
+                widget.itemId,
+                SyncAnchor(map.wordFraction(index.toDouble()), refined),
+              );
+        }
+      }
     }
     final controller = ref.read(playbackControllerProvider.notifier);
     if (ref.read(linkedPlayingProvider(widget.itemId)) != null) {
@@ -1115,6 +1147,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
               visibleText: _visibleText(),
               paragraphTexts: [for (final q in _paragraphs) q.element.text],
               paragraphPosition: _positionNow(),
+              inWords: map != null && here != null,
               spans: map != null
                   ? map.spans
                   : book == null

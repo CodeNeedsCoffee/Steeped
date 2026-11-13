@@ -7,6 +7,7 @@ import '../auth/state/session_controller.dart' show activeProfileIdProvider;
 import '../library/state/library_providers.dart';
 import 'item_links_store.dart';
 import 'link_matching.dart';
+import 'sync_anchors.dart';
 
 /// The title before any subtitle, as typed (searching the full title with a
 /// subtitle on one side finds nothing on the other).
@@ -15,6 +16,13 @@ String mainTitleOf(String title) =>
 
 final itemLinksStoreProvider = Provider<ItemLinksStore>(
   (ref) => ItemLinksStore(
+    ref.watch(appDatabaseProvider),
+    profileId: ref.watch(activeProfileIdProvider) ?? '',
+  ),
+);
+
+final syncAnchorStoreProvider = Provider<SyncAnchorStore>(
+  (ref) => SyncAnchorStore(
     ref.watch(appDatabaseProvider),
     profileId: ref.watch(activeProfileIdProvider) ?? '',
   ),

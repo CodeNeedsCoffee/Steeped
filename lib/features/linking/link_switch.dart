@@ -10,6 +10,7 @@ import '../settings/state/settings_providers.dart';
 import 'ebook_spans.dart';
 import 'link_providers.dart';
 import 'precise_busy.dart';
+import 'sync_anchors.dart';
 import 'precise_service.dart';
 import 'sync_strategy.dart';
 
@@ -60,7 +61,12 @@ class EbookPoint {
     this.visibleText,
     this.paragraphTexts,
     this.paragraphPosition,
+    this.inWords = false,
   });
+
+  /// [fraction] and [spans] are in words (the reader's word map), the unit the
+  /// saved sync anchors use; false when they are a rough HTML-size estimate.
+  final bool inWords;
 
   /// Every paragraph's text and the reader's place in them (paragraph index
   /// plus how far in), so Precise can tell how far the narrator is from you.
@@ -171,6 +177,14 @@ Future<void> switchToAudio(
         startAt = strategyFor(
           mode,
         ).map(fraction, spans, audioSpansOf(audio))?.position;
+        // Places confirmed by earlier listening beat the chapter estimate.
+        final total = audio.duration;
+        if (from?.inWords == true && total != null) {
+          final anchors = await container
+              .read(syncAnchorStoreProvider)
+              .load(ebook.id);
+          startAt = secondsFor(anchors, fraction, total) ?? startAt;
+        }
       }
     }
     // Precise: listen to the audio around the estimate and find the words
@@ -197,7 +211,14 @@ Future<void> switchToAudio(
                 of: of,
               ),
         );
-        if (refined != null) startAt = refined;
+        if (refined != null) {
+          startAt = refined;
+          if (from?.inWords == true) {
+            await container
+                .read(syncAnchorStoreProvider)
+                .add(ebook.id, SyncAnchor(from!.fraction, refined));
+          }
+        }
       } finally {
         busy.state = false;
         container.read(preciseStepProvider.notifier).state = null;
