@@ -562,7 +562,9 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
               AdaptiveTextSelectionToolbar.buttonItems(
                 anchors: state.contextMenuAnchors,
                 buttonItems: [
-                  ...state.contextMenuButtonItems,
+                  // Highlight first: the system adds many items on some phones
+                  // (search, translate, AI apps) and a last item ends up hidden
+                  // behind the overflow arrow.
                   ContextMenuButtonItem(
                     label: context.l10n.highlight,
                     onPressed: () {
@@ -575,6 +577,7 @@ class _EpubReaderScreenState extends ConsumerState<EpubReaderScreen> {
                       state.hideToolbar();
                     },
                   ),
+                  ...state.contextMenuButtonItems,
                 ],
               ),
           child: KeyedSubtree(
