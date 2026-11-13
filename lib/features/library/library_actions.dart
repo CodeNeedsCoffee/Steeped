@@ -233,7 +233,10 @@ Future<void> showAddToCollectionSheet(
                           Navigator.of(sheetContext).pop();
                         _snack(context, context.l10n.addedTo(name));
                       } catch (e) {
-                        _snack(context, context.l10n.couldNotCreateCollection(e));
+                        _snack(
+                          context,
+                          context.l10n.couldNotCreateCollection(e),
+                        );
                       }
                     },
                   ),
@@ -256,7 +259,10 @@ Future<void> showAddToCollectionSheet(
                           ref.invalidate(collectionsProvider(libraryId));
                           ref.invalidate(collectionDetailProvider(c.id));
                         } catch (e) {
-                          _snack(context, context.l10n.collectionUpdateFailed(e));
+                          _snack(
+                            context,
+                            context.l10n.collectionUpdateFailed(e),
+                          );
                         }
                       },
                     ),
@@ -286,140 +292,143 @@ Future<void> showItemQuickActions(
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    isScrollControlled: true,
     builder: (sheetContext) => SafeArea(
-      child: Wrap(
-        children: [
-          ListTile(
-            title: Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: item.authorOrPublisherName == null
-                ? null
-                : Text(item.authorOrPublisherName!),
-          ),
-          if (isBook && item.hasAudio)
+      child: SingleChildScrollView(
+        child: Wrap(
+          children: [
             ListTile(
-              leading: const Icon(Icons.play_arrow),
-              title: Text(context.l10n.play),
-              onTap: () async {
-                Navigator.of(sheetContext).pop();
-                await ref
-                    .read(playbackControllerProvider.notifier)
-                    .playItem(item.id);
-                if (context.mounted &&
-                    ref.read(currentPlaybackItemProvider)?.id == item.id) {
-                  openNowPlaying(context, ref);
-                }
-              },
+              title: Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: item.authorOrPublisherName == null
+                  ? null
+                  : Text(item.authorOrPublisherName!),
             ),
-          if (isBook && item.authorOrPublisherName != null)
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: Text(context.l10n.goToAuthor),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _goToAuthorOrSeries(context, ref, item.id, author: true);
-              },
-            ),
-          if (isBook && item.seriesName != null)
-            ListTile(
-              leading: const Icon(Icons.collections_bookmark_outlined),
-              title: Text(context.l10n.goToSeries),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _goToAuthorOrSeries(context, ref, item.id, author: false);
-              },
-            ),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: Text(context.l10n.details),
-            onTap: () {
-              Navigator.of(sheetContext).pop();
-              context.push('/item/${item.id}');
-            },
-          ),
-          if (isBook && ref.read(canDownloadProvider))
-            ListTile(
-              leading: const Icon(Icons.download_outlined),
-              title: Text(context.l10n.download),
-              onTap: () async {
-                Navigator.of(sheetContext).pop();
-                final s = ref.read(sessionControllerProvider);
-                if (s is! SessionAuthenticated) return;
-                try {
-                  final detail = await ref
-                      .read(libraryRepositoryProvider)
-                      .fetchItemDetail(item.id);
+            if (isBook && item.hasAudio)
+              ListTile(
+                leading: const Icon(Icons.play_arrow),
+                title: Text(context.l10n.play),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
                   await ref
-                      .read(downloadControllerProvider.notifier)
-                      .download(
-                        item: detail,
-                        serverUrl: s.serverUrl,
-                        token: s.user.effectiveToken,
-                      );
-                  _snack(context, context.l10n.downloadStarted);
-                } catch (e) {
-                  _snack(context, context.l10n.downloadFailed(e));
-                }
-              },
-            ),
-          if (isBook && libraryId != null)
+                      .read(playbackControllerProvider.notifier)
+                      .playItem(item.id);
+                  if (context.mounted &&
+                      ref.read(currentPlaybackItemProvider)?.id == item.id) {
+                    openNowPlaying(context, ref);
+                  }
+                },
+              ),
+            if (isBook && item.authorOrPublisherName != null)
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: Text(context.l10n.goToAuthor),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _goToAuthorOrSeries(context, ref, item.id, author: true);
+                },
+              ),
+            if (isBook && item.seriesName != null)
+              ListTile(
+                leading: const Icon(Icons.collections_bookmark_outlined),
+                title: Text(context.l10n.goToSeries),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _goToAuthorOrSeries(context, ref, item.id, author: false);
+                },
+              ),
             ListTile(
-              leading: const Icon(Icons.playlist_add),
-              title: Text(context.l10n.addToPlaylist),
+              leading: const Icon(Icons.info_outline),
+              title: Text(context.l10n.details),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                showAddToPlaylistSheet(
-                  context,
-                  ref,
-                  libraryId: libraryId,
-                  libraryItemId: item.id,
-                );
+                context.push('/item/${item.id}');
               },
             ),
-          if (isBook && libraryId != null && canEditCollections(ref))
-            ListTile(
-              leading: const Icon(Icons.collections_bookmark_outlined),
-              title: Text(context.l10n.addToCollection),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                showAddToCollectionSheet(
-                  context,
-                  ref,
-                  libraryId: libraryId,
-                  bookId: item.id,
-                );
-              },
-            ),
-          if (isBook && item.duration != null) ...[
-            ListTile(
-              leading: const Icon(Icons.check_circle_outline),
-              title: Text(context.l10n.markFinished),
-              onTap: () => _markFinished(sheetContext, ref, item, true),
-            ),
-            ListTile(
-              leading: const Icon(Icons.restart_alt),
-              title: Text(context.l10n.markNotFinished),
-              onTap: () => _markFinished(sheetContext, ref, item, false),
-            ),
+            if (isBook && ref.read(canDownloadProvider))
+              ListTile(
+                leading: const Icon(Icons.download_outlined),
+                title: Text(context.l10n.download),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  final s = ref.read(sessionControllerProvider);
+                  if (s is! SessionAuthenticated) return;
+                  try {
+                    final detail = await ref
+                        .read(libraryRepositoryProvider)
+                        .fetchItemDetail(item.id);
+                    await ref
+                        .read(downloadControllerProvider.notifier)
+                        .download(
+                          item: detail,
+                          serverUrl: s.serverUrl,
+                          token: s.user.effectiveToken,
+                        );
+                    _snack(context, context.l10n.downloadStarted);
+                  } catch (e) {
+                    _snack(context, context.l10n.downloadFailed(e));
+                  }
+                },
+              ),
+            if (isBook && libraryId != null)
+              ListTile(
+                leading: const Icon(Icons.playlist_add),
+                title: Text(context.l10n.addToPlaylist),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  showAddToPlaylistSheet(
+                    context,
+                    ref,
+                    libraryId: libraryId,
+                    libraryItemId: item.id,
+                  );
+                },
+              ),
+            if (isBook && libraryId != null && canEditCollections(ref))
+              ListTile(
+                leading: const Icon(Icons.collections_bookmark_outlined),
+                title: Text(context.l10n.addToCollection),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  showAddToCollectionSheet(
+                    context,
+                    ref,
+                    libraryId: libraryId,
+                    bookId: item.id,
+                  );
+                },
+              ),
+            if (isBook && item.duration != null) ...[
+              ListTile(
+                leading: const Icon(Icons.check_circle_outline),
+                title: Text(context.l10n.markFinished),
+                onTap: () => _markFinished(sheetContext, ref, item, true),
+              ),
+              ListTile(
+                leading: const Icon(Icons.restart_alt),
+                title: Text(context.l10n.markNotFinished),
+                onTap: () => _markFinished(sheetContext, ref, item, false),
+              ),
+            ],
+            if (canDiscardProgress)
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: Text(context.l10n.discardProgressButton),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  confirmAndDiscardProgress(
+                    context,
+                    ref,
+                    libraryItemId: item.id,
+                    title: item.title,
+                  );
+                },
+              ),
           ],
-          if (canDiscardProgress)
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: Text(context.l10n.discardProgressButton),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                confirmAndDiscardProgress(
-                  context,
-                  ref,
-                  libraryItemId: item.id,
-                  title: item.title,
-                );
-              },
-            ),
-        ],
+        ),
       ),
     ),
   );
@@ -445,9 +454,7 @@ Future<void> _markFinished(
         );
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          finished ? l10n.markedFinished : l10n.markedNotFinished,
-        ),
+        content: Text(finished ? l10n.markedFinished : l10n.markedNotFinished),
       ),
     );
   } catch (e) {
@@ -492,14 +499,15 @@ Future<void> _goToAuthorOrSeries(
   required bool author,
 }) async {
   try {
-    final detail = await ref.read(libraryRepositoryProvider).fetchItemDetail(
-      itemId,
-    );
+    final detail = await ref
+        .read(libraryRepositoryProvider)
+        .fetchItemDetail(itemId);
     final targets = author
         ? [for (final a in detail.authors) (id: a.id, name: a.name)]
         : [for (final s in detail.series) (id: s.id, name: s.name)];
     if (targets.isEmpty) {
-      if (context.mounted) _snack(context, context.l10n.notAvailableForThisItem);
+      if (context.mounted)
+        _snack(context, context.l10n.notAvailableForThisItem);
       return;
     }
     if (!context.mounted) return;
