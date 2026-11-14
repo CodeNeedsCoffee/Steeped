@@ -150,7 +150,7 @@ final class PreciseRecognizer {
       } catch {}
     }
 
-    var error: String?
+    var failure: String?
     do {
       let (inputs, continuation) = AsyncStream<AnalyzerInput>.makeStream()
       try await analyzer.start(inputSequence: inputs)
@@ -163,11 +163,11 @@ final class PreciseRecognizer {
       }
     } catch {
       await analyzer.cancelAndFinishNow()
-      if !Task.isCancelled { error = "\(error)" }
+      if !Task.isCancelled { failure = "\(error)" }
     }
     await reader.value
     var out: [String: Any] = ["text": heard(), "audioMs": audioMs]
-    if let error { out["error"] = error }
+    if let failure { out["error"] = failure }
     return out
   }
 
