@@ -53,6 +53,10 @@ post_install do |installer|
     # this class of Flutter+CocoaPods drift.
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      # permission_handler compiles in only the permissions named here;
+      # Precise asks for speech recognition.
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'PERMISSION_SPEECH_RECOGNIZER=1'
     end
   end
 end

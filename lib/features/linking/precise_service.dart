@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import '../../models/audio_track.dart';
 import '../../models/library_item_detail.dart';
 import '../auth/state/session_controller.dart';
 import '../auth/state/session_state.dart';
+import '../downloads/state/download_controller.dart';
 import '../settings/state/settings_providers.dart';
 import 'link_switch.dart';
 import 'precise_match.dart';
@@ -16,7 +19,7 @@ import 'sync_strategy.dart';
 const _channel = MethodChannel('steeped/precise');
 
 /// True when this phone has an on-device speech recogniser (Android 13+ with
-/// the speech language pack). Recognition never leaves the device.
+/// the speech language pack, iOS 26+). Recognition never leaves the device.
 Future<bool> preciseAvailable() async {
   try {
     final m = await _channel.invokeMapMethod<String, dynamic>('available');
@@ -26,11 +29,45 @@ Future<bool> preciseAvailable() async {
   }
 }
 
-/// Asks for the microphone permission the recogniser needs (even for a file;
-/// the microphone itself is never opened). Returns whether it is granted.
+/// iOS only: whether the speech language model is installed (Android has
+/// nothing to install, so it is always ready).
+Future<bool> preciseModelReady() async {
+  if (!Platform.isIOS) return true;
+  try {
+    final m = await _channel.invokeMapMethod<String, dynamic>('available');
+    return m?['ready'] == true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// iOS only: installs the speech language model, reporting 0..1 as it
+/// downloads. Returns whether it is ready afterwards.
+Future<bool> precisePrepare({
+  void Function(double fraction)? onProgress,
+}) async {
+  if (!Platform.isIOS) return true;
+  _ensureHandler();
+  _onPrepareProgress = onProgress;
+  try {
+    final m = await _channel.invokeMapMethod<String, dynamic>('prepare', {
+      'lang': 'en-US',
+    });
+    return m?['ready'] == true;
+  } catch (_) {
+    return false;
+  } finally {
+    _onPrepareProgress = null;
+  }
+}
+
+/// Asks for the permission the recogniser needs: the microphone on Android
+/// (even for a file; the microphone itself is never opened), speech
+/// recognition on iOS. Returns whether it is granted.
 Future<bool> preciseHasPermission({bool ask = false}) async {
-  var status = await Permission.microphone.status;
-  if (!status.isGranted && ask) status = await Permission.microphone.request();
+  final permission = Platform.isIOS ? Permission.speech : Permission.microphone;
+  var status = await permission.status;
+  if (!status.isGranted && ask) status = await permission.request();
   return status.isGranted;
 }
 
@@ -56,10 +93,22 @@ class PreciseListener {
 var _nextListenId = 0;
 var _activeListenId = -1;
 void Function(String text, double audioSec)? _onPartial;
+void Function(double fraction)? _onPrepareProgress;
 var _handlerSet = false;
+
+void _ensureHandler() {
+  if (_handlerSet) return;
+  _channel.setMethodCallHandler(_onChannelCall);
+  _handlerSet = true;
+}
 
 // The recogniser calls back with the words so far while it works.
 Future<void> _onChannelCall(MethodCall call) async {
+  if (call.method == 'prepareProgress') {
+    final f = (call.arguments as Map)['fraction'] as num?;
+    if (f != null) _onPrepareProgress?.call(f.toDouble().clamp(0.0, 1.0));
+    return;
+  }
   if (call.method != 'partial') return;
   final a = call.arguments as Map;
   if (a['id'] != _activeListenId) return;
@@ -85,10 +134,15 @@ Future<PreciseListener?> preciseListener(
   final session = container.read(sessionControllerProvider);
   if (session is! SessionAuthenticated || audio.tracks.isEmpty) return null;
   if (!await preciseHasPermission() || !await preciseAvailable()) return null;
-  if (!_handlerSet) {
-    _channel.setMethodCallHandler(_onChannelCall);
-    _handlerSet = true;
-  }
+  _ensureHandler();
+  // iOS listens to the downloaded files (no streaming path there yet); a
+  // book that isn't fully downloaded can't use Precise.
+  final local = Platform.isIOS
+      ? await container
+            .read(downloadRepositoryProvider)
+            .buildOfflineItemDetail(audio.id)
+      : null;
+  if (Platform.isIOS && local == null) return null;
   Future<String?> listen(
     double startSec,
     double maxSec,
@@ -99,6 +153,10 @@ Future<PreciseListener?> preciseListener(
     final offset = (startSec - track.startOffset).clamp(0.0, track.duration);
     final dur = (track.duration - offset).clamp(0.0, maxSec);
     if (dur < 5) return null;
+    final localTrack = local?.tracks
+        .where((t) => t.index == track.index)
+        .firstOrNull;
+    if (Platform.isIOS && localTrack == null) return null;
     final id = ++_nextListenId;
     _activeListenId = id;
     var stopped = false;
@@ -115,11 +173,14 @@ Future<PreciseListener?> preciseListener(
     try {
       final r = await _channel.invokeMapMethod<String, dynamic>('recognize', {
         'id': id,
-        'url': audioStreamUrl(
-          serverUrl: session.serverUrl,
-          relativeContentUrl: track.contentUrl,
-          token: session.user.effectiveToken,
-        ),
+        if (localTrack != null)
+          'path': localTrack.contentUrl
+        else
+          'url': audioStreamUrl(
+            serverUrl: session.serverUrl,
+            relativeContentUrl: track.contentUrl,
+            token: session.user.effectiveToken,
+          ),
         'startMs': (offset * 1000).round(),
         'durMs': (dur * 1000).round(),
         'lang': 'en-US',

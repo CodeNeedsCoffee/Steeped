@@ -835,7 +835,10 @@ class _SyncModeTile extends StatelessWidget {
       title: Text(title),
       subtitle: Text(switch (mode) {
         'off' => l10n.linkSyncOffHint,
-        'precise' => l10n.linkSyncPreciseHint,
+        'precise' =>
+          Platform.isIOS
+              ? l10n.preciseDownloadFirst
+              : l10n.linkSyncPreciseHint,
         _ => l10n.linkSyncEstimatedHint,
       }),
       trailing: SizedBox(
@@ -856,9 +859,24 @@ class _SyncModeTile extends StatelessWidget {
               }
               if (!await preciseHasPermission(ask: true)) {
                 messenger.showSnackBar(
-                  SnackBar(content: Text(l10n.preciseNeedsPermission)),
+                  SnackBar(
+                    content: Text(
+                      Platform.isIOS
+                          ? l10n.preciseNeedsSpeechPermission
+                          : l10n.preciseNeedsPermission,
+                    ),
+                  ),
                 );
                 return;
+              }
+              if (!await preciseModelReady()) {
+                if (!context.mounted) return;
+                if (!await _prepareSpeechModel(context)) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(l10n.preciseModelFailed)),
+                  );
+                  return;
+                }
               }
             }
             onSave(v);
@@ -881,4 +899,38 @@ class _SyncModeTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// iOS: installs the speech model behind a progress dialog. True when ready.
+Future<bool> _prepareSpeechModel(BuildContext context) async {
+  final l10n = context.l10n;
+  final progress = ValueNotifier<double>(0);
+  final navigator = Navigator.of(context, rootNavigator: true);
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => PopScope(
+      canPop: false,
+      child: AlertDialog(
+        title: Text(l10n.precisePreparingModel),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.precisePreparingModelHint),
+            const SizedBox(height: 16),
+            ValueListenableBuilder<double>(
+              valueListenable: progress,
+              builder: (_, v, _) =>
+                  LinearProgressIndicator(value: v > 0 ? v : null),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+  final ok = await precisePrepare(onProgress: (f) => progress.value = f);
+  navigator.pop();
+  progress.dispose();
+  return ok;
 }

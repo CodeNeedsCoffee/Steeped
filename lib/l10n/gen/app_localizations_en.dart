@@ -1300,6 +1300,25 @@ class AppLocalizationsEn extends AppLocalizations {
       'Precise needs the microphone permission to run speech recognition (the microphone is not used)';
 
   @override
+  String get preciseNeedsSpeechPermission =>
+      'Precise needs the speech recognition permission (it runs on this iPhone; nothing is sent to Apple or the server)';
+
+  @override
+  String get precisePreparingModel => 'Preparing speech model';
+
+  @override
+  String get precisePreparingModelHint =>
+      'Downloading Apple\'s on-device speech model. This happens once.';
+
+  @override
+  String get preciseModelFailed =>
+      'Couldn\'t install the speech model. Check your connection and storage, then try again.';
+
+  @override
+  String get preciseDownloadFirst =>
+      'On iPhone, Precise works on downloaded audiobooks. Download the audiobook to use it.';
+
+  @override
   String get preciseUnavailable =>
       'This phone has no on-device speech recognition for Precise';
 

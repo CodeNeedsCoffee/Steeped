@@ -571,6 +571,8 @@ Optional improvements, each separately (both platforms unless said):
 
 Recommendation: build A1-A4 first (least risk when testing on a device), then B1 and B2 once iOS works, B3 next, B4 and B5 last.
 
+**Status 2026-11-13: A1-A4 written, not yet compiled or run.** Linux side done: `ios/Runner/PreciseRecognizer.swift` (in the Xcode project, registered in `AppDelegate`), `NSSpeechRecognitionUsageDescription`, the `PERMISSION_SPEECH_RECOGNIZER` Podfile macro, Dart `Platform.isIOS` branches in `precise_service.dart` (speech permission, downloaded file path instead of stream URL, `precisePrepare` with progress) and the Settings flow (permission, then a "Preparing speech model" dialog). Next, on the Mac: build for the simulator to compile the Swift (N3 list), then run on an iPhone when one is available. B1-B5 are not started.
+
 ### N3. Things I cannot confirm from here (check on the Mac)
 
 - The exact initialiser and option names for volatile results with `SpeechAnalyzer` on a custom input sequence; whether partials arrive before the 15 s finalisation AudioBooth uses.

@@ -2188,6 +2188,36 @@ abstract class AppLocalizations {
   /// **'Precise needs the microphone permission to run speech recognition (the microphone is not used)'**
   String get preciseNeedsPermission;
 
+  /// No description provided for @preciseNeedsSpeechPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Precise needs the speech recognition permission (it runs on this iPhone; nothing is sent to Apple or the server)'**
+  String get preciseNeedsSpeechPermission;
+
+  /// No description provided for @precisePreparingModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing speech model'**
+  String get precisePreparingModel;
+
+  /// No description provided for @precisePreparingModelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading Apple\'s on-device speech model. This happens once.'**
+  String get precisePreparingModelHint;
+
+  /// No description provided for @preciseModelFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t install the speech model. Check your connection and storage, then try again.'**
+  String get preciseModelFailed;
+
+  /// No description provided for @preciseDownloadFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'On iPhone, Precise works on downloaded audiobooks. Download the audiobook to use it.'**
+  String get preciseDownloadFirst;
+
   /// No description provided for @preciseUnavailable.
   ///
   /// In en, this message translates to:
